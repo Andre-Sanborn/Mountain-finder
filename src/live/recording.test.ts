@@ -36,6 +36,8 @@ import {
   cameraAltitudeDeg,
   dragModeScatter,
   estimatePitchBias,
+  estimatePitchBiasFromFovFit,
+  SYNTH_FOCAL_PX,
   expectedGravity,
   expectedTopEdgeMinusCameraDeg,
   fold360,
@@ -1273,6 +1275,170 @@ describe('the pitch bias', () => {
   it('carries the estimate on the analysis, so the screen can store it', () => {
     expect(analyseRecording(aimedRecording([1, 2, 3])).pitchBias?.biasDeg).toBeCloseTo(2, 6);
     expect(analyseRecording(synthesiseRecording(spec())).pitchBias).toBeUndefined();
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * The tilt zero point read off the field-of-view fit
+ * ══════════════════════════════════════════════════════════════════════════
+ * `fitFovCalibration` already solves a pitch offset jointly with the scale from
+ * two taps on the real Sun, and the app then folds it into the nudge. That
+ * offset is the tilt zero point with the sign turned round, and this is where
+ * that claim is held to hand arithmetic.
+ *
+ * `applyTrim` ADDS a trim to the pose, so
+ *
+ *     true = sensed + trimInForce + trimFromFit
+ *     bias = sensed − true = −(trimInForce + trimFromFit)
+ *
+ * `synthesiseRecording` builds the fit backwards from a bias the test names, so
+ * every expectation below is the number that went in.
+ */
+
+describe('the tilt zero point read off the field-of-view fit', () => {
+  it('reads a +2° tilt bias back out of the fit that corrected it', () => {
+    // No nudge was in force, so the fit had to ask for the whole correction:
+    // −2°. The bias is its negative, +2°, exactly.
+    const recording = synthesiseRecording(spec({ tiltBiasDeg: 2 }));
+    const estimate = estimatePitchBias(recording);
+    expect(estimate?.source).toBe('fov-calibration-taps');
+    expect(estimate?.biasDeg).toBeCloseTo(2, 12);
+    expect(estimate?.fovFit?.trimPitchDeg).toBeCloseTo(-2, 12);
+    expect(estimate?.sampleCount).toBe(2);
+    expect(estimate?.credible).toBe(true);
+  });
+
+  it('keeps the sign: a phone reading low reports a negative bias', () => {
+    expect(estimatePitchBias(synthesiseRecording(spec({ tiltBiasDeg: -1.25 })))?.biasDeg).toBeCloseTo(
+      -1.25,
+      12,
+    );
+    expect(estimatePitchBias(synthesiseRecording(spec({ tiltBiasDeg: 0 })))?.biasDeg).toBeCloseTo(0, 12);
+  });
+
+  it('adds back the nudge already in force, so an earlier nudge is not read as a sensor', () => {
+    // The person had already dialled in +0.75° before tapping, so the marks
+    // were drawn 0.75° high and the fit only had to find the remaining
+    // −2.75°. Bias = −(−2.75 + 0.75) = +2.
+    const recording = synthesiseRecording(spec({ tiltBiasDeg: 2, trimInForcePitchDeg: 0.75 }));
+    const estimate = estimatePitchBias(recording);
+    expect(estimate?.fovFit?.trimPitchDeg).toBeCloseTo(-2.75, 12);
+    expect(estimate?.fovFit?.trimInForcePitchDeg).toBeCloseTo(0.75, 12);
+    expect(estimate?.biasDeg).toBeCloseTo(2, 12);
+
+    // An honest phone whose owner nudged the labels reports no bias at all.
+    const nudgedOnly = synthesiseRecording(spec({ tiltBiasDeg: 0, trimInForcePitchDeg: 1.5 }));
+    expect(estimatePitchBias(nudgedOnly)?.fovFit?.trimPitchDeg).toBeCloseTo(-1.5, 12);
+    expect(estimatePitchBias(nudgedOnly)?.biasDeg).toBeCloseTo(0, 12);
+  });
+
+  it('turns the taps’ disagreement in pixels into a spread in degrees', () => {
+    // The residual is a hundredth of the focal length, and
+    // atan(0.01) = 0.01 − 0.01³/3 + 0.01⁵/5 rad = 0.0099996666867 rad, which is
+    // 0.5729387° at 57.29577951308232 degrees per radian.
+    const recording = synthesiseRecording(
+      spec({ tiltBiasDeg: 2, fitResidualPx: SYNTH_FOCAL_PX / 100 }),
+    );
+    expect(estimatePitchBias(recording)?.spreadDeg).toBeCloseTo(0.5729387, 7);
+    // A fit the two taps agree on exactly has no spread to report.
+    expect(estimatePitchBias(synthesiseRecording(spec({ tiltBiasDeg: 2 })))?.spreadDeg).toBeCloseTo(
+      0,
+      12,
+    );
+  });
+
+  it('refuses a fit whose taps were on a summit rather than on the Sun', () => {
+    // A summit's drawn position carries the terrain model's error and the
+    // observer's own position error, so a tap on one cannot isolate the tilt.
+    const base = synthesiseRecording(spec({ tiltBiasDeg: 2 }));
+    const fit = base.fovFits?.[0];
+    expect(fit).toBeDefined();
+    if (fit === undefined) return;
+    const onSummits: HomeSessionRecording = {
+      ...base,
+      fovFits: [{ ...fit, taps: fit.taps.map((tap) => ({ ...tap, kind: 'summit' as const })) }],
+    };
+    expect(estimatePitchBiasFromFovFit(onSummits)).toBeUndefined();
+    // And with no aiming measurement to fall back on, the whole estimate goes.
+    expect(estimatePitchBias(onSummits)).toBeUndefined();
+  });
+
+  it('prefers the taps over the aiming steps, and falls back when there is no fit', () => {
+    const aimed = aimedRecording([1, 2, 3]);
+    expect(estimatePitchBias(aimed)?.source).toBe('sun-aiming-steps');
+    const fit = synthesiseRecording(spec({ tiltBiasDeg: 2 })).fovFits?.[0];
+    expect(fit).toBeDefined();
+    if (fit === undefined) return;
+    const both: HomeSessionRecording = { ...aimed, fovFits: [fit] };
+    expect(estimatePitchBias(both)?.source).toBe('fov-calibration-taps');
+    expect(estimatePitchBias(both)?.biasDeg).toBeCloseTo(2, 12);
+  });
+
+  it('takes the last fit, because a later one was made on a screen the first corrected', () => {
+    const first = synthesiseRecording(spec({ tiltBiasDeg: 5 })).fovFits?.[0];
+    const second = synthesiseRecording(spec({ tiltBiasDeg: 2, trimInForcePitchDeg: -5 })).fovFits?.[0];
+    expect(first).toBeDefined();
+    expect(second).toBeDefined();
+    if (first === undefined || second === undefined) return;
+    const base = synthesiseRecording(spec());
+    expect(estimatePitchBias({ ...base, fovFits: [first, second] })?.biasDeg).toBeCloseTo(2, 12);
+  });
+
+  it('refuses a bias no tilt sensor could have, because a tap missed', () => {
+    const estimate = estimatePitchBias(synthesiseRecording(spec({ tiltBiasDeg: 40 })));
+    expect(estimate?.biasDeg).toBeCloseTo(40, 12);
+    expect(estimate?.credible).toBe(false);
+    const answer = verdictFor(synthesiseRecording(spec({ tiltBiasDeg: 40 })), 'pitch-bias');
+    expect(answer.inconclusive).toBe(true);
+  });
+
+  it('says on screen which measurement it is and how thin the sample is', () => {
+    const answer = verdictFor(synthesiseRecording(spec({ tiltBiasDeg: 2 })), 'pitch-bias');
+    expect(answer.answer).toContain('+2.000°');
+    expect(answer.confidence).toBe('moderate');
+    const evidence = answer.evidence.join('\n');
+    expect(evidence).toContain('2 taps on the Sun');
+    expect(evidence).toContain('already nudged in');
+    expect(evidence).toContain('n = 1 phone, n = 1 session');
+    // The aiming path's unmeasured-aim warning cannot appear here: a tap IS
+    // the aim measurement.
+    expect(evidence).not.toContain('charged as perfect');
+    expect(estimatePitchBias(synthesiseRecording(spec({ tiltBiasDeg: 2 })))?.method).toContain(
+      'n = 1 phone, n = 1 session',
+    );
+  });
+
+  it('survives the round trip through the file the phone shares', () => {
+    const recording = synthesiseRecording(spec({ tiltBiasDeg: 2, trimInForcePitchDeg: 0.75 }));
+    const parsed = parseRecording(JSON.parse(JSON.stringify(recording)) as unknown);
+    expect(parsed.ok, parsed.ok ? '' : JSON.stringify(parsed.problems)).toBe(true);
+    if (!parsed.ok) return;
+    expect(estimatePitchBias(parsed.value)?.biasDeg).toBeCloseTo(2, 12);
+    expect(parsed.value.fovFits?.[0]?.taps).toHaveLength(2);
+    // The raw pixels are on file, so a later reader can redo the fit and see a
+    // finger that slipped.
+    expect(parsed.value.fovFits?.[0]?.taps[0]?.drawnPx).toBeDefined();
+    expect(parsed.value.fovFits?.[0]?.taps[0]?.tappedPx).toBeDefined();
+  });
+
+  it('refuses a fit made from one tap, and a tap that names a place', () => {
+    const recording = synthesiseRecording(spec({ tiltBiasDeg: 2 }));
+    const raw = JSON.parse(JSON.stringify(recording)) as {
+      fovFits: { taps: unknown[] }[];
+    };
+    const oneTap = JSON.parse(JSON.stringify(raw)) as typeof raw;
+    oneTap.fovFits[0]?.taps.splice(1, 1);
+    const refusedFew = parseRecording(oneTap);
+    expect(refusedFew.ok).toBe(false);
+    expect(refusedFew.ok ? [] : refusedFew.problems.map((problem) => problem.path)).toContain(
+      'fovFits[0].taps',
+    );
+
+    const named = JSON.parse(JSON.stringify(raw)) as typeof raw;
+    const tap = named.fovFits[0]?.taps[0] as Record<string, unknown> | undefined;
+    if (tap !== undefined) tap.name = 'Deer Point';
+    const refusedName = parseRecording(named);
+    expect(refusedName.ok).toBe(false);
   });
 });
 

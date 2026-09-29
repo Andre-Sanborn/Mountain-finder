@@ -23,6 +23,7 @@ import {
   calibrationFromFit,
   fitFovCalibration,
   pickReference,
+  resolveCalibrationTap,
   type CalibrationFrame,
   type CalibrationReference,
   type CalibrationTap,
@@ -297,6 +298,76 @@ describe('pickReference', () => {
 
   it('has nothing to attach a tap to when nothing is drawn', () => {
     expect(pickReference({ xPx: 300, yPx: 200 }, [], MAX_TAP_DISTANCE_PX)).toBeUndefined();
+  });
+});
+
+describe('the fitted focal length', () => {
+  it('is the assumed one times the scale, which is what turns a pixel into an angle', () => {
+    // The 800 px frame at 2·atan(0.75) across has f_assumed = 400/0.75 = 533.33 px.
+    const taps: CalibrationTap[] = [
+      { reference: sunAt(200, 225), tappedPx: { xPx: 150, yPx: 225 } },
+      { reference: sunAt(600, 225), tappedPx: { xPx: 650, yPx: 225 } },
+    ];
+    const fitted = fitFovCalibration(taps, FRAME);
+    expect(fitted.ok).toBe(true);
+    if (!fitted.ok) return;
+    // ±200 px of reference became ±250 px of tap, so the scale is 1.25.
+    expect(fitted.value.scale).toBeCloseTo(1.25, 12);
+    expect(fitted.value.focalPx).toBeCloseTo(1.25 * (400 / 0.75), 9);
+    // And the fit's own field of view is read back through it.
+    expect(fitted.value.visibleHFovDeg).toBeCloseTo(
+      (2 * Math.atan(400 / fitted.value.focalPx)) / DEG,
+      12,
+    );
+  });
+});
+
+describe('resolveCalibrationTap', () => {
+  const sun = sunAt(300, 200);
+  const framePx = { widthPx: 800, heightPx: 450 };
+
+  it('accepts a tap the app drew nothing near, because that gap is the measurement', () => {
+    // (300, 200) to (700, 420) is 456 px. At the 800 px frame's own focal
+    // length, 400/0.75 = 533.3 px, that is 40.5° — a tilt error no gate is
+    // entitled to refuse on the sensor's word.
+    const outcome = resolveCalibrationTap({ xPx: 700, yPx: 420 }, framePx, [sun]);
+    expect(outcome.ok).toBe(true);
+    expect(outcome.ok ? outcome.reference : undefined).toBe(sun);
+  });
+
+  it('still attributes a tap to the nearest drawn mark', () => {
+    const summit: CalibrationReference = {
+      kind: 'summit',
+      name: 'Matterhorn',
+      drawnPx: { xPx: 520, yPx: 180 },
+    };
+    const near = resolveCalibrationTap({ xPx: 310, yPx: 205 }, framePx, [sun, summit]);
+    expect(near.ok ? near.reference : undefined).toBe(sun);
+    const far = resolveCalibrationTap({ xPx: 500, yPx: 190 }, framePx, [sun, summit]);
+    expect(far.ok ? far.reference : undefined).toBe(summit);
+  });
+
+  it('refuses a tap outside the picture', () => {
+    for (const point of [
+      { xPx: -1, yPx: 200 },
+      { xPx: 200, yPx: -1 },
+      { xPx: 801, yPx: 200 },
+      { xPx: 200, yPx: 451 },
+      { xPx: Number.NaN, yPx: 200 },
+    ]) {
+      const outcome = resolveCalibrationTap(point, framePx, [sun]);
+      expect(outcome.ok).toBe(false);
+      expect(outcome.ok ? '' : outcome.refusal).toBe('outside-picture');
+    }
+    // The edges themselves are inside.
+    expect(resolveCalibrationTap({ xPx: 0, yPx: 0 }, framePx, [sun]).ok).toBe(true);
+    expect(resolveCalibrationTap({ xPx: 800, yPx: 450 }, framePx, [sun]).ok).toBe(true);
+  });
+
+  it('refuses a tap when nothing is drawn to compare against', () => {
+    const outcome = resolveCalibrationTap({ xPx: 300, yPx: 200 }, framePx, []);
+    expect(outcome.ok).toBe(false);
+    expect(outcome.ok ? '' : outcome.refusal).toBe('nothing-drawn');
   });
 });
 

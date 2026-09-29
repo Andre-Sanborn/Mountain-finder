@@ -960,8 +960,6 @@ test('a tap during the sun step measures the field of view and the aim', async (
   const dots = await summitDots(page);
   expect(dots.length, 'the landmark sweep needs drawn summits').toBeGreaterThan(1);
 
-  // A tap further than the attribution limit from every drawn mark is refused
-  // rather than attached to whatever happened to be closest.
   const marks = await page
     .locator('[data-testid="live-marks"] circle')
     .evaluateAll((nodes) =>
@@ -971,6 +969,10 @@ test('a tap during the sun step measures the field of view and the aim', async (
       })),
     );
   const everything = [...dots, ...marks];
+  /**
+   * A point in the picture 250 px from every drawn mark, or undefined if this
+   * frame has no such gap. The taps at the end of this test use it.
+   */
   const farFromEverything = (() => {
     for (let yPx = 10; yPx < FRAME.heightPx; yPx += 10) {
       for (let xPx = 10; xPx < FRAME.widthPx; xPx += 10) {
@@ -982,13 +984,6 @@ test('a tap during the sun step measures the field of view and the aim', async (
     }
     return undefined;
   })();
-  if (farFromEverything !== undefined) {
-    await tapAt(page, farFromEverything.xPx, farFromEverything.yPx);
-    await expect(page.getByTestId('home-session-tap-note')).toBeVisible();
-    await expect(page.getByTestId('home-session-taps')).toHaveAttribute('data-tap-count', '0');
-  } else {
-    console.log('every part of this frame is within 250 px of a drawn mark; skipped the miss case');
-  }
 
   const injectedTap = (dot: { cx: number; cy: number }): { xPx: number; yPx: number } => ({
     xPx: FRAME.widthPx / 2 + INJECTED_SCALE * (dot.cx - FRAME.widthPx / 2) + INJECTED_SHIFT_PX.xPx,
@@ -1090,6 +1085,18 @@ test('a tap during the sun step measures the field of view and the aim', async (
   expect(
     Number(await page.getByTestId('live-trim').getAttribute('data-heading-deg')),
   ).toBeCloseTo(fittedHeadingOffset, 6);
+
+  // A tap far from every drawn mark is still counted. The gap between the mark
+  // and the real thing is what the tilt zero point is read from, so refusing a
+  // wide gap would let the sensor set a ceiling on its own error. Last in the
+  // test because it adds a third tap, which changes the fit already read above.
+  if (farFromEverything !== undefined) {
+    await tapAt(page, farFromEverything.xPx, farFromEverything.yPx);
+    await expect(page.getByTestId('home-session-taps')).toHaveAttribute('data-tap-count', '3');
+    await expect(page.getByTestId('home-session-tap-note')).toHaveCount(0);
+  } else {
+    console.log('every part of this frame is within 250 px of a drawn mark; skipped the wide-gap tap');
+  }
 });
 
 test('the observer stands on the map’s ground, not on the GPS altitude', async ({ page }) => {

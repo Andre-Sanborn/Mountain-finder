@@ -85,7 +85,13 @@ import {
 } from './fine-drag';
 import type { CompletedDrag } from './drag-trial';
 import { HomeSessionPanel } from './HomeSessionPanel';
-import type { CalibrationFrame, CalibrationReference, FovFit, PointPx } from './fov-calibration';
+import type {
+  CalibrationFrame,
+  CalibrationReference,
+  CalibrationTap,
+  FovFit,
+  PointPx,
+} from './fov-calibration';
 import { calibrationFromFit } from './fov-calibration';
 import { FieldSessionPanel, type CapturedFrame } from './FieldSessionPanel';
 import {
@@ -580,10 +586,8 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
       const calibration: PitchBiasCalibration = {
         biasDeg: estimate.biasDeg,
         spreadDeg: estimate.spreadDeg,
-        segmentCount: estimate.perSegment.length,
-        method:
-          `Measured against the sun over ${estimate.perSegment.length} aiming step(s) in the ` +
-          'home session.',
+        segmentCount: estimate.sampleCount,
+        method: estimate.method,
       };
       writeStoredPitchBias(
         typeof localStorage === 'undefined' ? undefined : localStorage,
@@ -1039,9 +1043,10 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
   }, [pose, framePx.widthPx, framePx.heightPx, geometry, decodedFrame]);
 
   const applyFovFit = useCallback(
-    (fit: FovFit, references: readonly CalibrationReference[]) => {
+    (fit: FovFit, taps: readonly CalibrationTap[]) => {
       const frame = calibrationFrame();
       if (frame === undefined) return;
+      const references = taps.map((tap) => tap.reference);
       const measured = calibrationFromFit(fit, frame, references);
       const stored = writeStoredFovCalibration(
         typeof localStorage === 'undefined' ? undefined : localStorage,
@@ -1063,8 +1068,24 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
         pitchDeg: current.pitchDeg + fit.trim.pitchDeg,
         hFovDeg: 0,
       }));
+      // The fit is the only place the tilt zero point is measured, and applying
+      // it is the moment the number exists. `trim` is the nudge the marks were
+      // drawn through, so the recorder gets both halves of the correction and
+      // the raw taps behind them; `estimatePitchBiasFromFovFit` reads the bias
+      // back out of them.
+      recorder.recordFovFit({
+        trimDeg: { headingDeg: fit.trim.headingDeg, pitchDeg: fit.trim.pitchDeg },
+        trimInForceDeg: { headingDeg: trim.headingDeg, pitchDeg: trim.pitchDeg },
+        focalPx: fit.focalPx,
+        residualPx: fit.residualPx,
+        taps: taps.map((tap) => ({
+          kind: tap.reference.kind,
+          drawnPx: { xPx: tap.reference.drawnPx.xPx, yPx: tap.reference.drawnPx.yPx },
+          tappedPx: { xPx: tap.tappedPx.xPx, yPx: tap.tappedPx.yPx },
+        })),
+      });
     },
-    [calibrationFrame, calibrationStoreKey],
+    [calibrationFrame, calibrationStoreKey, recorder, trim.headingDeg, trim.pitchDeg],
   );
 
   const shareTarget = useMemo(

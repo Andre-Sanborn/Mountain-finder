@@ -1415,9 +1415,27 @@ The analyzer also reports the compass heading's bias against the Sun's magnetic 
 the accuracy the phone claimed. It withholds that figure while the reference hypothesis is
 undecided. Nine mutations are caught.
 
-**Limits.** Nothing writes `aimOffsetDeg`, the Sun's actual offset from frame centre, yet; the
-estimator assumes a perfect aim and says so. The synthetic protocol's aiming attitudes do not
-point at a sun.
+**The bias comes from the field-of-view taps.** Step 14 asks for two taps on the real Sun, and
+`fitFovCalibration` solves a pitch offset jointly with the scale from them. `estimatePitchBias`
+tries `estimatePitchBiasFromFovFit` first and falls back to the aiming steps. `applyTrim` adds a
+trim to the pose, so true = sensed + trimInForce + trimFromFit, and the bias (sensed minus true)
+is −(trimInForce.pitchDeg + fit.trim.pitchDeg). Dropping the trim in force would report an
+earlier nudge as a sensor fault. The spread is the fit's RMS residual through the fitted focal
+length: four measurements against three unknowns leave one degree of freedom, the two taps'
+disagreement. n = 2 taps, n = 1 phone, n = 1 session, and the verdict says so on screen.
+
+The recording carries the whole fit: both trims, the focal length, the residual, and each tap's
+raw pixel beside the pixel the mark was drawn at, so a later reader can see a slip onto a flare.
+Only the kind of each reference is stored, never a summit's name. A fit whose taps were on a
+summit is refused, because a summit's drawn position carries terrain and fix error as well.
+
+A calibration tap is no longer gated on its distance from the drawn mark, since that distance is
+the measurement. The old 160 px limit would have refused an honest tap on a phone whose tilt sat
+about 12° out. The tap must land inside the picture (`resolveCalibrationTap`); with several marks
+drawn, a wild tap attaches to the nearest. The field session's landmark sweep keeps its 160 px
+limit, where it only helps attribution.
+
+`aimOffsetDeg` and `HomeSessionRecorder.setAimOffsetDeg` remain unwired.
 
 The same change set corrected the photo count to nine `.heic` originals. The two JPEG exports
 carry no GPS. It also set MISSION.md, README.md and HANDOFF.md to name `live.html` as the live

@@ -342,6 +342,67 @@ export interface RecordedDragTrial {
   readonly gain: number;
 }
 
+/**
+ * What a tap on a drawn mark can be about.
+ *
+ * Declared here rather than imported from `src/app/live/fov-calibration.ts`,
+ * which is a screen module the pure analyzer must not depend on. The recorder
+ * assigns one to the other, so a new kind on either side fails to compile.
+ */
+export const RECORDED_REFERENCE_KINDS = ['sun', 'moon', 'summit'] as const;
+export type RecordedReferenceKind = (typeof RECORDED_REFERENCE_KINDS)[number];
+
+/** A point in the visible picture, measured from the top left of the video box. */
+export interface RecordedPointPx {
+  readonly xPx: number;
+  readonly yPx: number;
+}
+
+/**
+ * One tap that went into a field-of-view fit, as the file holds it.
+ *
+ * Only the KIND of the mark is kept. A summit's name is the name of a place
+ * within sight of wherever the person stood, which is the position the rest of
+ * this schema goes to such lengths not to carry.
+ */
+export interface RecordedCalibrationTap {
+  readonly kind: RecordedReferenceKind;
+  /** Where the app drew the mark, through the pose its sensors gave it. */
+  readonly drawnPx: RecordedPointPx;
+  /** Where the person put their finger, on the real thing in the picture. */
+  readonly tappedPx: RecordedPointPx;
+}
+
+/**
+ * One field-of-view calibration, as it stood when the person accepted it.
+ *
+ * ── WHY THE RAW TAPS ARE HERE AS WELL AS THE FIT ───────────────────────────
+ * The fit is four numbers over four measurements, so nothing in it shows a
+ * finger that slipped: a tap on a lens flare rather than on the Sun moves the
+ * scale and the shift together and leaves a residual a careful tap could also
+ * have left. Keeping both pixel pairs per tap lets a later reader redo the fit
+ * and see where the slip was.
+ *
+ * ── WHY THE TRIM IN FORCE IS HERE ──────────────────────────────────────────
+ * The marks were drawn through the pose the sensors gave PLUS whatever nudge
+ * the person had already dialled in. The fit corrects what was on screen, so
+ * its own pitch offset is only the rest of the correction. The tilt zero point
+ * is the whole of it, and the whole of it is the two added together.
+ */
+export interface RecordedFovFit {
+  /** Milliseconds since the start of the recording. */
+  readonly tMs: number;
+  /** What the fit asked for, in `applyTrim`'s convention: added to the pose. */
+  readonly trimDeg: { readonly headingDeg: number; readonly pitchDeg: number };
+  /** The nudge already applied when the marks were drawn, same convention. */
+  readonly trimInForceDeg: { readonly headingDeg: number; readonly pitchDeg: number };
+  /** The fitted focal length, overlay pixels. Turns a pixel into an angle. */
+  readonly focalPx: number;
+  /** RMS distance between each tap and where the fit puts it, overlay pixels. */
+  readonly residualPx: number;
+  readonly taps: readonly RecordedCalibrationTap[];
+}
+
 /** A whole home-session recording. */
 export interface HomeSessionRecording {
   readonly format: typeof RECORDING_FORMAT;
@@ -352,6 +413,15 @@ export interface HomeSessionRecording {
   readonly segments: readonly RecordedSegment[];
   /** The repeated-drag attempts, in the order they were made. */
   readonly dragTrials?: readonly RecordedDragTrial[];
+  /**
+   * Every field-of-view calibration the person accepted, in order.
+   *
+   * A second fit is made against a screen the first one already corrected, so
+   * its `trimInForceDeg` carries the first one's answer and the LAST entry is
+   * the complete correction. The earlier entries are kept because they hold the
+   * taps they were made from.
+   */
+  readonly fovFits?: readonly RecordedFovFit[];
   readonly note?: string;
 }
 
@@ -645,8 +715,12 @@ const RECORDING_KEYS = [
   'knownBearing',
   'segments',
   'dragTrials',
+  'fovFits',
   'note',
 ] as const;
+const FOV_FIT_KEYS = ['tMs', 'trimDeg', 'trimInForceDeg', 'focalPx', 'residualPx', 'taps'] as const;
+const CALIBRATION_TAP_KEYS = ['kind', 'drawnPx', 'tappedPx'] as const;
+const POINT_PX_KEYS = ['xPx', 'yPx'] as const;
 const DRAG_TRIAL_KEYS = [
   'index',
   'mode',
@@ -907,6 +981,86 @@ function parseDragTrial(p: Problems, path: string, value: unknown): RecordedDrag
   return { index, mode, offsetPx, offsetDeg, rollSpreadDeg, rollSampleCount, durationMs, gain };
 }
 
+/** Widest pixel figure a fit may carry. A phone's overlay is a few thousand wide. */
+const MAX_CALIBRATION_PX = 10_000;
+/** Longest focal length, overlay pixels: a 5° field on a 4000 px frame is 45,800. */
+const MAX_FOCAL_PX = 1e6;
+/** Fewest taps a fit is made from. One tap cannot separate scale from shift. */
+export const MIN_FOV_FIT_TAPS = 2;
+
+function parsePointPx(p: Problems, path: string, value: unknown): RecordedPointPx | undefined {
+  const obj = asRecord(p, path, value);
+  if (!obj) return undefined;
+  checkKeys(p, path, obj, POINT_PX_KEYS);
+  const xPx = asNumber(p, `${path}.xPx`, obj.xPx, { min: -MAX_CALIBRATION_PX, max: MAX_CALIBRATION_PX });
+  const yPx = asNumber(p, `${path}.yPx`, obj.yPx, { min: -MAX_CALIBRATION_PX, max: MAX_CALIBRATION_PX });
+  if (xPx === undefined || yPx === undefined) return undefined;
+  return { xPx, yPx };
+}
+
+function parseCalibrationTap(p: Problems, path: string, value: unknown): RecordedCalibrationTap | undefined {
+  const obj = asRecord(p, path, value);
+  if (!obj) return undefined;
+  checkKeys(p, path, obj, CALIBRATION_TAP_KEYS);
+  const kind = asMember(p, `${path}.kind`, obj.kind, RECORDED_REFERENCE_KINDS);
+  const drawnPx = parsePointPx(p, `${path}.drawnPx`, obj.drawnPx);
+  const tappedPx = parsePointPx(p, `${path}.tappedPx`, obj.tappedPx);
+  if (kind === undefined || drawnPx === undefined || tappedPx === undefined) return undefined;
+  return { kind, drawnPx, tappedPx };
+}
+
+function parseFovFit(p: Problems, path: string, value: unknown): RecordedFovFit | undefined {
+  const obj = asRecord(p, path, value);
+  if (!obj) return undefined;
+  checkKeys(p, path, obj, FOV_FIT_KEYS);
+
+  const tMs = asNumber(p, `${path}.tMs`, obj.tMs, { min: 0, max: MAX_RECORDING_MS });
+  const focalPx = asNumber(p, `${path}.focalPx`, obj.focalPx, { min: 1, max: MAX_FOCAL_PX });
+  const residualPx = asNumber(p, `${path}.residualPx`, obj.residualPx, { min: 0, max: MAX_CALIBRATION_PX });
+
+  const readTrim = (key: 'trimDeg' | 'trimInForceDeg'): { headingDeg: number; pitchDeg: number } | undefined => {
+    const trimObj = asRecord(p, `${path}.${key}`, obj[key]);
+    if (!trimObj) return undefined;
+    checkKeys(p, `${path}.${key}`, trimObj, OFFSET_DEG_KEYS);
+    const headingDeg = asNumber(p, `${path}.${key}.headingDeg`, trimObj.headingDeg, { min: -180, max: 180 });
+    const pitchDeg = asNumber(p, `${path}.${key}.pitchDeg`, trimObj.pitchDeg, { min: -90, max: 90 });
+    if (headingDeg === undefined || pitchDeg === undefined) return undefined;
+    return { headingDeg, pitchDeg };
+  };
+  const trimDeg = readTrim('trimDeg');
+  const trimInForceDeg = readTrim('trimInForceDeg');
+
+  const rawTaps = asArray(p, `${path}.taps`, obj.taps);
+  let taps: RecordedCalibrationTap[] | undefined;
+  if (rawTaps !== undefined) {
+    if (rawTaps.length < MIN_FOV_FIT_TAPS) {
+      p.add(
+        `${path}.taps`,
+        `a fit is made from at least ${MIN_FOV_FIT_TAPS} taps; one tap cannot tell a wrong lens width from a wrong direction`,
+      );
+    } else {
+      taps = [];
+      rawTaps.forEach((raw, index) => {
+        const tap = parseCalibrationTap(p, `${path}.taps[${index}]`, raw);
+        if (tap) taps?.push(tap);
+      });
+    }
+  }
+
+  if (
+    tMs === undefined ||
+    focalPx === undefined ||
+    residualPx === undefined ||
+    trimDeg === undefined ||
+    trimInForceDeg === undefined ||
+    taps === undefined ||
+    taps.length !== rawTaps?.length
+  ) {
+    return undefined;
+  }
+  return { tMs, trimDeg, trimInForceDeg, focalPx, residualPx, taps };
+}
+
 /** How far the stored magnetic bearing may sit from true − declination. */
 export const BEARING_CONSISTENCY_TOLERANCE_DEG = 0.05;
 
@@ -1024,6 +1178,19 @@ export function parseRecording(raw: unknown): ParseResult {
     }
   }
 
+  // Optional, so every recording written before the fit was recorded still parses.
+  let fovFits: RecordedFovFit[] | undefined;
+  if ('fovFits' in obj) {
+    const rawFits = asArray(p, 'fovFits', obj.fovFits);
+    if (rawFits !== undefined) {
+      fovFits = [];
+      rawFits.forEach((raw, index) => {
+        const fit = parseFovFit(p, `fovFits[${index}]`, raw);
+        if (fit) fovFits?.push(fit);
+      });
+    }
+  }
+
   if (p.list.length > 0) return { ok: false, problems: p.list };
   if (device === undefined || knownBearing === undefined) {
     return { ok: false, problems: [{ path: '', message: 'incomplete recording' }] };
@@ -1037,6 +1204,7 @@ export function parseRecording(raw: unknown): ParseResult {
       knownBearing,
       segments,
       ...(dragTrials !== undefined ? { dragTrials } : {}),
+      ...(fovFits !== undefined ? { fovFits } : {}),
       ...(note !== undefined ? { note } : {}),
     },
   };
@@ -2489,15 +2657,37 @@ export interface PitchBiasSegment {
   readonly aimOffsetMeasured: boolean;
 }
 
+/** Which measurement a tilt zero point came out of. */
+export type PitchBiasSource = 'fov-calibration-taps' | 'sun-aiming-steps';
+
+/** The field-of-view fit a `fov-calibration-taps` estimate was read from. */
+export interface PitchBiasFromFovFit {
+  /** The pitch the fit asked for, `applyTrim`'s convention. */
+  readonly trimPitchDeg: number;
+  /** The pitch already nudged in when the marks were drawn, same convention. */
+  readonly trimInForcePitchDeg: number;
+  readonly focalPx: number;
+  readonly residualPx: number;
+  readonly taps: number;
+}
+
 export interface PitchBiasEstimate {
-  /** Mean of the per-step medians: how far the sensed tilt sits from truth. */
+  /** How far the sensed tilt sits from truth, degrees. Positive reads too high. */
   readonly biasDeg: number;
-  /** How far two re-aims disagree, degrees. Sample sd (n − 1) of those medians. */
+  /** How far two independent readings of the bias land apart, degrees at 1σ. */
   readonly spreadDeg: number;
   readonly perSegment: readonly PitchBiasSegment[];
   /** True only when every aiming step carried a measured tap offset. */
   readonly aimOffsetsMeasured: boolean;
-  readonly sunAltitudeDeg: number;
+  /** Absent when the bias came from taps rather than from an aim at the Sun. */
+  readonly sunAltitudeDeg?: number;
+  readonly source: PitchBiasSource;
+  /** Independent readings pooled: aiming steps, or taps. */
+  readonly sampleCount: number;
+  /** One line naming the measurement, carried into the live band verbatim. */
+  readonly method: string;
+  /** Present only when `source` is `fov-calibration-taps`. */
+  readonly fovFit?: PitchBiasFromFovFit;
   /**
    * False when the bias is too large to be a sensor's zero point.
    *
@@ -2528,6 +2718,86 @@ export const MAX_CREDIBLE_PITCH_BIAS_DEG = 15;
  * the spread that matters is how far two re-aims land apart.
  */
 export function estimatePitchBias(recording: HomeSessionRecording): PitchBiasEstimate | undefined {
+  return estimatePitchBiasFromFovFit(recording) ?? estimatePitchBiasFromAiming(recording);
+}
+
+/**
+ * The tilt zero point read off the field-of-view calibration's own taps.
+ *
+ * ── WHY THIS IS THE BETTER MEASUREMENT ─────────────────────────────────────
+ * An aiming step asks the person to keep the Sun in the middle of the frame and
+ * then charges every degree it was not in the middle to the tilt sensor. Nobody
+ * holds a phone that well, and nothing in the recording says how badly they did
+ * — that is `aimOffsetDeg`, which nothing writes.
+ *
+ * The calibration step asks for something a person can actually do: put a
+ * finger on the Sun. `fitFovCalibration` already solves the pitch offset
+ * jointly with the scale and hands it back as a trim, and the app then throws
+ * it into the nudge and forgets where it came from. It came from the Sun, and
+ * it is the tilt zero point.
+ *
+ * ── THE SIGN ──────────────────────────────────────────────────────────────
+ * `applyTrim` ADDS a trim to the pose, so the corrected pitch is
+ *
+ *     true = sensed + trimInForce + trimFromFit
+ *
+ * and the bias, sensed minus true, is the negative of the two trims together.
+ * The trim already in force has to be in there: the marks the person tapped
+ * against were drawn through it, so the fit only ever solves for the REST of
+ * the correction. Dropping it reports an earlier nudge as an honest sensor.
+ *
+ * ── THE SPREAD ────────────────────────────────────────────────────────────
+ * Two taps and four measurements against three unknowns leave one residual, and
+ * that residual is exactly how far the two taps disagree about where the camera
+ * is pointing. Through the fitted focal length it is an angle.
+ *
+ * `undefined` when no fit was recorded, or when any tap was on a summit. A
+ * summit's drawn position comes from the terrain model and the observer's own
+ * position, so a tap on one measures the sum of those errors and the tilt zero
+ * point together. The Sun and the Moon are placed to about 0.01° by an
+ * ephemeris that knows nothing about the phone.
+ */
+export function estimatePitchBiasFromFovFit(
+  recording: HomeSessionRecording,
+): PitchBiasEstimate | undefined {
+  const fits = recording.fovFits;
+  const fit = fits === undefined ? undefined : fits[fits.length - 1];
+  if (fit === undefined) return undefined;
+  if (!fit.taps.every((tap) => tap.kind === 'sun' || tap.kind === 'moon')) return undefined;
+
+  const biasDeg = -(fit.trimDeg.pitchDeg + fit.trimInForceDeg.pitchDeg);
+  const spreadDeg = Math.atan(fit.residualPx / fit.focalPx) / DEG;
+  const kinds = [...new Set(fit.taps.map((tap) => tap.kind))].join(' and ');
+  return {
+    biasDeg,
+    spreadDeg,
+    perSegment: [],
+    // The taps ARE the offset measurement: a tap says where the real thing sat,
+    // so there is no unmeasured aim left to charge.
+    aimOffsetsMeasured: true,
+    ...(recording.knownBearing.kind === 'sun-azimuth'
+      ? { sunAltitudeDeg: recording.knownBearing.altitudeDeg }
+      : {}),
+    source: 'fov-calibration-taps',
+    sampleCount: fit.taps.length,
+    method:
+      `Read from the ${fit.taps.length} field-of-view taps on ${kinds} in the home session. ` +
+      'n = 1 phone, n = 1 session.',
+    fovFit: {
+      trimPitchDeg: fit.trimDeg.pitchDeg,
+      trimInForcePitchDeg: fit.trimInForceDeg.pitchDeg,
+      focalPx: fit.focalPx,
+      residualPx: fit.residualPx,
+      taps: fit.taps.length,
+    },
+    credible: Math.abs(biasDeg) <= MAX_CREDIBLE_PITCH_BIAS_DEG,
+  };
+}
+
+/** The older measurement: the gap between a sun-aiming step's tilt and the Sun's. */
+function estimatePitchBiasFromAiming(
+  recording: HomeSessionRecording,
+): PitchBiasEstimate | undefined {
   const bearing = recording.knownBearing;
   if (bearing.kind !== 'sun-azimuth') return undefined;
 
@@ -2564,6 +2834,11 @@ export function estimatePitchBias(recording: HomeSessionRecording): PitchBiasEst
     perSegment,
     aimOffsetsMeasured: perSegment.every((s) => s.aimOffsetMeasured),
     sunAltitudeDeg: bearing.altitudeDeg,
+    source: 'sun-aiming-steps',
+    sampleCount: perSegment.length,
+    method:
+      `Measured against the sun over ${perSegment.length} aiming step` +
+      `${perSegment.length === 1 ? '' : 's'} in the home session. n = 1 phone, n = 1 session.`,
     credible: Math.abs(mean) <= MAX_CREDIBLE_PITCH_BIAS_DEG,
   };
 }
@@ -2586,22 +2861,35 @@ function pitchBiasVerdict(
   const question = 'How far is the sensed tilt from the truth, and how far apart do two re-aims land?';
   if (estimate === undefined) {
     return inconclusive('pitch-bias', question, [
+      'no field-of-view fit on the Sun or the Moon was recorded',
       recording.knownBearing.kind === 'sun-azimuth'
-        ? `no aiming step carries ${MIN_PITCH_BIAS_SAMPLES} usable orientation samples`
-        : 'the known bearing is not the Sun, so no independent altitude is on file',
+        ? `and no aiming step carries ${MIN_PITCH_BIAS_SAMPLES} usable orientation samples`
+        : 'and the known bearing is not the Sun, so no independent altitude is on file',
       `aiming poses: ${AIMING_POSES.join(', ')}`,
     ]);
   }
 
-  const evidence = estimate.perSegment.map(
-    (s) =>
-      `${s.pose}: ${s.samples} samples, sensed tilt ${fmtTilt(s.medianDeg)} from the Sun's ` +
-      `${estimate.sunAltitudeDeg.toFixed(2)}° altitude, ${s.scatterDeg.toFixed(3)}° RMS about that` +
-      (s.aimOffsetMeasured
-        ? `, tap offset ${fmtTilt(s.aimOffsetPitchDeg)} applied`
-        : ', no tap offset recorded, so the aim is charged as perfect'),
-  );
-  if (!estimate.aimOffsetsMeasured) {
+  const fovFit = estimate.fovFit;
+  const evidence =
+    fovFit === undefined
+      ? estimate.perSegment.map(
+          (s) =>
+            `${s.pose}: ${s.samples} samples, sensed tilt ${fmtTilt(s.medianDeg)} from the Sun's ` +
+            `${(estimate.sunAltitudeDeg ?? 0).toFixed(2)}° altitude, ${s.scatterDeg.toFixed(3)}° RMS about that` +
+            (s.aimOffsetMeasured
+              ? `, tap offset ${fmtTilt(s.aimOffsetPitchDeg)} applied`
+              : ', no tap offset recorded, so the aim is charged as perfect'),
+        )
+      : [
+          `${fovFit.taps} taps on the Sun in the field-of-view step: the fit asked for ` +
+            `${fmtTilt(fovFit.trimPitchDeg)} of pitch on top of the ` +
+            `${fmtTilt(fovFit.trimInForcePitchDeg)} already nudged in, and the bias is the ` +
+            'negative of the two together',
+          `the taps disagree by ${fovFit.residualPx.toFixed(1)} px, which is ` +
+            `${estimate.spreadDeg.toFixed(3)}° at the fitted ${fovFit.focalPx.toFixed(0)} px focal length`,
+          'n = 1 phone, n = 1 session',
+        ];
+  if (fovFit === undefined && !estimate.aimOffsetsMeasured) {
     evidence.push(
       'an unmeasured tap offset is the dominant unmodelled error here: it is how far the ' +
         'Sun really sat from the centre of the picture while the person held the step',
@@ -2612,7 +2900,7 @@ function pitchBiasVerdict(
     return inconclusive('pitch-bias', question, [
       `the sensed tilt sits ${fmtTilt(estimate.biasDeg)} from the Sun, past the ` +
         `${MAX_CREDIBLE_PITCH_BIAS_DEG}° a tilt sensor can be out by — the camera was not ` +
-        'pointing at the Sun during the aiming steps, so nothing here measures the zero point',
+        'pointing at the Sun, so nothing here measures the zero point',
       ...evidence,
     ]);
   }
@@ -2620,9 +2908,9 @@ function pitchBiasVerdict(
   return verdict(
     'pitch-bias',
     question,
-    `the sensed tilt sits ${fmtTilt(estimate.biasDeg)} from truth, and two re-aims land ` +
-      `${estimate.spreadDeg.toFixed(3)}° apart at 1σ`,
-    estimate.perSegment.length >= 2 ? 'moderate' : 'low',
+    `the sensed tilt sits ${fmtTilt(estimate.biasDeg)} from truth, and two independent ` +
+      `readings land ${estimate.spreadDeg.toFixed(3)}° apart at 1σ`,
+    estimate.sampleCount >= 2 ? 'moderate' : 'low',
     evidence,
   );
 }
@@ -3006,8 +3294,30 @@ export interface SynthSpec {
   readonly omitAbsolute?: boolean;
   /** Seed for the deterministic noise generator. */
   readonly seed?: number;
+  /**
+   * A tilt zero point to inject through a recorded field-of-view fit, degrees.
+   *
+   * Positive means the synthetic phone reads its tilt too HIGH. The fit is
+   * written so that {@link estimatePitchBiasFromFovFit} must read exactly this
+   * number back out: the bias is the negative of the fit's pitch and the trim
+   * already in force together, so the fit asks for `−bias − trimInForce`.
+   */
+  readonly tiltBiasDeg?: number;
+  /** The nudge the synthetic person had already dialled in before the fit. */
+  readonly trimInForcePitchDeg?: number;
+  /** Pixels the two synthetic taps disagree by, through {@link SYNTH_FOCAL_PX}. */
+  readonly fitResidualPx?: number;
   readonly note?: string;
 }
+
+/**
+ * Focal length a synthesised fit is stated at, overlay pixels.
+ *
+ * A 74° field on a 1280 px overlay: 640 / tan(37°) = 849.4. The exact value
+ * only matters as the divisor that turns the residual into an angle, and a
+ * test that wants a particular spread states the residual it wants.
+ */
+export const SYNTH_FOCAL_PX = 849.4;
 
 /**
  * A deterministic noise source.
@@ -3140,7 +3450,39 @@ export function synthesiseRecording(spec: SynthSpec): HomeSessionRecording {
       source: 'synthetic: the bearing this recording was built around',
     },
     segments,
+    ...(spec.tiltBiasDeg === undefined ? {} : { fovFits: [synthFovFit(spec, spec.tiltBiasDeg)] }),
     ...(spec.note !== undefined ? { note: spec.note } : {}),
+  };
+}
+
+/**
+ * The fit a synthetic phone with a known tilt bias would have produced.
+ *
+ * The tap pixels are the ones the fit implies, so a reader who redoes the
+ * arithmetic gets the same answer: both marks are drawn on the horizontal
+ * centre line and the fit is a pure vertical shift, which at unit scale moves
+ * each tap by `f · tan(trimPitch)` pixels. Screen y grows downward while
+ * altitude grows upward, hence the negative.
+ */
+function synthFovFit(spec: SynthSpec, tiltBiasDeg: number): RecordedFovFit {
+  const trimInForcePitchDeg = spec.trimInForcePitchDeg ?? 0;
+  const trimPitchDeg = -tiltBiasDeg - trimInForcePitchDeg;
+  const shiftPx = -SYNTH_FOCAL_PX * Math.tan(trimPitchDeg * DEG);
+  const residualPx = spec.fitResidualPx ?? 0;
+  // Split the residual between the two taps, so their RMS distance from the
+  // fitted line is the figure asked for.
+  const tapAt = (drawnXPx: number, sign: number): RecordedCalibrationTap => ({
+    kind: 'sun',
+    drawnPx: { xPx: drawnXPx, yPx: 0 },
+    tappedPx: { xPx: drawnXPx, yPx: round4(shiftPx + sign * residualPx) },
+  });
+  return {
+    tMs: 0,
+    trimDeg: { headingDeg: 0, pitchDeg: trimPitchDeg },
+    trimInForceDeg: { headingDeg: 0, pitchDeg: trimInForcePitchDeg },
+    focalPx: SYNTH_FOCAL_PX,
+    residualPx,
+    taps: [tapAt(-400, 1), tapAt(400, -1)],
   };
 }
 

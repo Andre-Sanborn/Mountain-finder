@@ -190,16 +190,6 @@ Notes on the awkward ones:
 - **Step 14 wants two taps.** Tap the sun's disc in the picture, not the label. A counter
   says how many taps it has. After the second tap the screen reports what it measured and
   offers a button reading **Use this measurement** — tap it.
-- **Step 14: keep the sun halfway up the screen.** The step asks you to turn the phone so the
-  sun sits near the left edge for the first tap and near the right edge for the second. Keep
-  it about halfway between the top and the bottom of the picture both times. Near the top or
-  the bottom corners the lens bends the picture, and the measurement comes out wrong.
-- **Step 14: tap the bright disc, not a ghost.** Pointing a camera at the sun often puts a
-  second, dimmer blob somewhere else on the screen, and sometimes a row of them. Those are
-  reflections inside the lens. Tap the bright one you can see is the sun.
-- **Step 14 measures the tilt sensor too.** Both taps together tell the app how far its own
-  sense of up and down is out. So tap where the sun really is, even when the app has drawn
-  its circle a long way off — the gap is the answer, not a mistake.
 
 ## Step 7 — The lining-up practice
 

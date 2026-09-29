@@ -45,10 +45,14 @@ import {
   type KnownBearing,
   type PoseLabel,
   type RecordedDragTrial,
+  type RecordedFovFit,
   type RecordedSegment,
   type RecordedSensorEvent,
   type RecordedTrackSettings,
 } from '../../live/recording';
+
+/** A fit as the caller hands it over: everything but the timestamp, which is ours. */
+export type FovFitInput = Omit<RecordedFovFit, 'tMs'>;
 
 /** The angular offset of a reference from the frame centre, as the schema holds it. */
 type AimOffsetDeg = NonNullable<RecordedSegment['aimOffsetDeg']>;
@@ -111,6 +115,7 @@ export class HomeSessionRecorder implements RawEventSink {
   private startMs: number | undefined;
   private open: OpenSegment | undefined;
   private readonly segments: RecordedSegment[] = [];
+  private readonly fovFits: RecordedFovFit[] = [];
   private lastTMs = 0;
   private events = 0;
   private settings = 0;
@@ -130,6 +135,7 @@ export class HomeSessionRecorder implements RawEventSink {
     this.startMs = this.now();
     this.lastTMs = 0;
     this.segments.length = 0;
+    this.fovFits.length = 0;
     this.open = undefined;
     this.events = 0;
     this.settings = 0;
@@ -178,6 +184,25 @@ export class HomeSessionRecorder implements RawEventSink {
     if (open === undefined) return;
     if (!Number.isFinite(offset.headingDeg) || !Number.isFinite(offset.pitchDeg)) return;
     open.aimOffsetDeg = { headingDeg: offset.headingDeg, pitchDeg: offset.pitchDeg };
+  }
+
+  /**
+   * Keep a field-of-view calibration the person accepted.
+   *
+   * It sits beside the segments rather than inside one. The taps are made
+   * during a step, but the fit is a measurement of the CAMERA and the tilt
+   * sensor, not of the pose held while a step was open, and a later revision
+   * that moved the taps to another step must not silently lose it.
+   *
+   * Nothing here is filtered on plausibility. A fit that asks for thirty
+   * degrees of pitch is a finding about a missed tap, and
+   * `estimatePitchBiasFromFovFit` is what refuses to call it a zero point.
+   */
+  recordFovFit(fit: FovFitInput): void {
+    if (this.startMs === undefined) return;
+    if (!Number.isFinite(fit.focalPx) || fit.focalPx <= 0) return;
+    if (!Number.isFinite(fit.residualPx)) return;
+    this.fovFits.push({ tMs: this.stamp(), ...fit });
   }
 
   /** Open a step. Closes any step still open, so the segments never overlap. */
@@ -311,6 +336,7 @@ export class HomeSessionRecorder implements RawEventSink {
       device: input.device,
       knownBearing: input.knownBearing,
       segments: [...this.segments],
+      ...(this.fovFits.length === 0 ? {} : { fovFits: [...this.fovFits] }),
       ...(input.dragTrials === undefined || input.dragTrials.length === 0
         ? {}
         : { dragTrials: [...input.dragTrials] }),

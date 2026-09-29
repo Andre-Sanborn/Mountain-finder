@@ -78,10 +78,9 @@ import {
 } from './drag-trial';
 import { dragGain, type DragMode } from './fine-drag';
 import {
-  MAX_TAP_DISTANCE_PX,
   calibrationFromFit,
   fitFovCalibration,
-  pickReference,
+  resolveCalibrationTap,
   type CalibrationFrame,
   type CalibrationReference,
   type CalibrationTap,
@@ -114,8 +113,10 @@ export interface HomeSessionPanelProps {
   readonly calibrationReferences: () => readonly CalibrationReference[];
   /** The frame the taps are measured in, or undefined before the first frame. */
   readonly calibrationFrame: () => CalibrationFrame | undefined;
-  /** Hand a finished measurement to the screen, which stores and applies it. */
-  readonly onCalibrated: (fit: FovFit, references: readonly CalibrationReference[]) => void;
+  /** Hand a finished measurement to the screen, which stores, applies and
+      records it. The taps travel with it: they are what the tilt zero point is
+      read from, and the screen is where the trim they were made against lives. */
+  readonly onCalibrated: (fit: FovFit, taps: readonly CalibrationTap[]) => void;
   /** Tell the screen about every tap on the picture, attributed or not, so it
       can watch for a gross compass error no field-of-view fit can absorb. */
   readonly onPictureTap?: (
@@ -325,19 +326,14 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
       const box = layer.getBoundingClientRect();
       const tappedPx = { xPx: event.clientX - box.left, yPx: event.clientY - box.top };
       const references = props.calibrationReferences();
-      const reference = pickReference(tappedPx, references, MAX_TAP_DISTANCE_PX);
-      props.onPictureTap?.(tappedPx, reference);
-      if (reference === undefined) {
-        setTapNote(
-          references.length === 0
-            ? 'Nothing is drawn on screen to compare against yet. Point the camera at the sun.'
-            : 'That tap was not near anything the app has drawn. Tap the middle of the real sun, ' +
-              'close to the circle the app drew.',
-        );
+      const outcome = resolveCalibrationTap(tappedPx, frame.framePx, references);
+      props.onPictureTap?.(tappedPx, outcome.ok ? outcome.reference : undefined);
+      if (!outcome.ok) {
+        setTapNote(outcome.detail);
         return;
       }
       setTapNote(undefined);
-      setTaps((current) => [...current, { reference, tappedPx }]);
+      setTaps((current) => [...current, { reference: outcome.reference, tappedPx }]);
     },
     [props],
   );
@@ -351,10 +347,7 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
   const useFit = useCallback(() => {
     const currentFrame = props.calibrationFrame();
     if (fit?.ok !== true || currentFrame === undefined) return;
-    props.onCalibrated(
-      fit.value,
-      taps.map((tap) => tap.reference),
-    );
+    props.onCalibrated(fit.value, taps);
     const stored = calibrationFromFit(
       fit.value,
       currentFrame,

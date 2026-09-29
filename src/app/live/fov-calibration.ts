@@ -147,6 +147,14 @@ export interface FovFit {
   readonly frameHFovDeg: number;
   /** Add these to the pose, in `applyTrim`'s own convention. */
   readonly trim: TrimState;
+  /**
+   * The fitted focal length, overlay pixels: `scale` times the assumed one.
+   *
+   * It is what turns a pixel into an angle, so the residual below only becomes
+   * a degree figure beside it. Carried on the fit rather than re-derived by
+   * each caller, which would have to know the frame the fit was made in.
+   */
+  readonly focalPx: number;
   readonly taps: number;
   /** RMS distance between each tap and where the fit puts it, pixels. */
   readonly residualPx: number;
@@ -296,6 +304,7 @@ export function fitFovCalibration(
         pitchDeg: Math.atan(shift.y / fittedFocalPx) * DEG_PER_RAD,
         hFovDeg: 0,
       },
+      focalPx: fittedFocalPx,
       taps: n,
       residualPx: Math.sqrt(squared / n),
       referenceSpreadPx,
@@ -357,3 +366,69 @@ export function pickReference(
 
 /** How far from a drawn mark a tap may land and still be about it, pixels. */
 export const MAX_TAP_DISTANCE_PX = 160;
+
+export type TapRefusal = 'outside-picture' | 'nothing-drawn';
+
+export type TapOutcome =
+  | { readonly ok: true; readonly reference: CalibrationReference }
+  | { readonly ok: false; readonly refusal: TapRefusal; readonly detail: string };
+
+/**
+ * What a calibration tap was about, and the only two reasons to refuse one.
+ *
+ * ── THE RULE, AND WHY IT IS THIS ONE ───────────────────────────────────────
+ * A tap is refused for landing outside the picture, and for landing on a screen
+ * with nothing drawn to compare against. It is never refused for landing far
+ * from the drawn mark, because THAT DISTANCE IS THE MEASUREMENT: the gap
+ * between where the app's sensors put the Sun and where the Sun really is, in
+ * pixels. Capping it caps the tilt error the session can report, and the cap
+ * would be set by the sensor whose error is under test. See
+ * {@link UNCAPPED_TAP_DISTANCE_PX}.
+ *
+ * The frame is the bound the sensor has no part in. A finger cannot land
+ * outside the picture without the person meaning something else by it.
+ */
+export function resolveCalibrationTap(
+  tappedPx: PointPx,
+  framePx: { readonly widthPx: number; readonly heightPx: number },
+  candidates: readonly CalibrationReference[],
+): TapOutcome {
+  if (
+    !(tappedPx.xPx >= 0) ||
+    !(tappedPx.yPx >= 0) ||
+    !(tappedPx.xPx <= framePx.widthPx) ||
+    !(tappedPx.yPx <= framePx.heightPx)
+  ) {
+    return {
+      ok: false,
+      refusal: 'outside-picture',
+      detail: 'That tap landed outside the picture. Tap the middle of the real sun in the camera view.',
+    };
+  }
+  const reference = pickReference(tappedPx, candidates, UNCAPPED_TAP_DISTANCE_PX);
+  if (reference === undefined) {
+    return {
+      ok: false,
+      refusal: 'nothing-drawn',
+      detail: 'Nothing is drawn on screen to compare against yet. Point the camera at the sun.',
+    };
+  }
+  return { ok: true, reference };
+}
+
+/**
+ * No distance limit at all, for the home session's calibration taps.
+ *
+ * The gap between the drawn mark and the real thing IS the measurement. A limit
+ * on it is a limit on the answer: a phone whose tilt zero point sits three
+ * degrees low draws the Sun about 45 px off at a 74° field on a 1280 px
+ * overlay, and one that sits twelve degrees low draws it past
+ * {@link MAX_TAP_DISTANCE_PX} and has its honest tap refused. That refusal is
+ * the sensor deciding what the sensor's own error is allowed to be.
+ *
+ * What replaces it is a bound the sensor has no part in: the tap has to land
+ * inside the picture. The cost is that with several marks drawn, a tap far from
+ * all of them is still attributed to the nearest — which the home session's
+ * step avoids by asking for the Sun, the brightest thing on the screen.
+ */
+export const UNCAPPED_TAP_DISTANCE_PX = Number.POSITIVE_INFINITY;

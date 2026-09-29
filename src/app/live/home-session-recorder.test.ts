@@ -395,3 +395,58 @@ describe('sunKnownBearing', () => {
     expect(parsed.ok ? [] : parsed.problems).toEqual([]);
   });
 });
+
+describe('the field-of-view fit', () => {
+  const FIT = {
+    trimDeg: { headingDeg: 0.4, pitchDeg: -2 },
+    trimInForceDeg: { headingDeg: 0, pitchDeg: 0.75 },
+    focalPx: 849.4,
+    residualPx: 1.2,
+    taps: [
+      { kind: 'sun' as const, drawnPx: { xPx: 200, yPx: 225 }, tappedPx: { xPx: 205, yPx: 254 } },
+      { kind: 'sun' as const, drawnPx: { xPx: 600, yPx: 225 }, tappedPx: { xPx: 604, yPx: 254 } },
+    ],
+  };
+
+  it('keeps the fit beside the segments, stamped on the recording’s own clock', () => {
+    const clock = fakeClock();
+    const recorder = new HomeSessionRecorder(clock.now);
+    recorder.begin();
+    recorder.beginSegment('sun-capture');
+    clock.advance(4200);
+    recorder.recordFovFit(FIT);
+    const recording = recorder.build({ device: 'test', knownBearing: BEARING });
+    expect(recording.fovFits).toHaveLength(1);
+    expect(recording.fovFits?.[0]?.tMs).toBe(4200);
+    expect(recording.fovFits?.[0]?.trimInForceDeg.pitchDeg).toBe(0.75);
+    expect(recording.fovFits?.[0]?.taps).toHaveLength(2);
+    expect(parseRecording(JSON.parse(JSON.stringify(recording)) as unknown).ok).toBe(true);
+  });
+
+  it('keeps every fit, in the order they were accepted', () => {
+    const recorder = new HomeSessionRecorder(fakeClock().now);
+    recorder.begin();
+    recorder.beginSegment('sun-capture');
+    recorder.recordFovFit(FIT);
+    recorder.recordFovFit({ ...FIT, trimDeg: { headingDeg: 0, pitchDeg: -0.3 } });
+    const recording = recorder.build({ device: 'test', knownBearing: BEARING });
+    expect(recording.fovFits?.map((fit) => fit.trimDeg.pitchDeg)).toEqual([-2, -0.3]);
+  });
+
+  it('leaves the key out when nothing was fitted, and drops a fit with no focal length', () => {
+    const recorder = new HomeSessionRecorder(fakeClock().now);
+    recorder.begin();
+    recorder.beginSegment('sun-capture');
+    recorder.recordFovFit({ ...FIT, focalPx: 0 });
+    recorder.recordFovFit({ ...FIT, residualPx: Number.NaN });
+    expect(recorder.build({ device: 'test', knownBearing: BEARING }).fovFits).toBeUndefined();
+  });
+
+  it('discards a fit recorded before the session started', () => {
+    const recorder = new HomeSessionRecorder(fakeClock().now);
+    recorder.recordFovFit(FIT);
+    recorder.begin();
+    recorder.beginSegment('sun-capture');
+    expect(recorder.build({ device: 'test', knownBearing: BEARING }).fovFits).toBeUndefined();
+  });
+});

@@ -186,10 +186,11 @@ function pitchBiasTerm(bias: PitchBiasCalibration | undefined): UncertaintyTerm 
       deg: Math.abs(bias.biasDeg) + bias.spreadDeg,
       sampleCount: bias.segmentCount,
       note:
-        `The home session pointed this phone at the sun and found its tilt reading ` +
-        `${Math.abs(bias.biasDeg).toFixed(2)}° too ${bias.biasDeg >= 0 ? 'high' : 'low'}, with two ` +
-        `aims landing ${bias.spreadDeg.toFixed(2)}° apart. Both are charged here, because the app ` +
-        `reports the error rather than quietly correcting for it. ${bias.method}`,
+        `The home session measured this phone against the sun and found its tilt reading ` +
+        `${Math.abs(bias.biasDeg).toFixed(2)}° too ${bias.biasDeg >= 0 ? 'high' : 'low'}, with ` +
+        `${bias.segmentCount} independent readings landing ${bias.spreadDeg.toFixed(2)}° apart. ` +
+        `Both are charged here, because the app reports the error rather than quietly ` +
+        `correcting for it. ${bias.method}`,
     },
   };
 }

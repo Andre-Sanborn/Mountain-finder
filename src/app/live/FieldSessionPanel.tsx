@@ -127,7 +127,7 @@ export interface FieldSessionPanelProps {
   /** Every mark the screen is drawing that a tap could be about, read on demand. */
   readonly calibrationReferences: () => readonly CalibrationReference[];
   readonly calibrationFrame: () => CalibrationFrame | undefined;
-  readonly onCalibrated: (fit: FovFit, references: readonly CalibrationReference[]) => void;
+  readonly onCalibrated: (fit: FovFit, taps: readonly CalibrationTap[]) => void;
   /** Tell the screen about every tap on the picture, attributed or not, so it
       can watch for a gross compass error no field-of-view fit can absorb. */
   readonly onPictureTap?: (
@@ -430,10 +430,7 @@ export function FieldSessionPanel(props: FieldSessionPanelProps): JSX.Element {
 
   const useFit = useCallback(() => {
     if (fit?.ok !== true) return;
-    props.onCalibrated(
-      fit.value,
-      taps.map((tap) => tap.reference),
-    );
+    props.onCalibrated(fit.value, taps);
     setCalibrationNote(
       `Saved: the camera sees ${fit.value.frameHFovDeg.toFixed(2)}° across, and the labels were ` +
         `nudged ${fit.value.trim.headingDeg.toFixed(2)}° across and ` +
