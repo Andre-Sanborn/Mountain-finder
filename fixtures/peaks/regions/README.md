@@ -117,12 +117,69 @@ in this box). That is the correct behaviour and it is why the `railroad-ridge`
 photo case takes its ground elevation from SRTM and cross-checks it against a
 published figure, instead of citing a summit record that does not exist.
 
+## `idaho-bogus-basin/`
+
+| | |
+|---|---|
+| Area | 43.2…44.4 N, −116.9…−115.3 W — the 60 km disc around the Bogus Basin viewpoint |
+| Summits | 174 across 4 cells (`N43W116`, `N43W117`, `N44W116`, `N44W117`) |
+| Release | `2026-09-23.1`, retrieved 2026-09-29 |
+| Cost | 2.27 MB of column reads (3 row groups of 5 296, in 1 of 128 parts); 51.9 MB of footers on top, because only 29 of the 128 were cached |
+| Regenerate | `npm run fetch:peaks -- --bbox 43.2,-116.9,44.4,-115.3 --name idaho-bogus-basin --classes peak,volcano,ridge --release 2026-09-23.1` |
+
+Cut for `sites/bogus-basin.json`, and it is the region that site now names. The
+bounds enclose the **60.5 km** disc the site package cuts terrain for — the
+sweep's 60 km plus 0.5 km of margin — whose hand-derived extent is
+43.22739…44.31557 N, −116.84211…−115.33513. `TiledPeakStore.coverageFor` reports
+the viewpoint covered to **63.3 km**, so the 60 km query is complete, and the
+package reports **104 named summits inside 60 km**. `idaho-central` answered the
+same query to 41.1 km and 96 summits: it was cut for 43.4 N / −116.6 W and its
+south-west corner clips the disc.
+
+`--classes` carries `ridge` to match `idaho-central`, so the two are comparable
+row for row. It changes nothing: ridges carry no `ele` tag and the importer drops
+elevation-less records (272 dropped in this box, alongside 672 unnamed).
+
+**Why a new region and not a re-import of `idaho-central`.** The Idaho photo
+acceptance cases assert `idaho-central`'s summit ids, coordinates and heights,
+and the release it was cut from — `2026-06-17.0` — has been deleted from the
+bucket, so those exact bytes cannot be produced again. `idaho-central` is
+therefore frozen, and `tests/unit/peak-regions.test.ts` holds a sha256 over its
+index and every cell to keep it that way.
+
+### Finding: two Overture releases three months apart barely move a summit
+
+`idaho-central` (`2026-06-17.0`) and `idaho-bogus-basin` (`2026-09-23.1`) overlap
+on 43.4…44.4 N, −116.6…−115.3 — the intersection of their stated bounds. Each
+holds **122** summits there, and **120** carry the same GERS id in both.
+
+| quantity | result |
+|---|---|
+| names differing among the 120 | **0** |
+| elevations differing | **0**, max change **0 m** |
+| positions differing by more than 1 m | **4**, max displacement **198.3 m** |
+
+The four that moved: Lightning Creek Rocks 198.3 m, Cougar Mountain 48.1 m,
+Shafer Butte 6.2 m, Jackson Peak 4.0 m. Every one keeps its name and its height,
+so these are mapper edits to node placement, not a datum or a pipeline change.
+Shafer Butte's 6.2 m is why the site definition now says the import lands it
+**30.2 m** from the viewpoint rather than 32.7 m.
+
+**The GERS id is not quite stable, and the id is what a cross-release comparison
+keys on.** Of the two unmatched ids in each direction, one pair is the same
+mountain: `Homer's Nipple`, 1 113 m, 8.3 m apart, with a different UUID in each
+release. The other two are a genuine change in content — `Trail Creek Summit`
+1 539 m is gone from `2026-09-23.1`, and `Lightning Ridge` 2 481 m is new, with
+no counterpart within 5 km in either direction. So a release-to-release diff by
+id alone overstates the churn: it reports 2 dropped and 2 added where the honest
+reading is 1 re-identified, 1 removed and 1 added.
+
 ## Total committed size
 
-`fixtures/peaks/` is **3.6 MB** for all five regions (9 137 summits in 63
+`fixtures/peaks/` is **3.57 MB** for all six regions (9 411 summits in 67
 cells): california 1.3 MB, cascades 1.1 MB, zermatt 672 kB, idaho-central
-300 kB, fort-william 268 kB. Five regions, not a continent — and every one of
-them cost less than a tenth of a percent of the release to fetch.
+300 kB, fort-william 268 kB, idaho-bogus-basin 67 kB. Six regions, not a
+continent — and every one of them cost a couple of megabytes of column reads.
 
 ## Where the numbers come from
 

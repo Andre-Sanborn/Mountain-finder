@@ -85,7 +85,7 @@ describe('the committed Bogus Basin site definition', () => {
     expect(site.observer.lat).toBeCloseTo(43.77148, 5);
     expect(site.observer.lon).toBeCloseTo(-116.08862, 5);
     expect(site.sweepRadiusKm).toBe(60);
-    expect(site.peakRegion).toBe('idaho-central');
+    expect(site.peakRegion).toBe('idaho-bogus-basin');
   });
 
   it('draws on exactly the four tiles the hand arithmetic names', async () => {

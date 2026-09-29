@@ -771,12 +771,34 @@ read real terrain. A 360° `annotateScene` at 0.5° and 90 m with `nearFieldRadi
 samples and labelled 70 summits, none marginal. The DEM reads 2308.3 m at the viewpoint.
 Overture tags Shafer Butte, 32.7 m away, at 2308 m.
 
-**Peaks cover 41.1 km, not 60 km.** `idaho-central` was imported for 43.4 N / 116.6 W. Its
-release, `2026-06-17.0`, has since been deleted from the Overture bucket. The bucket still
-holds `2026-08-19.0`, `2026-09-23.0` and `2026-09-23.1`, and a dry run against `2026-09-23.1`
-planned 1.57 MB of reads. Decided: import the extra coverage as a new region from a current
-release, and leave `idaho-central` unchanged, because the Idaho acceptance cases assert its
-summit ids, coordinates and heights.
+**Peaks cover the whole 60 km disc, from a second region.** `idaho-central` answers this
+viewpoint only to 41.1 km. So `idaho-bogus-basin` was imported for the disc from Overture
+`2026-09-23.1`, the newest surviving release: 174 summits in four cells, 67 kB, with bounds
+43.2…44.4 N, −116.9…−115.3. The import read 2.27 MB of columns out of 30.15 GB.
+
+`idaho-central` is frozen by a sha256 in `tests/unit/peak-regions.test.ts`, for two reasons:
+- the Idaho acceptance cases assert its summit ids, coordinates and heights
+- its release, `2026-06-17.0`, has been deleted upstream, so those bytes cannot be produced
+  again
+
+The package now reports 104 named summits inside 60 km, 78 labelled, coverage complete to
+63.3 km, and a 1.34 s sweep. Shafer Butte now lands 30.2 m from the viewpoint.
+
+**Finding: release stability from 2026-06-17.0 to 2026-09-23.1.** In the overlap, 43.4…44.4 N
+and −116.6…−115.3, each release holds 122 summits, and 120 of them share a GERS id. Among those
+120, no name and no elevation changed. Four positions moved by more than a metre: Lightning
+Creek Rocks 198.3 m, Cougar Mountain 48.1 m, Shafer Butte 6.2 m and Jackson Peak 4.0 m. The four
+unmatched ids are three real events, not four:
+- Homer's Nipple was re-identified 8.3 m away
+- Trail Creek Summit was removed
+- Lightning Ridge was added
+
+So a diff by id alone overstates the churn. The test pins names exact, elevations exact and
+positions within 250 m.
+
+`fetch-peaks.ts`'s `DEFAULT_RELEASE` is still the deleted `2026-06-17.0`, so a run with no
+`--release` fails loudly. That is deliberate: a silent bump would re-cut the older regions from
+a different release.
 
 The site-package tests number 22, and every expectation is hand arithmetic. Four mutations were
 run: shrinking the tile set, shrinking the radius, a column off by one, and rounding the band

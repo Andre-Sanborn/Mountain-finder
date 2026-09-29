@@ -1,0 +1,236 @@
+{
+  "cell": "N44W116",
+  "peaks": [
+    {
+      "id": "overture/0eabe0e5-eb46-3edc-ac22-fc3a913f45c5",
+      "name": "Red Mountain",
+      "lat": 44.25101089477539,
+      "lon": -115.40565490722656,
+      "elevationM": 2654,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/3960d7a3-3630-30a5-ae45-514e74c9a735",
+      "name": "Sixmile Point",
+      "lat": 44.30731201171875,
+      "lon": -115.95311737060547,
+      "elevationM": 1904,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/3f9e71f5-e433-3e51-abd8-341747bbb2cd",
+      "name": "Miller Mountain",
+      "lat": 44.15711975097656,
+      "lon": -115.49259948730469,
+      "elevationM": 2470,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/400f0cb8-bbdf-3793-bb43-691e58569f43",
+      "name": "Bear Wallow Point",
+      "lat": 44.2454833984375,
+      "lon": -115.95693969726562,
+      "elevationM": 1761,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/4e98ecbe-5b35-328d-a3ec-eeafa0234156",
+      "name": "Stargaze Point",
+      "lat": 44.01764678955078,
+      "lon": -115.6362075805664,
+      "elevationM": 2038,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/53cb8f7e-49cf-3fb1-9481-c74a55614bb1",
+      "name": "Jackson Peak",
+      "lat": 44.009620666503906,
+      "lon": -115.77622985839844,
+      "elevationM": 2234,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/62af1167-86ae-329e-bbe9-3980d9a097ba",
+      "name": "Archie Mountain",
+      "lat": 44.04462432861328,
+      "lon": -115.47398376464844,
+      "elevationM": 2335,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/6660d635-a139-37df-9e93-5ceddde8449e",
+      "name": "Bald Mountain",
+      "lat": 44.08128547668457,
+      "lon": -115.88873291015625,
+      "elevationM": 1562,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/7274adc2-51bf-3927-ae20-388f97f20e45",
+      "name": "Whitehawk Mountain",
+      "lat": 44.28740310668945,
+      "lon": -115.53121185302734,
+      "elevationM": 2550,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/8fac625f-df62-37e4-b909-efaea621fd02",
+      "name": "Gallagher Peak",
+      "lat": 44.10628318786621,
+      "lon": -115.78567504882812,
+      "elevationM": 1851,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/93094503-ee87-3f1d-92d8-07a3989cc0ba",
+      "name": "Clear Creek Summit",
+      "lat": 44.2335090637207,
+      "lon": -115.49344635009766,
+      "elevationM": 2161,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/97d90e22-fe43-314a-8c75-116e6a40328b",
+      "name": "Wolf Mountain",
+      "lat": 44.00990295410156,
+      "lon": -115.3881607055664,
+      "elevationM": 2699,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/bc1db456-8e17-3c17-be13-3f7d70bd6862",
+      "name": "Scott Mountain",
+      "lat": 44.18156051635742,
+      "lon": -115.78900909423828,
+      "elevationM": 2486,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/c72b4af9-b589-392c-9a35-02880fb5bff9",
+      "name": "Jackson Peak",
+      "lat": 44.077924728393555,
+      "lon": -115.4139633178711,
+      "elevationM": 2471,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/c73355c1-8304-3a9a-abff-7f8bfe4d8f3f",
+      "name": "Lightning Ridge",
+      "lat": 44.26258850097656,
+      "lon": -115.76368713378906,
+      "elevationM": 2481,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/e10c73bf-1b41-3872-ad99-1f40a965338a",
+      "name": "Eightmile Mountain",
+      "lat": 44.16740036010742,
+      "lon": -115.35399627685547,
+      "elevationM": 2396,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/ebf8342a-e1f4-3498-89ef-d74f9aa78367",
+      "name": "Pyle Creek Point",
+      "lat": 44.148231506347656,
+      "lon": -115.88011169433594,
+      "elevationM": 1601,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/ef62702f-ed67-385c-8e93-559217838067",
+      "name": "Lightning Creek Rocks",
+      "lat": 44.22012519836426,
+      "lon": -115.79637908935547,
+      "elevationM": 2325,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/f1ef66c1-2022-3168-b840-8761a3a9bdf4",
+      "name": "Tyee Mountain",
+      "lat": 44.01768112182617,
+      "lon": -115.3039779663086,
+      "elevationM": 2660,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/f4ed3205-3267-3bbb-9f0d-cc9906fec864",
+      "name": "Skunk Creek Summit",
+      "lat": 44.38271713256836,
+      "lon": -115.9262924194336,
+      "elevationM": 2184,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    },
+    {
+      "id": "overture/fc2ffe02-4570-30d2-ac7c-5cd9252983f6",
+      "name": "Wild Buck Peak",
+      "lat": 44.38822937011719,
+      "lon": -115.66456604003906,
+      "elevationM": 2429,
+      "positionSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceId": "overture-2026-09-23.1-base-land",
+      "elevationSourceKind": "osm",
+      "usedBy": []
+    }
+  ]
+}

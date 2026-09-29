@@ -237,7 +237,9 @@ describe('the citations this build actually ships', () => {
     expect(regions.summits).toBeGreaterThan(8000);
     // One citation, shared by all four regions — deduplicated by title, so the
     // footer states the Overture release once rather than four times.
-    expect(regions.citations).toHaveLength(1);
+    // One citation per Overture release the committed regions were cut from:
+    // five regions from 2026-06-17.0, idaho-bogus-basin from 2026-09-23.1.
+    expect(regions.citations).toHaveLength(2);
   });
 
   it('reads the bundled dataset’s own citations, not a copy of them', () => {

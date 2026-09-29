@@ -26,7 +26,8 @@ after its self-check has run and passed here. The checks are in
 - [ ] Settle the device-roll to screen-roll sign from the home recording
 - [x] Give suggestPoseTrim tests a timeout that holds under parallel load (1.8 s alone, >5 s at load 13)
 - [x] Build the Bogus Basin site package at 60 km radius, with seam and coverage tests
-- [ ] Import a new Overture peak region covering Bogus Basin's 60 km disc; keep idaho-central unchanged
+- [x] Import a new Overture peak region covering Bogus Basin's 60 km disc; keep idaho-central unchanged
+- [ ] Decide fetch-peaks' default release now that 2026-06-17.0 is deleted upstream; pin --release in regenerate commands
 - [ ] Stage site packages from package:deploy and publish Bogus Basin from pages.yml
 - [ ] Add `site:package` to package.json
 - [ ] Measure the 360° annotateScene under phone-class CPU throttling (Node: 0.98–1.87 s on 4-core Xeon)

@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "description": "Named summits imported from Overture Maps for \"idaho-bogus-basin\".  Heights are OpenStreetMap `ele` tags carried through Overture, never DEM samples.",
+  "release": "2026-09-23.1",
+  "generatedBy": "npm run fetch:peaks -- --bbox 43.2,-116.9,44.4,-115.3 --name idaho-bogus-basin --classes peak,volcano,ridge --release 2026-09-23.1",
+  "bounds": {
+    "south": 43.2,
+    "west": -116.9,
+    "north": 44.4,
+    "east": -115.3
+  },
+  "sources": [
+    {
+      "id": "overture-2026-09-23.1-base-land",
+      "title": "Overture Maps Foundation, base theme, type=land, release 2026-09-23.1 — summit features (subtype=physical, class=peak|volcano), © OpenStreetMap contributors, ODbL-1.0",
+      "url": "https://overturemaps-us-west-2.s3.amazonaws.com/release/2026-09-23.1/theme=base/type=land/",
+      "retrieved": "2026-09-29",
+      "access": "fetched",
+      "note": "Position is the midpoint of Overture's float32-rounded `bbox` (sub-metre for a point feature); height is the `elevation` column, which carries the OpenStreetMap `ele` tag unchanged — verified row-by-row against the same rows' `source_tags.ele`. Heights are therefore tagged/surveyed values, NEVER DEM samples (MISSION.md: SRTM under-reads sharp summits by 250–350 m). Area imported: 43.2,-116.9 … 44.4,-115.3."
+    }
+  ],
+  "cells": [
+    {
+      "name": "N43W116",
+      "peaks": 62,
+      "file": "cells/N43W116.json"
+    },
+    {
+      "name": "N43W117",
+      "peaks": 69,
+      "file": "cells/N43W117.json"
+    },
+    {
+      "name": "N44W116",
+      "peaks": 21,
+      "file": "cells/N44W116.json"
+    },
+    {
+      "name": "N44W117",
+      "peaks": 22,
+      "file": "cells/N44W117.json"
+    }
+  ],
+  "peakCount": 174
+}
