@@ -12,16 +12,13 @@ files from the app's own origin.
 
 ```
 dist/
-  index.html  live.html            vite build — the still app and the AR screen
-  sw.js                            the AR screen's offline cache (see "Offline")
+  index.html                       vite build
   assets/index-*.js  index-*.css   the app — peak data is compiled INTO the JS
   terrain/
     manifest.json                  the index HttpTerrainStore reads first
     tiles/N45E007.hgt              whole 1° SRTM1 tiles          (25.93 MB each)
     tiles/N45E007.hgt.gz           optional precompressed sibling (16.35 MB)
     windows/gornergrat-window.i16be  committed real-SRTM case windows
-    sites/<id>/<grid>.i16be        one field site's sweep, mosaicked (42.55 MB)
-    sites/<id>/<grid>.json         that mosaic's provenance, tile by tile
   peaks/<region>/index.json        imported Overture peak cells — staged, and
   peaks/<region>/cells/N45E007.json  inert until the app fetches them (see below)
   ATTRIBUTION.txt                  generated from the staged data's citations
@@ -30,16 +27,10 @@ dist/
 ## Producing it
 
 ```bash
-# acquisition: the only network step. Zermatt, plus the four tiles the Bogus
-# Basin site is mosaicked from.
-npm run fetch:tiles -- N45E007 N43W116 N43W117 N44W116 N44W117
+npm run fetch:tiles -- N45E007 N46E007        # acquisition: the only network step
 npm run build                                 # typecheck + bundle
-npm run site:package -- bogus-basin           # cut each field site's mosaic
 npm run package:deploy -- --gzip              # assemble dist/terrain and dist/peaks
 ```
-
-Drop `--gzip` for a host that cannot serve a `.gz` sibling — GitHub Pages is one.
-"Serving it" below has the numbers.
 
 `scripts/package-deploy.ts` stages whatever terrain is already on disk —
 `data/tiles/*.hgt` and the committed windows in `fixtures/tiles/cases/` — using
@@ -56,25 +47,8 @@ Options:
 | `--tiles N45E007,N46E007` | stage only these whole tiles |
 | `--no-tiles` | case windows only — a 1.45 MB deployment |
 | `--no-windows` / `--no-peaks` | leave those out |
-| `--sites bogus-basin` | stage only these field sites (default: every `sites/*.json`) |
-| `--no-sites` | stage no field-site mosaics |
 | `--gzip` | also write `.gz` siblings for every grid |
 | `--copy` | real copies instead of hard links |
-
-**A field site whose package is not built is an error, not an omission.** Packaging
-reads `data/sites/<id>/terrain/manifest.json` — gitignored, built by
-`npm run site:package -- <id>` — and refuses to continue without it. The
-deployment would otherwise work everywhere and be wrong at one viewpoint:
-`selectTerrainGrid` would fall back to the whole 1° tile the site stands in, which
-holds a quarter of a 60 km sweep, and a ridge outside the tile cannot occlude
-anything, so summits would be reported visible that the missing terrain hides.
-
-The site's grids go into the **same** `manifest.json` as the tiles. One index is
-all the runtime has, and `selectTerrainGrid` picks the largest grid covering a
-point: the Bogus Basin mosaic covers 1.64 deg² against a tile's 1.0, so its
-viewpoint gets the whole sweep and every other viewpoint is untouched. Grid names
-must stay unique — packaging refuses two grids with one name, because
-`tileByName` resolves by name.
 
 Files are hard-linked by default, so packaging 130 MB of tiles costs no disk and
 no time. Use `--copy` if your upload step follows inodes rather than content.
@@ -94,7 +68,6 @@ int16 = 25 934 402 bytes per 1° tile). "Wire" is gzip level 6.
 | Case windows only (`--no-tiles`) | 4 windows | 1.45 MB | 0.79 MB |
 | The four ground-truth viewpoints as whole tiles | N45E007, N37W122, N47W123, N56W006 | 103.74 MB | 43.29 MB |
 | This repository's sixteen tiles + the windows | 20 grids | 417.57 MB | 189.24 MB |
-| **The published Pages site** (5 tiles, the windows, the Bogus Basin mosaic) | 13 grids | 175.43 MB | 88.87 MB |
 | The Alps, N43–N48 × E004–E016 | 78 tiles | 2 022.88 MB | ≈ 1 275 MB |
 | `/peaks/` — all five regions (Q8) | 63 cell files + 5 indexes | 3.48 MB | (served as-is) |
 
@@ -290,14 +263,10 @@ push to the development branch, and on demand from Actions → pages → Run
 workflow. A phone needs an HTTPS origin before the browser will grant camera,
 orientation or geolocation, and a Pages site is one at no cost in servers.
 
-It runs the commands above, with four differences that matter:
+It runs the three commands above, with three differences that matter:
 
-1. **It fetches the tiles first.** `npm run fetch:tiles -- N43W116 N43W117
-   N44W116 N44W117 N45E007` — tiles are not in git, so the runner downloads the
-   square degrees the deployment serves. N45E007 is Zermatt, for the Gornergrat
-   proof; the four Idaho tiles are what the Bogus Basin mosaic is cut from, and
-   all four are needed because the 60 km disc crosses both a latitude and a
-   longitude tile boundary.
+1. **It fetches the tiles first.** `npm run fetch:tiles -- N45E007` — tiles are
+   not in git, so the runner downloads the square degree the deployment serves.
 2. **It builds for a subpath.** A project site is served at
    `https://<owner>.github.io/<repo>/`, so the build is
    `npm run build -- --base=/<repo>/`. The app resolves `/terrain/manifest.json`
@@ -312,9 +281,7 @@ It runs the commands above, with four differences that matter:
      npm run test:deploy
    ```
 
-3. **It checks the artifact against the 1 GB Pages limit** before uploading, and
-   fails the build rather than the deployment.
-4. **It refuses to publish photographs.** `npm run check:deploy-privacy` walks
+3. **It refuses to publish photographs.** `npm run check:deploy-privacy` walks
    the package and fails on anything named like or byte-identical to a file in
    `fixtures/photos/real/`, and on any image carrying GPS EXIF. Nothing stages a
    photograph today; the gate is what notices the day something does, before a
@@ -323,73 +290,19 @@ It runs the commands above, with four differences that matter:
 A failing deployment check or privacy gate stops the artifact being uploaded, so
 the live site keeps serving the last good build.
 
-**The Pages workflow does not pass `--gzip`, and that is measured.** Pages serves
-the object that was asked for; it has no `gzip_static` and no `precompressed`, so
-a `.hgt.gz` sibling is never chosen in place of the `.hgt` the app asked for.
-Packaging the published set both ways:
-
-| Published set | Files | Artifact |
-|---|---|---|
-| Without `--gzip` | 97 | 179 430 202 B (179.43 MB) |
-| With `--gzip` | 110 | 268 298 144 B (268.30 MB) |
-
-The 13 siblings add **88 867 942 B — 88.87 MB, half the upload again — that
-nothing on Pages can read.** Both figures are inside the 1 GB a published site is
-supported at, so the limit is not what decides it; the dead weight and the
-10-minute deployment timeout are
-([GitHub Pages limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits):
-1 GB supported per site, 10 GB refused outright, 10-minute deployment timeout,
-measured against uncompressed bytes). The workflow checks the artifact against
-that 1 GB before it uploads.
-
-So a phone downloads the 42.55 MB Bogus Basin mosaic or a 25.93 MB tile, whole,
-unless the Pages CDN compresses it in flight. Keep `--gzip` for nginx, Caddy or
-any host with content negotiation, where it is 37 % off the wire for one line of
-config. Everything else in "Reducing the 25 MB" below still applies, and the
-service worker is now built: the second visit is free whether or not the host
-compresses anything.
-
-## Offline — the AR page after one visit
-
-`live.html` registers `sw.js` from the deployment root, so the page the phone
-opens on a ridge survives losing the signal. `src/offline/live-service-worker.ts`
-holds the rules and `src/offline/offline-cache.ts` is the window side.
-
-- **Its scope is the deployment base**, so `/Mountain-finder/sw.js` controls the
-  project site. The worker is emitted at the root under a fixed name rather than
-  as a bundle entry in `assets/`, because a worker's scope is the directory it is
-  served from and widening it needs a `Service-Worker-Allowed` header that Pages
-  does not let anyone set. `vite.config.ts` does the emitting.
-- **The shell is cached on the first visit.** The worker caches `live.html` at
-  install; the page then posts its own hashed script and stylesheet URLs, read off
-  the live DOM, so no build-time asset list can go stale.
-- **Terrain and peaks are cached as they are fetched**, cache-first with no
-  revalidation. The elevation of a fixed square of the planet does not change.
-  Navigations are network-first, so a republished site is picked up on the next
-  online load instead of being pinned to the first visit.
-- **A whole site package is only cached when someone asks.**
-  `downloadTerrainGrid(name)` fetches one named grid and the index pointing at it
-  — the "Download Bogus Basin for offline use" action, 42.55 MB for that mosaic.
-  It is not automatic: iOS 17 gives an origin a large quota, around 60 % of total
-  disk in Safari, but deletes **all** of an origin's script-written storage after
-  seven days with no interaction
-  ([WebKit, Updates to Storage Policy](https://webkit.org/blog/14403/updates-to-storage-policy/)).
-  Spending tens of megabytes of someone's cellular data on a guess that expires
-  in a week is a button, not a default. Nothing else evicts partially: when an
-  origin is evicted, every byte it stored goes at once.
-- **The page can show what it holds.** `useOfflineCache()` reports the cached
-  URLs and `navigator.storage.estimate()`. `live-main.tsx` also puts the same
-  controller on `window.mountainFinderOffline`, which is what the deployment
-  check drives.
-- **The dev server publishes no worker.** Nothing about offline behaviour can be
-  observed on a laptop on wifi, and a worker holding a hashed bundle would fight
-  HMR for nothing. Only a built deployment registers it.
+**Pages has no `gzip_static` equivalent.** `--gzip` stages `.hgt.gz` siblings
+that nginx or Caddy would serve in place of `.hgt`; Pages serves the object that
+was asked for. So the app's request for `N45E007.hgt` gets the 25.93 MB file
+unless the Pages CDN happens to compress it on the fly, and the `.gz` siblings
+are 17.8 MB of artifact that may never be read. Measure what arrives on the
+phone before budgeting for the gzipped figure. Everything in "Reducing the 25 MB" below that needs no
+content negotiation — pre-cut windows, `Cache-Control` on a real host, a service
+worker — still applies.
 
 ## The self-check
 
 ```bash
 npm run build
-npm run site:package -- bogus-basin
 npm run package:deploy -- --gzip
 npm run test:deploy
 ```
@@ -413,16 +326,6 @@ but the plain static server over `dist/`, and asserts:
 * a viewpoint with no tile produces the named absence above, not a blank
   overlay;
 * the staged peak cells resolve the way `TiledPeakStore` would resolve them;
-* **a Bogus Basin viewpoint is given the site mosaic, not a whole tile** — the
-  served index is read with the app's own `selectTerrainGrid`, the published
-  geometry holds all 72 ray ends of the declared 60 km sweep, the mosaic's
-  provenance names its four source tiles, and Gornergrat still resolves to
-  `N45E007`;
-* **the live page loads with the network switched off** — `live.html` is opened,
-  the worker installs and caches a real grid, `context.setOffline(true)` takes the
-  network away, an uncached file is confirmed to fail, and a reload still renders
-  the screen and reads the whole grid back out of the cache at its exact byte
-  length;
 * **the served page displays the ODbL notice** — visible, unscrolled, naming
   OpenStreetMap and ODbL-1.0, and agreeing with `dist/ATTRIBUTION.txt`.
 
@@ -435,10 +338,10 @@ disc around one point. The options, measured:
 |---|---|---|
 | Whole tile, uncompressed (today's default) | 25.93 MB | Nothing to build. |
 | **Whole tile, gzip (`--gzip`)** | **16.35 MB** | None: zero app code, one server setting, already proved. |
-| **Pre-cut window per viewpoint** (built: `sites/`) | 42.55 MB raw / 20.78 MB gz for a 60 km sweep; 10.85 / 7.13 MB for 30 km | The mosaic crosses tile edges, which `scripts/make-site-package.ts` does and checks seam by seam. It only covers viewpoints a site was cut for. A cut smaller than its sweep produces **false visible** peaks (`src/pipeline/testing/case-terrain.ts`), which is the expensive kind of wrong. |
+| Pre-cut 30 km window per viewpoint | 10.85 MB raw / 7.13 MB gz | Needs a packaging step that mosaics across tile edges — a 30 km box is 0.54° × 0.78°, so it straddles a 1° boundary for ~90 % of viewpoints. A window cut too small produces **false visible** peaks (`src/pipeline/testing/case-terrain.ts`), which is the expensive kind of wrong. |
 | HTTP Range per grid row | 5.6 KB × 1 941 rows = 10.85 MB | Exactly the window's bytes, but **uncompressed**: a byte range addresses the stored object, so ranges and a precompressed `.gz` are mutually exclusive. 1 941 round trips, or multipart/byteranges parsing. Worse than the pre-cut window on the wire *and* in code, where an off-by-one row is invisible. |
 | SRTM3 (3 arc-second) | 2.88 MB per tile (11 %) | 90 m postings against a 90 m sweep step: ridge crests get smoothed away, and a missed crest is a false *visible*. Not acceptable for the occluder that hides the summit; only defensible for terrain far beyond the 30 km sweep, which this app does not read. |
-| **Service worker / Cache Storage** (built, live page) | one download, then 0 | Additive to every row above. See "Offline" — iOS drops it after seven days with no interaction. |
+| Service worker / Cache Storage | 16.35 MB once, then 0 | Orthogonal, and additive to any row above. Turns a re-opened photo on a train into zero bytes. |
 
 **Recommendation, in order.**
 
@@ -446,11 +349,11 @@ disc around one point. The options, measured:
    for one line of server config, no app change, proved by `npm run test:deploy`.
 2. **Set `Cache-Control: immutable`.** The second visit is free; this is the
    largest real-world win after gzip and costs nothing.
-3. **Cut a field-site package for a viewpoint people actually stand at** — not
-   Range requests. `npm run site:package -- <id>` mosaics one grid across tile
-   boundaries for a stated sweep radius plus margin, and packaging publishes it in
-   the same index. It needs no runtime code, because a grid is any rectangle with
-   its own corner and step. It covers one disc, so whole tiles still answer
-   everywhere else.
+3. Then, if it still matters, **pre-cut windows at packaging time** — not Range
+   requests. The manifest format was built for it (a grid is any rectangle with
+   its own corner and step, which is what the case windows already are) and the
+   tile reader already parses one, so it needs no new runtime code, only a
+   packaging step that cuts a mosaic spanning tile boundaries and a rule for the
+   radius (sweep 30 km + margin). 7.13 MB gzipped for an alpine viewpoint.
 4. **Do not reach for SRTM3**, and do not mix resolutions within the sweep. The
    whole point of the 25 MB is being able to prove an occlusion.

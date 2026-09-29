@@ -36,6 +36,16 @@ import { fileURLToPath } from 'node:url';
 
 import { expect, test, type Page, type Response } from '@playwright/test';
 
+import { destinationPoint } from '../../src/core/geodesy.js';
+import type { OfflineCacheController } from '../../src/offline/offline-cache.js';
+import {
+  expectedGridByteLength,
+  gridContains,
+  parseTerrainManifest,
+  selectTerrainGrid,
+  type TerrainManifest,
+} from '../../src/providers/terrain-manifest.js';
+import { parseSiteDefinition, SITE_DEFINITION_DIR } from '../../src/sites/site-package.js';
 import { BASE_PATH, servedUrl } from './serving.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -48,14 +58,17 @@ const CHAMONIX = resolve(PHOTO_DIR, 'chamonix-north-east.jpg');
 /** A tile fetch plus a 130° sweep over it; the dev-server suite allows as much. */
 const OVERLAY_TIMEOUT_MS = 120_000;
 
+/** The packaged index, validated the way the browser validates it. */
+async function packagedManifest(): Promise<TerrainManifest> {
+  return parseTerrainManifest(
+    JSON.parse(await readFile(resolve(DIST, 'terrain/manifest.json'), 'utf8')),
+    'dist/terrain/manifest.json',
+  );
+}
+
 /** The names in the packaged index — what this deployment actually holds. */
 async function packagedGridNames(): Promise<readonly string[]> {
-  const manifest = JSON.parse(
-    await readFile(resolve(DIST, 'terrain/manifest.json'), 'utf8'),
-  ) as { grids?: readonly { name?: unknown }[] };
-  return (manifest.grids ?? [])
-    .map((grid) => grid.name)
-    .filter((name): name is string => typeof name === 'string');
+  return (await packagedManifest()).grids.map((grid) => grid.name);
 }
 
 test.beforeAll(async () => {
@@ -180,10 +193,14 @@ test('a statically served build draws a real overlay from a real photo', async (
     ).length,
   ).toBeGreaterThan(0);
 
-  // What the terrain actually cost on the wire. `--gzip` staged a .gz sibling
-  // and the static server offered it; the browser inflated it before
-  // HttpTerrainStore's byte-length check ever saw it, which is why a 25.93 MB
-  // tile can arrive as ~16 MB with no application code involved.
+  // What the terrain actually cost on the wire, logged for whoever is budgeting
+  // a phone's data. A package built with `--gzip` has a `.hgt.gz` sibling, this
+  // static server offers it the way nginx's `gzip_static` would, and the browser
+  // inflates it before `HttpTerrainStore`'s byte-length check sees a byte — so
+  // the same tile arrives as ~16 MB with no application code involved. The Pages
+  // workflow builds without `--gzip`, because Pages serves the object that was
+  // asked for and the siblings would be artefact nobody reads (docs/DEPLOY.md).
+  // The bound below holds either way; the logged figure says which happened.
   const response = terrain.find((entry) => entry.url().includes('N45E007.hgt'));
   expect(response, 'the overlay was drawn without fetching N45E007').toBeDefined();
   if (response === undefined) return;
@@ -254,6 +271,69 @@ test('the packaged peak cells are served in the layout TiledPeakStore expects', 
   expect(body.peaks.length).toBe(cell.peaks);
 });
 
+test('a field site is published as one mosaic, and a viewpoint there is given it', async ({
+  page,
+}) => {
+  // The Bogus Basin sweep reads four 1° tiles, and `selectTerrainGrid` hands a
+  // viewpoint ONE grid. Whole tiles alone would therefore give that sweep a
+  // quarter of its own terrain, which reports summits visible that the missing
+  // ridges would have hidden. The mosaic is staged in the SAME index as the
+  // tiles and wins on coverage, and this is where that is proved rather than
+  // assumed. The viewpoint comes from the committed definition, so the site can
+  // move without this file being edited into agreement with it.
+  const definitionPath = resolve(ROOT, SITE_DEFINITION_DIR, 'bogus-basin.json');
+  const site = parseSiteDefinition(
+    JSON.parse(await readFile(definitionPath, 'utf8')),
+    definitionPath,
+  );
+  const manifest = await packagedManifest();
+
+  // The whole tile under the viewpoint is published too, so the choice below is
+  // a choice between two grids that both cover the spot.
+  expect(manifest.grids.map((grid) => grid.name)).toContain('N43W117');
+
+  const chosen = selectTerrainGrid(manifest, site.observer.lat, site.observer.lon);
+  expect(chosen, `this deployment serves no terrain at all for ${site.name}`).toBeDefined();
+  if (chosen === undefined) return;
+  expect(chosen.name).toBe(`${site.id}-${site.sweepRadiusKm}km`);
+  expect(chosen.url).toMatch(new RegExp(`^sites/${site.id}/`));
+
+  // Every ray end of the declared 360° sweep lands inside the SERVED geometry.
+  // `make-site-package` proves this of the mosaic it builds; the claim here is
+  // about what packaging published, which is a different artefact.
+  const outside: number[] = [];
+  for (let index = 0; index < 72; index += 1) {
+    const bearingDeg = index * 5;
+    const end = destinationPoint(site.observer, bearingDeg, site.sweepRadiusKm * 1000);
+    if (!gridContains(chosen.geometry, end.lat, end.lon)) outside.push(bearingDeg);
+  }
+  expect(outside, `the published grid does not cover its own ${site.sweepRadiusKm} km sweep`)
+    .toEqual([]);
+
+  const head = await page.request.fetch(servedUrl(`/terrain/${chosen.url}`), { method: 'HEAD' });
+  expect(head.status()).toBe(200);
+  const onDisk = await stat(resolve(DIST, 'terrain', chosen.url));
+  expect(onDisk.size).toBe(expectedGridByteLength(chosen.geometry));
+
+  // A mosaic's provenance is four tiles and their offsets, which no file name
+  // carries, so the sidecar is published with it.
+  const sidecar = await page.request.get(
+    servedUrl(`/terrain/sites/${site.id}/${chosen.name}.json`),
+  );
+  expect(sidecar.status()).toBe(200);
+  const provenance = (await sidecar.json()) as { sources?: { tile?: string }[] };
+  expect((provenance.sources ?? []).map((source) => source.tile).sort()).toEqual([
+    'N43W116',
+    'N43W117',
+    'N44W116',
+    'N44W117',
+  ]);
+
+  // And Gornergrat is still answered by the whole tile the Matterhorn proof
+  // above turns on: adding a site changed one viewpoint, not the index's rule.
+  expect(selectTerrainGrid(manifest, 45.983333, 7.782222)?.name).toBe('N45E007');
+});
+
 test('the live AR page is published, and asks for its assets under the subpath', async ({
   page,
 }) => {
@@ -286,6 +366,95 @@ test('the live AR page is published, and asks for its assets under the subpath',
     'not-started',
   );
   await expect(page.getByTestId('live-steps')).toBeVisible();
+});
+
+test('the live AR page still loads with the network switched off', async ({ page, context }) => {
+  // What a ridge does to a phone, done to Chromium: cache on the first visit,
+  // then take the network away and load the page again. Nothing here mocks the
+  // cache — it is the deployment's own `sw.js`, registered at the published
+  // subpath, storing the built bundle and a real terrain grid.
+  //
+  // The grid is the SMALLEST the deployment serves. The Bogus Basin mosaic is
+  // 42.55 MB, and pushing that through the Cache API proves the same three
+  // lines of worker code while adding a minute to every run of this suite. The
+  // byte-length assertion after the reload is what shows a whole grid came back
+  // from the cache rather than a truncated or opaque response.
+  const manifest = await packagedManifest();
+  const smallest = [...manifest.grids].sort(
+    (left, right) =>
+      expectedGridByteLength(left.geometry) - expectedGridByteLength(right.geometry),
+  )[0];
+  expect(smallest, 'the packaged index lists no grids').toBeDefined();
+  if (smallest === undefined) return;
+  const gridUrl = servedUrl(`/terrain/${smallest.url}`);
+
+  await page.goto(servedUrl('/live.html'));
+  await expect(page.getByTestId('live-title')).toHaveText('Mountain Finder — live');
+
+  // The page registers the worker itself; nothing in this test installs it.
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null, undefined, {
+    timeout: 30_000,
+  });
+
+  const download = await page.evaluate(async (gridName: string) => {
+    const api = (window as unknown as { mountainFinderOffline: OfflineCacheController }).mountainFinderOffline;
+    const result = await api.downloadTerrainGrid(gridName);
+    return { result, status: await api.status() };
+  }, smallest.name);
+
+  expect(download.result.error ?? '').toBe('');
+  expect(download.result.ok).toBe(true);
+  // The index and the grid: a grid with no index is a grid the store cannot find.
+  expect(download.result.cached.length).toBe(2);
+  expect(download.status.data).toContain(new URL(gridUrl, page.url()).href);
+  // The document plus at least its module script and its stylesheet.
+  expect(download.status.shell.length).toBeGreaterThanOrEqual(3);
+  expect(download.status.usageBytes ?? 0).toBeGreaterThan(0);
+  console.log(
+    `offline: shell ${download.status.shell.length} files, data ` +
+      `${download.status.data.length} files, navigator.storage.estimate() ` +
+      `${String(download.status.usageBytes)} of ${String(download.status.quotaBytes)} bytes`,
+  );
+
+  await context.setOffline(true);
+
+  // The network really is gone. A published file nobody cached must fail, or
+  // everything below would pass against a server that was still answering.
+  const uncached = await page.evaluate(async (url: string) => {
+    try {
+      return String((await fetch(url)).status);
+    } catch {
+      return 'network-failed';
+    }
+  }, servedUrl('/ATTRIBUTION.txt'));
+  expect(uncached).toBe('network-failed');
+
+  await page.reload();
+  await expect(page.getByTestId('live-title')).toHaveText('Mountain Finder — live');
+  await expect(page.getByTestId('live-refusal')).toHaveAttribute(
+    'data-refusal-code',
+    'not-started',
+  );
+
+  const offlineReads = await page.evaluate(
+    async ([indexUrl, samplesUrl]: readonly (string | undefined)[]) => {
+      const read = async (url: string | undefined): Promise<number> => {
+        if (url === undefined) return -1;
+        try {
+          const response = await fetch(url);
+          if (!response.ok) return -1;
+          return (await response.arrayBuffer()).byteLength;
+        } catch {
+          return -1;
+        }
+      };
+      return { index: await read(indexUrl), samples: await read(samplesUrl) };
+    },
+    [servedUrl('/terrain/manifest.json'), gridUrl] as const,
+  );
+
+  expect(offlineReads.index).toBeGreaterThan(0);
+  expect(offlineReads.samples).toBe(expectedGridByteLength(smallest.geometry));
 });
 
 test('the deployed page displays the ODbL notice, and it matches ATTRIBUTION.txt', async ({

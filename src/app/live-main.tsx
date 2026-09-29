@@ -15,11 +15,19 @@
  * and peaks come from this app's own origin (decision D7 — no third-party call
  * at runtime), and both paths resolve against `import.meta.env.BASE_URL` so the
  * page works at a site root and under the `/Mountain-finder/` project subpath.
+ *
+ * It also installs the offline cache, so the page loads on a ridge with no
+ * signal. `src/offline/live-service-worker.ts` says what is cached and why.
+ * Only a built deployment registers it. The dev server serves no `sw.js`,
+ * and a worker that cached a hashed bundle would fight HMR for no gain, since
+ * nothing about offline behaviour can be observed on a laptop on wifi. The
+ * deployment check is where it is proved.
  */
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { offlineCacheController, registerOfflineCache } from '../offline/offline-cache';
 import { createRegionPeakSource } from '../providers/http-peak-store';
 import { HttpTerrainStore } from '../providers/http-terrain-store';
 import { DEFAULT_TERRAIN_MANIFEST_URL } from '../providers/terrain-manifest';
@@ -47,6 +55,24 @@ const peaks = createRegionPeakSource(
   resolveFromBase(base, '/peaks'),
   (url) => fetch(url),
 );
+
+/**
+ * The offline cache, reachable without a UI.
+ *
+ * `useOfflineCache` is the hook the live screen renders when it grows a status
+ * line and a "Download Bogus Basin for offline use" button. Until then the same
+ * controller hangs off `window`, so a person on the phone and the deployment
+ * check can both trigger and inspect a download — and nothing inside
+ * `src/app/live/` has to change for either.
+ */
+const offline = offlineCacheController(base);
+declare global {
+  interface Window {
+    mountainFinderOffline?: typeof offline;
+  }
+}
+window.mountainFinderOffline = offline;
+if (import.meta.env.PROD) void registerOfflineCache(base);
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Root element #root not found');

@@ -14,8 +14,19 @@
  *   <out>/terrain/manifest.json     the index `HttpTerrainStore` reads first
  *   <out>/terrain/tiles/*.hgt       whole SRTM tiles from data/tiles/
  *   <out>/terrain/windows/*.i16be   the committed real-SRTM case windows
+ *   <out>/terrain/sites/<id>/…      each field site's mosaic (see below)
  *   <out>/peaks/<region>/…          imported Overture peak cells (see below)
  *   <out>/ATTRIBUTION.txt           the licences the staged data carries
+ *
+ * ── FIELD SITES, IN THE SAME INDEX ─────────────────────────────────────────
+ * A site package (`sites/<id>.json`, built by scripts/make-site-package.ts into
+ * the gitignored `data/sites/<id>/`) is ONE grid mosaicked across whole tiles to
+ * cover a 360° sweep from one viewpoint. Its grids are staged here beside the
+ * whole tiles and listed in the SAME manifest, because `selectTerrainGrid` picks
+ * the largest grid covering a point: the Bogus Basin mosaic covers 1.64 deg²
+ * against a 1° tile's 1.0, so a viewpoint there gets the whole sweep, and a
+ * viewpoint anywhere else is unaffected. Two manifests would have needed a
+ * second code path and a rule for choosing between them.
  *
  * ── WHY IT REUSES THE DEV PLUGIN'S INDEX BUILDER ───────────────────────────
  * `buildTerrainManifest` (scripts/terrain-server.ts) is the one piece of code
@@ -49,7 +60,7 @@
 
 import { createReadStream, createWriteStream } from 'node:fs';
 import { copyFile, link, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
-import { dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { createGzip } from 'node:zlib';
 
@@ -66,6 +77,7 @@ import {
   type TerrainGrid,
   type TerrainManifest,
 } from '../src/providers/terrain-manifest.js';
+import { SITE_DEFINITION_DIR, SITE_PACKAGE_DIR } from '../src/sites/site-package.js';
 
 /** Where imported peak regions live, and where they are served from. */
 const PEAK_REGION_DIR = 'fixtures/peaks/regions';
@@ -81,6 +93,9 @@ interface Options {
   readonly includeTiles: boolean;
   readonly includeWindows: boolean;
   readonly includePeaks: boolean;
+  /** Field-site ids to stage; empty means "every definition in sites/". */
+  readonly sites: readonly string[];
+  readonly includeSites: boolean;
   /** Write `.gz` siblings for the grids (see docs/DEPLOY.md). */
   readonly gzip: boolean;
   /** Real copies rather than hard links. */
@@ -93,6 +108,8 @@ function parseArgs(argv: readonly string[]): Options {
   let includeTiles = true;
   let includeWindows = true;
   let includePeaks = true;
+  const sites: string[] = [];
+  let includeSites = true;
   let gzip = false;
   let copy = false;
 
@@ -112,9 +129,18 @@ function parseArgs(argv: readonly string[]): Options {
         if (trimmed !== '') tiles.push(trimmed.toUpperCase());
       }
       index += 1;
+    } else if (arg === '--sites') {
+      const value = argv[index + 1];
+      if (value === undefined) throw new Error('--sites needs a comma-separated list');
+      for (const id of value.split(',')) {
+        const trimmed = id.trim();
+        if (trimmed !== '') sites.push(trimmed);
+      }
+      index += 1;
     } else if (arg === '--no-tiles') includeTiles = false;
     else if (arg === '--no-windows') includeWindows = false;
     else if (arg === '--no-peaks') includePeaks = false;
+    else if (arg === '--no-sites') includeSites = false;
     else if (arg === '--gzip') gzip = true;
     else if (arg === '--copy') copy = true;
     else if (arg === '--help' || arg === '-h') {
@@ -123,7 +149,17 @@ function parseArgs(argv: readonly string[]): Options {
     } else throw new Error(`Unknown option ${arg}\n${USAGE}`);
   }
 
-  return { out, tiles, includeTiles, includeWindows, includePeaks, gzip, copy };
+  return {
+    out,
+    tiles,
+    includeTiles,
+    includeWindows,
+    includePeaks,
+    sites,
+    includeSites,
+    gzip,
+    copy,
+  };
 }
 
 const USAGE = `
@@ -134,6 +170,8 @@ Usage: npm run package:deploy -- [options]
   --no-tiles           stage no whole tiles — case windows only, ~1.4 MB
   --no-windows         stage no case windows
   --no-peaks           do not stage imported peak regions
+  --sites <a,b>        stage only these field sites (default: all of sites/)
+  --no-sites           stage no field-site mosaics
   --gzip               also write .gz siblings for every grid
   --copy               real copies instead of hard links (for tar/rsync-by-inode)
 `;
@@ -179,6 +217,88 @@ interface StagedGrid {
   readonly gzipBytes?: number;
 }
 
+/** One grid to stage: where its bytes are now, and what it is called in the index. */
+interface GridSource {
+  /** The index entry, with `url` already pointing at the packaged location. */
+  readonly grid: TerrainGrid;
+  /** Absolute path of the raw samples. */
+  readonly from: string;
+  /** Small files copied beside the grid, keyed by their packaged url. */
+  readonly beside: readonly { readonly url: string; readonly from: string }[];
+}
+
+/**
+ * The field-site mosaics to publish, read out of their built packages.
+ *
+ * A package is `data/sites/<id>/`, which is gitignored: it is tens of megabytes
+ * rebuilt from a committed definition, so it is never in the tree a workflow
+ * checks out. Its own `terrain/manifest.json` is the authority on the grid's
+ * geometry and provenance, so it is read rather than recomputed here — one
+ * mosaic built and verified by one script, published by another.
+ *
+ * A defined site with no built package is an ERROR rather than a quiet omission.
+ * The failure it would otherwise cause is invisible: the deployment still works
+ * everywhere, and at that one viewpoint `selectTerrainGrid` falls back to a whole
+ * 1° tile, which covers a quarter of the sweep and reports summits visible that
+ * the missing terrain would have hidden.
+ */
+async function siteGridSources(root: string, options: Options): Promise<readonly GridSource[]> {
+  if (!options.includeSites) return [];
+
+  const definitions = (await readdir(join(root, SITE_DEFINITION_DIR)).catch(() => []))
+    .filter((file) => file.endsWith('.json'))
+    .map((file) => basename(file, '.json'))
+    .sort();
+  const wanted = options.sites.length > 0 ? options.sites : definitions;
+  const unknown = wanted.filter((id) => !definitions.includes(id));
+  if (unknown.length > 0) {
+    throw new Error(
+      `No site definition for ${unknown.join(', ')} in ${SITE_DEFINITION_DIR}/. ` +
+        `Defined sites: ${definitions.join(', ') || '(none)'}`,
+    );
+  }
+
+  const sources: GridSource[] = [];
+  for (const id of wanted) {
+    const packageDir = join(root, SITE_PACKAGE_DIR, id);
+    const manifestPath = join(packageDir, 'terrain', 'manifest.json');
+    let raw: string;
+    try {
+      raw = await readFile(manifestPath, 'utf8');
+    } catch {
+      throw new Error(
+        `${SITE_PACKAGE_DIR}/${id}/ holds no built terrain package, so a viewpoint at that ` +
+          'site would fall back to a whole 1° tile and sweep terrain the deployment does not ' +
+          `hold. Build it first:\n  npm run site:package -- ${id}\n` +
+          'or pass --no-sites to publish without the field sites.',
+      );
+    }
+    const manifest = parseTerrainManifest(JSON.parse(raw) as unknown, manifestPath);
+    for (const grid of manifest.grids) {
+      const file = grid.url.split('/').pop();
+      if (file === undefined || file === '') {
+        throw new Error(`${manifestPath} names grid ${grid.name} with an unusable url "${grid.url}"`);
+      }
+      const from = join(packageDir, 'terrain', grid.url);
+      // The mosaic's provenance is four tiles and their offsets, which no single
+      // file name carries, so the sidecar travels with the bytes.
+      const sidecar = join(dirname(from), `${grid.name}.json`);
+      const hasSidecar = await stat(sidecar).then(
+        () => true,
+        () => false,
+      );
+      sources.push({
+        grid: { ...grid, url: `sites/${id}/${file}` },
+        from,
+        beside: hasSidecar
+          ? [{ url: `sites/${id}/${grid.name}.json`, from: sidecar }]
+          : [],
+      });
+    }
+  }
+  return sources;
+}
+
 /**
  * Copy the grids the options select, refusing any whose byte length disagrees
  * with the geometry the index claims for it.
@@ -213,9 +333,24 @@ async function stageTerrain(
   await rm(terrainDir, { recursive: true, force: true });
   await mkdir(terrainDir, { recursive: true });
 
+  const sources: GridSource[] = [
+    ...wanted.map((grid) => ({ grid, from: sourceForGrid(root, grid), beside: [] })),
+    ...(await siteGridSources(root, options)),
+  ];
+
+  // One index, so a name has to mean one grid: `tileByName` resolves by name and
+  // would otherwise answer with whichever entry came first.
+  const seen = new Set<string>();
+  for (const { grid } of sources) {
+    const key = grid.name.toUpperCase();
+    if (seen.has(key)) {
+      throw new Error(`Two grids would be published as ${grid.name}. Rename one of them.`);
+    }
+    seen.add(key);
+  }
+
   const staged: StagedGrid[] = [];
-  for (const grid of wanted) {
-    const from = sourceForGrid(root, grid);
+  for (const { grid, from, beside } of sources) {
     const { size } = await stat(from);
     const expected = expectedGridByteLength(grid.geometry);
     if (size !== expected) {
@@ -227,6 +362,7 @@ async function stageTerrain(
     }
     const to = join(terrainDir, grid.url);
     await place(from, to, options.copy);
+    for (const extra of beside) await place(extra.from, join(terrainDir, extra.url), options.copy);
     const entry: StagedGrid = { grid, bytes: size };
     staged.push(
       options.gzip ? { ...entry, gzipBytes: await gzipTo(from, `${to}.gz`) } : entry,
@@ -468,6 +604,18 @@ async function main(): Promise<void> {
     );
   }
 
+  // The live page registers `sw.js` at the deployment root. A build that emits no
+  // worker leaves a page promising offline use and 404ing on the promise, which a
+  // visitor finds out about on a ridge. vite.config.ts emits it; this is the gate.
+  const workerPath = join(outDir, 'sw.js');
+  const worker = await stat(workerPath).catch(() => {
+    throw new Error(
+      `${relative(root, workerPath)} is missing, so the live page's offline cache cannot ` +
+        'install. vite.config.ts emits it from src/offline/live-service-worker.ts — rebuild, ' +
+        'or find out why that plugin stopped running.',
+    );
+  });
+
   const { manifest, staged } = await stageTerrain(root, outDir, options);
   const regions = await stagePeakRegions(root, outDir, options);
   const peakProof = await verifyPeaksAreServed(root, outDir, regions);
@@ -492,6 +640,24 @@ async function main(): Promise<void> {
   out.push(
     `    one session downloads at most ${mb(largest)} of terrain ` +
       '(the largest grid covering its viewpoint)',
+  );
+
+  const siteGrids = staged.filter((entry) => entry.grid.url.startsWith('sites/'));
+  if (siteGrids.length > 0) {
+    out.push('');
+    out.push(
+      `  field sites in the same index: ${siteGrids.map((entry) => entry.grid.name).join(', ')}`,
+    );
+    out.push(
+      '    each covers more square degrees than the 1° tiles under it, so selectTerrainGrid ' +
+        'gives its viewpoint the whole sweep',
+    );
+  }
+
+  out.push('');
+  out.push(
+    `  sw.js — ${worker.size} B, the live page's offline cache ` +
+      '(src/offline/live-service-worker.ts)',
   );
 
   out.push('');

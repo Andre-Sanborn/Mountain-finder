@@ -16,8 +16,8 @@ after its self-check has run and passed here. The checks are in
 - [ ] Draw the sun and moon discs in the AR screen; bench-test heading, pitch and FOV against them
 - [x] Deploy the web app to GitHub Pages from Actions, gated on test:deploy and a no-GPS privacy check
 - [ ] Confirm the first Pages run on GitHub; if enablement fails, the human sets Source to GitHub Actions
-- [ ] Measure what the phone downloads from Pages; drop --gzip if the .gz siblings go unread
-- [ ] Add the Idaho field-site tiles to the Pages workflow's fetch:tiles line
+- [x] Measure what the phone downloads from Pages; drop --gzip if the .gz siblings go unread
+- [x] Add the Idaho field-site tiles to the Pages workflow's fetch:tiles line
 - [x] Build the repository privacy check: no EXIF GPS or coordinate pairs in new files; wire into check
 - [x] Build the web sensor adapter as a pure function of raw Safari and Chromium events
 - [ ] Settle webkitCompassHeading's reference axis for an upright phone from the home recording
@@ -29,10 +29,12 @@ after its self-check has run and passed here. The checks are in
 - [x] Build the Bogus Basin site package at 60 km radius, with seam and coverage tests
 - [x] Import a new Overture peak region covering Bogus Basin's 60 km disc; keep idaho-central unchanged
 - [ ] Decide fetch-peaks' default release now that 2026-06-17.0 is deleted upstream; pin --release in regenerate commands
-- [ ] Stage site packages from package:deploy and publish Bogus Basin from pages.yml
+- [x] Stage site packages from package:deploy and publish Bogus Basin from pages.yml
 - [ ] Measure the 360° annotateScene under phone-class CPU throttling (unthrottled: 1.3–2.4 s in Chromium)
 - [x] Build the web AR screen in landscape: single-lens camera, live loop, drag, band, sun and moon discs
-- [ ] Add a service worker to live.html, so the AR screen opens with no network after one visit
+- [x] Add a service worker to live.html, so the AR screen opens with no network after one visit
+- [ ] Render the offline status line and the "Download Bogus Basin" button on the live screen
+- [ ] Measure the real 42.55 MB download on the phone, and what iOS keeps after a week
 - [ ] Prefer the DEM's ground at the fix over GPS altitude on the live screen; the geoid gap reaches ~50 m
 - [ ] Calibrate the live field of view against the sun or a landmark at the home session, and store it
 - [ ] Build the capture bundle and `analyze:field`; bundles never enter the repository

@@ -900,7 +900,7 @@ the suite uses. Three mutations fail 4, 1 and 4 tests. `test:deploy` adds a test
 - whether permissions survive a reload and airplane mode
 
 **Limits.**
-- There is no service worker yet.
+- The offline status and download button are not rendered yet.
 - Eye height is 1.6 m.
 - GPS altitude is treated as ellipsoidal. CoreLocation reports altitude above the geoid, and the
   gap reaches about 50 m (0.29° on a summit 10 km away). Preferring the DEM's ground at the fix
@@ -931,3 +931,48 @@ Flipping the heading sign and the pitch sign in `align.ts` were each caught.
 
 **Known brittleness.** The 14 mm frame declines at 24.2 % usable columns against a 25 % floor,
 0.8 points from flipping. CV-10's row in `docs/FINDINGS.md` now carries these figures.
+
+## Field sites in the deployment, and offline after one visit
+
+**One terrain manifest.** `package:deploy` stages each built site mosaic into
+`dist/terrain/sites/<id>/`, listed beside the tiles. `selectTerrainGrid` then gives a Bogus
+Basin viewpoint the 1.64 deg² mosaic and gives Gornergrat N45E007, so the Matterhorn proof is
+unchanged. A defined site with no built package fails packaging. Otherwise one viewpoint would
+silently get a quarter of its sweep. Packaging also refuses duplicate grid names and a missing
+`sw.js`. `pages.yml` fetches N43W116, N43W117, N44W116, N44W117 and N45E007, and builds the site
+package.
+
+**No `--gzip` on Pages, measured.**
+
+| Published set | Files | Artifact |
+|---|---|---|
+| without `--gzip` | 97 | 179 430 202 B |
+| with `--gzip` | 110 | 268 298 144 B |
+
+The difference is 88.87 MB of `.gz` siblings that Pages cannot serve. Both sizes are inside
+the 1 GB Pages limit, which the workflow now checks. That limit was cited from search
+summaries, because docs.github.com is blocked here. A phone pays 42.55 MB for the Bogus Basin
+mosaic, unless the Pages CDN compresses in flight.
+
+**The service worker.** `src/offline/live-service-worker.ts` is emitted as `dist/sw.js`
+(4 861 B) at the deployment root by a build-only Vite plugin. Pages cannot set
+`Service-Worker-Allowed`, so the worker has to live where its scope is. It keeps two caches:
+- the shell: navigations are network-first with a cache fallback. Asset URLs are read off the
+  live DOM.
+- the data under `terrain/` and `peaks/`: cache-first, ignoring `Vary`
+
+A whole site package is cached only on an explicit `downloadTerrainGrid`. iOS deletes all
+script-written storage after seven days without interaction (WebKit's storage-policy post),
+so tens of megabytes on a guess is a button, not a default. The dev server registers no worker.
+
+**Proved** by the deploy check, now 8 tests, at both the site root and `/Mountain-finder/`:
+- the Bogus Basin viewpoint gets the mosaic, and all 72 ray ends at 60 km fall inside it
+- `live.html` reloads with the context offline, and reads a cached grid back at its exact byte
+  length. The test first confirms an uncached file fails, so it cannot pass against a server
+  that is still answering.
+
+Three mutations are caught: `--no-sites`, a missing `sw.js`, and a stubbed cache lookup.
+
+**Limits.** The status line and download button are not rendered yet; `useOfflineCache()` is
+ready for them. `CACHE_VERSION` is bumped by hand. The seven-day eviction cannot be prevented
+from script.

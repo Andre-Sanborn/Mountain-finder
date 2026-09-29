@@ -1,11 +1,44 @@
+import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'vitest/config';
+import { transformWithEsbuild, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
 import { peaksServerPlugin } from './scripts/peaks-server';
 import { terrainServerPlugin } from './scripts/terrain-server';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Emit the offline cache's service worker at the deployment ROOT as `sw.js`.
+ *
+ * Not a `rollupOptions.input` entry, because a worker's scope is the directory
+ * it is served from and the only way to widen it is a `Service-Worker-Allowed`
+ * response header, which GitHub Pages does not let anyone set. An entry would
+ * land in `assets/` under a content hash and control `…/assets/` alone, which is
+ * no page. So the one file is transpiled and emitted under a fixed name, and
+ * `src/offline/live-service-worker.ts` is written with no imports to suit.
+ *
+ * Build only. The dev server deliberately serves no worker — see
+ * `src/app/live-main.tsx` for why.
+ */
+function liveServiceWorkerPlugin(): Plugin {
+  const source = resolve(HERE, 'src/offline/live-service-worker.ts');
+  return {
+    name: 'mountain-finder:live-service-worker',
+    apply: 'build',
+    async generateBundle() {
+      const { code } = await transformWithEsbuild(await readFile(source, 'utf8'), source, {
+        loader: 'ts',
+        target: 'es2020',
+        format: 'esm',
+      });
+      this.emitFile({ type: 'asset', fileName: 'sw.js', source: code });
+    },
+  };
+}
 
 export default defineConfig({
   // The terrain plugin publishes /terrain/ from data/tiles/ and
@@ -14,7 +47,7 @@ export default defineConfig({
   // deployment has to do instead. The peaks plugin does the same for /peaks/
   // from fixtures/peaks/regions/ (Q8) — in production both are staged as
   // static files by `npm run package:deploy`.
-  plugins: [react(), terrainServerPlugin(), peaksServerPlugin()],
+  plugins: [react(), terrainServerPlugin(), peaksServerPlugin(), liveServiceWorkerPlugin()],
   build: {
     rollupOptions: {
       // Two pages, two bundles. `index.html` is the still-photo app;
@@ -23,8 +56,8 @@ export default defineConfig({
       // is what makes `vite build` emit both, and both are rewritten for
       // `--base=/Mountain-finder/` so the Pages subpath works unchanged.
       input: {
-        index: resolve(dirname(fileURLToPath(import.meta.url)), 'index.html'),
-        live: resolve(dirname(fileURLToPath(import.meta.url)), 'live.html'),
+        index: resolve(HERE, 'index.html'),
+        live: resolve(HERE, 'live.html'),
       },
     },
   },

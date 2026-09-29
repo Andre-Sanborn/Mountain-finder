@@ -13,6 +13,16 @@
 # the AWS open-data mirror is the one network step, and it happens here rather
 # than in anybody's repository.
 #
+# It also builds the FIELD-SITE packages. A site is a viewpoint someone stands
+# at (`sites/*.json`), and its package is one grid mosaicked across whole tiles to
+# cover a 360° sweep from that spot. Both go into one terrain index, where
+# `selectTerrainGrid` gives the site's viewpoint its mosaic and every other
+# viewpoint the tile it falls in.
+#
+# The live AR page registers `sw.js` from the deployment root, so a phone that has
+# opened the page once keeps it after the signal goes. `npm run test:deploy` takes
+# Chromium's network away and reloads the page to prove that.
+#
 # TWO GATES BEFORE ANYTHING IS PUBLISHED, both of which fail the deploy:
 #   • `npm run test:deploy` drives the packaged directory in real Chromium
 #     behind a plain static server, and proves the Matterhorn lands within 12 px
@@ -92,21 +102,49 @@ jobs:
         run: echo "BASE_PATH=/${GITHUB_REPOSITORY#*/}/" >> "$GITHUB_ENV"
 
       # The only network step: SRTM tiles for the deployment. N45E007 is the
-      # Zermatt square degree the deploy check's Gornergrat proof needs, and the
-      # default deployment in docs/DEPLOY.md.
+      # Zermatt square degree the deploy check's Gornergrat proof needs. The four
+      # Idaho tiles are what the Bogus Basin field site's 60 km sweep is
+      # mosaicked out of — the disc crosses both a latitude and a longitude tile
+      # boundary, so all four are needed to cut it.
       - name: Fetch the SRTM tiles this deployment serves
-        run: npm run fetch:tiles -- N45E007
+        run: npm run fetch:tiles -- N43W116 N43W117 N44W116 N44W117 N45E007
 
       - name: Build for the subpath
         run: npm run build -- --base="$BASE_PATH"
 
-      - name: Package the deployable directory
-        run: npm run package:deploy -- --gzip
+      # One mosaic covering the whole Bogus Basin sweep, verified as it is built:
+      # every ray end at 60 km reads real terrain and every tile seam is checked
+      # byte for byte. `package:deploy` publishes it into the same terrain index
+      # as the whole tiles, and refuses to package a defined site whose mosaic is
+      # missing — the alternative is a deployment that quietly hands that
+      # viewpoint one 1° tile and a quarter of its own sweep.
+      - name: Build the field-site packages
+        run: npm run site:package -- bogus-basin
 
-      - name: List what is in the package
+      # No `--gzip`. It writes a `.hgt.gz` beside every grid for hosts with
+      # nginx's `gzip_static` or Caddy's `precompressed`; Pages serves the object
+      # that was asked for and has neither. On this deployment the siblings are
+      # 88.87 MB of artifact nobody can read — half the upload again, against a
+      # 10-minute Pages deployment timeout (docs/DEPLOY.md).
+      - name: Package the deployable directory
+        run: npm run package:deploy
+
+      # A published Pages site is supported up to 1 GB, and a larger tarball is
+      # also the thing most likely to run past the 10-minute deployment timeout
+      # (https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits).
+      # Terrain is what grows here — one mountainous square degree is 25.93 MB and
+      # the Bogus Basin mosaic is 42.55 MB — so the budget is checked before the
+      # upload rather than discovered as a failed deployment.
+      - name: List what is in the package, and check it against the Pages limit
         run: |
           du -sh dist
           find dist -type f -printf '%10s  %p\n' | sort -k2
+          bytes=$(du -sb dist | cut -f1)
+          echo "artifact: $bytes bytes"
+          if [ "$bytes" -gt 1000000000 ]; then
+            echo "::error::The package is $bytes bytes. GitHub Pages supports 1 GB (1e9 bytes) per site. Drop tiles from this deployment, or publish field-site mosaics instead of whole tiles."
+            exit 1
+          fi
 
       # Runs before the browser check, because a privacy breach is not something
       # to discover after a 120 s overlay test. Also runs before publication, by
