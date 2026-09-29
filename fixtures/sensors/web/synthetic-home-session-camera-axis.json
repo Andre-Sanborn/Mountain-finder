@@ -1,0 +1,6533 @@
+{
+ "format": "mountain-finder/home-session-recording@1",
+ "timestampBasis": "ms-since-recording-start",
+ "device": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1",
+ "knownBearing": {
+  "kind": "surveyed-bearing",
+  "magneticAzimuthDeg": 137.5,
+  "source": "synthetic: the bearing this recording was built around"
+ },
+ "segments": [
+  {
+   "pose": "flat-face-up",
+   "startMs": 0,
+   "endMs": 3000,
+   "events": [
+    {
+     "kind": "orientation",
+     "tMs": 0,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.502,
+      "beta": 0.0488,
+      "gamma": 0.0911,
+      "webkitCompassHeading": 137.8614,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 0,
+     "event": {
+      "acceleration": {
+       "x": 0.0374,
+       "y": 0.0257,
+       "z": 0.0558
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0489,
+       "y": 0.0222,
+       "z": -9.7508
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.2533,
+      "beta": 0.0555,
+      "gamma": 1.0917
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 200,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.5617,
+      "beta": -0.0087,
+      "gamma": -0.1834,
+      "webkitCompassHeading": 137.6479,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 200,
+     "event": {
+      "acceleration": {
+       "x": 0.0101,
+       "y": -0.0094,
+       "z": -0.0155
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0421,
+       "y": -0.0017,
+       "z": -9.8221
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.0093,
+      "beta": -0.2219,
+      "gamma": 0.1596
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 400,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.4813,
+      "beta": -0.1115,
+      "gamma": -0.0185,
+      "webkitCompassHeading": 137.1716,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 400,
+     "event": {
+      "acceleration": {
+       "x": -0.0018,
+       "y": 0.076,
+       "z": -0.0623
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0288,
+       "y": 0.1033,
+       "z": -9.8689
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.2034,
+      "beta": -0.0653,
+      "gamma": -0.4065
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 600,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.6184,
+      "beta": -0.1593,
+      "gamma": -0.005,
+      "webkitCompassHeading": 137.3451,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 600,
+     "event": {
+      "acceleration": {
+       "x": -0.0091,
+       "y": -0.1353,
+       "z": -0.0807
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.0208,
+       "y": -0.1283,
+       "z": -9.8873
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -1.3421,
+      "beta": 0.6578,
+      "gamma": -0.581
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 800,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.3596,
+      "beta": -0.011,
+      "gamma": 0.0421,
+      "webkitCompassHeading": 137.9675,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 800,
+     "event": {
+      "acceleration": {
+       "x": -0.051,
+       "y": -0.0082,
+       "z": -0.0438
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.0534,
+       "y": -0.0225,
+       "z": -9.8504
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.0517,
+      "beta": 0.1038,
+      "gamma": -0.6024
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 1000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.5146,
+      "beta": 0.1317,
+      "gamma": 0.2156,
+      "webkitCompassHeading": 138.5333,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 1000,
+     "event": {
+      "acceleration": {
+       "x": -0.0215,
+       "y": 0.0791,
+       "z": -0.0593
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.0212,
+       "y": 0.067,
+       "z": -9.8659
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.5871,
+      "beta": 0.0419,
+      "gamma": -0.0502
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 1200,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.4906,
+      "beta": -0.1102,
+      "gamma": -0.082,
+      "webkitCompassHeading": 137.8434,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 1200,
+     "event": {
+      "acceleration": {
+       "x": 0.0105,
+       "y": 0.0034,
+       "z": 0.0763
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.0135,
+       "y": 0.018,
+       "z": -9.7303
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.0112,
+      "beta": 0.0189,
+      "gamma": 0.3589
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 1400,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.531,
+      "beta": -0.0227,
+      "gamma": -0.1167,
+      "webkitCompassHeading": 137.2805,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 1400,
+     "event": {
+      "acceleration": {
+       "x": 0.0104,
+       "y": -0.0186,
+       "z": 0.0982
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0106,
+       "y": -0.0276,
+       "z": -9.7084
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.0934,
+      "beta": -0.0035,
+      "gamma": 0.0674
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 1600,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.4541,
+      "beta": 0.0894,
+      "gamma": 0.1132,
+      "webkitCompassHeading": 137.3559,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 1600,
+     "event": {
+      "acceleration": {
+       "x": -0.03,
+       "y": -0.0167,
+       "z": -0.0578
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.0393,
+       "y": 0.0011,
+       "z": -9.8644
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.2203,
+      "beta": 0.3575,
+      "gamma": -0.7886
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 1800,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.6738,
+      "beta": -0.1345,
+      "gamma": -0.0232,
+      "webkitCompassHeading": 137.8893,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 1800,
+     "event": {
+      "acceleration": {
+       "x": -0.0242,
+       "y": -0.1081,
+       "z": -0.0313
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.0089,
+       "y": -0.1225,
+       "z": -9.8379
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.274,
+      "beta": -0.1566,
+      "gamma": -0.4614
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 2000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.6392,
+      "beta": -0.0631,
+      "gamma": 0.0682,
+      "webkitCompassHeading": 136.9284,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 2000,
+     "event": {
+      "acceleration": {
+       "x": -0.0596,
+       "y": 0.0544,
+       "z": 0.0134
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.0554,
+       "y": 0.0657,
+       "z": -9.7932
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.4954,
+      "beta": -0.3492,
+      "gamma": -0.1423
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 2200,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.5759,
+      "beta": 0.0198,
+      "gamma": -0.0292,
+      "webkitCompassHeading": 137.2703,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 2200,
+     "event": {
+      "acceleration": {
+       "x": -0.1128,
+       "y": 0.1074,
+       "z": -0.028
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.0811,
+       "y": 0.0942,
+       "z": -9.8346
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.174,
+      "beta": 0.2519,
+      "gamma": -0.1715
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 2400,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.5637,
+      "beta": -0.0388,
+      "gamma": 0.0251,
+      "webkitCompassHeading": 137.1924,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 2400,
+     "event": {
+      "acceleration": {
+       "x": -0.0883,
+       "y": 0.0571,
+       "z": 0.0589
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.0955,
+       "y": 0.0803,
+       "z": -9.7477
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.3387,
+      "beta": -0.1671,
+      "gamma": 0.2415
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 2600,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.7355,
+      "beta": -0.0023,
+      "gamma": -0.0554,
+      "webkitCompassHeading": 137.7525,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 2600,
+     "event": {
+      "acceleration": {
+       "x": 0.1097,
+       "y": -0.0368,
+       "z": 0.0442
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.1025,
+       "y": -0.0418,
+       "z": -9.7624
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.0608,
+      "beta": 0.2463,
+      "gamma": 0.9314
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 2800,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.7315,
+      "beta": 0.0379,
+      "gamma": -0.1194,
+      "webkitCompassHeading": 136.7675,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 2800,
+     "event": {
+      "acceleration": {
+       "x": 0.0594,
+       "y": 0.0064,
+       "z": -0.056
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.046,
+       "y": -0.007,
+       "z": -9.8626
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.1775,
+      "beta": 0.7076,
+      "gamma": -0.1969
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 3000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.6924,
+      "beta": 0.1254,
+      "gamma": -0.1215,
+      "webkitCompassHeading": 137.3311,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 3000,
+     "event": {
+      "acceleration": {
+       "x": 0.0836,
+       "y": 0.021,
+       "z": 0.0697
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0841,
+       "y": 0.0178,
+       "z": -9.7369
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.5436,
+      "beta": -0.8695,
+      "gamma": 1.4515
+     }
+    }
+   ]
+  },
+  {
+   "pose": "upright-portrait",
+   "startMs": 3500,
+   "endMs": 6500,
+   "events": [
+    {
+     "kind": "orientation",
+     "tMs": 3500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.6398,
+      "beta": 89.9938,
+      "gamma": 0.0261,
+      "webkitCompassHeading": 138.4777,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 3500,
+     "event": {
+      "acceleration": {
+       "x": -0.0544,
+       "y": -0.0577,
+       "z": 0.0411
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.0544,
+       "y": -9.8643,
+       "z": 0.0374
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.141,
+      "beta": -0.6691,
+      "gamma": 0.8517
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 3700,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.7537,
+      "beta": 89.9718,
+      "gamma": -0.0619,
+      "webkitCompassHeading": 138.3537,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 3700,
+     "event": {
+      "acceleration": {
+       "x": -0.0632,
+       "y": 0.047,
+       "z": -0.0614
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.0632,
+       "y": -9.7596,
+       "z": -0.0905
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.0328,
+      "beta": 0.6623,
+      "gamma": 0.6006
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 3900,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.6636,
+      "beta": 90.0484,
+      "gamma": -0.0244,
+      "webkitCompassHeading": 138.0057,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 3900,
+     "event": {
+      "acceleration": {
+       "x": 0.078,
+       "y": -0.0291,
+       "z": 0.0658
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.078,
+       "y": -9.8357,
+       "z": 0.0794
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -1.0503,
+      "beta": -0.3563,
+      "gamma": -0.1451
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 4100,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.5967,
+      "beta": 89.8581,
+      "gamma": 0.1457,
+      "webkitCompassHeading": 136.6427,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 4100,
+     "event": {
+      "acceleration": {
+       "x": 0.0571,
+       "y": -0.0171,
+       "z": -0.1047
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0572,
+       "y": -9.8237,
+       "z": -0.1349
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 1.2507,
+      "beta": 0.8113,
+      "gamma": -0.555
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 4300,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.5972,
+      "beta": 90.0933,
+      "gamma": -0.0196,
+      "webkitCompassHeading": 136.9849,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 4300,
+     "event": {
+      "acceleration": {
+       "x": -0.0392,
+       "y": -0.0356,
+       "z": -0.0614
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.0392,
+       "y": -9.8422,
+       "z": -0.0709
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.109,
+      "beta": 0.3547,
+      "gamma": -0.6895
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 4500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.93,
+      "beta": 90.0066,
+      "gamma": 0.239,
+      "webkitCompassHeading": 137.0559,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 4500,
+     "event": {
+      "acceleration": {
+       "x": 0.0882,
+       "y": 0.0416,
+       "z": -0.0216
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0882,
+       "y": -9.765,
+       "z": -0.0149
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -1.1894,
+      "beta": -0.8996,
+      "gamma": -1.2635
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 4700,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.614,
+      "beta": 90.0091,
+      "gamma": 0.0327,
+      "webkitCompassHeading": 136.5287,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 4700,
+     "event": {
+      "acceleration": {
+       "x": 0.1038,
+       "y": -0.0144,
+       "z": 0.0037
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.1038,
+       "y": -9.821,
+       "z": -0.0038
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.989,
+      "beta": 1.0733,
+      "gamma": 0.2028
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 4900,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.7711,
+      "beta": 89.926,
+      "gamma": -0.0821,
+      "webkitCompassHeading": 137.4851,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 4900,
+     "event": {
+      "acceleration": {
+       "x": 0.0186,
+       "y": -0.0725,
+       "z": 0.02
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0186,
+       "y": -9.8791,
+       "z": 0.0433
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.6097,
+      "beta": 0.1962,
+      "gamma": -0.0069
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 5100,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.8231,
+      "beta": 90.0193,
+      "gamma": -0.1451,
+      "webkitCompassHeading": 137.1972,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 5100,
+     "event": {
+      "acceleration": {
+       "x": -0.0102,
+       "y": 0.1043,
+       "z": -0.0589
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.0102,
+       "y": -9.7023,
+       "z": -0.0712
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.6193,
+      "beta": -1.3077,
+      "gamma": 0.3747
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 5300,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.7227,
+      "beta": 89.8343,
+      "gamma": 0.0784,
+      "webkitCompassHeading": 137.2911,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 5300,
+     "event": {
+      "acceleration": {
+       "x": 0.0277,
+       "y": -0.018,
+       "z": 0.0692
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0277,
+       "y": -9.8246,
+       "z": 0.0651
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.2824,
+      "beta": 0.4175,
+      "gamma": -0.8369
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 5500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.552,
+      "beta": 89.8828,
+      "gamma": 0.0781,
+      "webkitCompassHeading": 138.4014,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 5500,
+     "event": {
+      "acceleration": {
+       "x": 0.0003,
+       "y": 0.0055,
+       "z": -0.0313
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0003,
+       "y": -9.8011,
+       "z": -0.0394
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.2628,
+      "beta": -0.6459,
+      "gamma": 1.4833
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 5700,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.7734,
+      "beta": 89.9194,
+      "gamma": 0.0341,
+      "webkitCompassHeading": 137.1768,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 5700,
+     "event": {
+      "acceleration": {
+       "x": 0.0244,
+       "y": -0.0121,
+       "z": 0.1739
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0244,
+       "y": -9.8187,
+       "z": 0.1457
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.5555,
+      "beta": -0.8405,
+      "gamma": -0.4608
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 5900,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.7665,
+      "beta": 90.1225,
+      "gamma": 0.2068,
+      "webkitCompassHeading": 137.2452,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 5900,
+     "event": {
+      "acceleration": {
+       "x": 0.0998,
+       "y": 0.1226,
+       "z": -0.0631
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0998,
+       "y": -9.684,
+       "z": -0.0823
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 1.1927,
+      "beta": -0.6663,
+      "gamma": 0.5393
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 6100,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.6366,
+      "beta": 90.0374,
+      "gamma": -0.0749,
+      "webkitCompassHeading": 137.4982,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 6100,
+     "event": {
+      "acceleration": {
+       "x": 0.0768,
+       "y": 0.0311,
+       "z": 0.0547
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0768,
+       "y": -9.7755,
+       "z": 0.0655
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.1974,
+      "beta": 0.5681,
+      "gamma": 1.2555
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 6300,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.8279,
+      "beta": 89.8926,
+      "gamma": 0.1721,
+      "webkitCompassHeading": 137.8046,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 6300,
+     "event": {
+      "acceleration": {
+       "x": 0.0781,
+       "y": -0.1048,
+       "z": 0.0488
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0781,
+       "y": -9.9114,
+       "z": 0.0279
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.0599,
+      "beta": 0.1709,
+      "gamma": 0.6959
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 6500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.6267,
+      "beta": 90.0477,
+      "gamma": -0.0855,
+      "webkitCompassHeading": 138.0118,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 6500,
+     "event": {
+      "acceleration": {
+       "x": 0.0007,
+       "y": 0.088,
+       "z": 0.0038
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0007,
+       "y": -9.7186,
+       "z": -0.001
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.5083,
+      "beta": 0.1316,
+      "gamma": -0.631
+     }
+    }
+   ]
+  },
+  {
+   "pose": "flat-face-down",
+   "startMs": 7000,
+   "endMs": 10000,
+   "events": [
+    {
+     "kind": "orientation",
+     "tMs": 7000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.8002,
+      "beta": 179.8825,
+      "gamma": 0.0716,
+      "webkitCompassHeading": 136.8445,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 7000,
+     "event": {
+      "acceleration": {
+       "x": 0.0178,
+       "y": 0.0854,
+       "z": -0.1293
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0004,
+       "y": 0.1051,
+       "z": 9.6773
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 1.0781,
+      "beta": -0.6126,
+      "gamma": -0.0456
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 7200,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.8845,
+      "beta": -179.8134,
+      "gamma": -0.0276,
+      "webkitCompassHeading": 137.0605,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 7200,
+     "event": {
+      "acceleration": {
+       "x": 0.1062,
+       "y": 0.0713,
+       "z": 0.0749
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0934,
+       "y": 0.0311,
+       "z": 9.8815
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.9225,
+      "beta": 0.1877,
+      "gamma": -1.4772
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 7400,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.8343,
+      "beta": -179.9411,
+      "gamma": 0.097,
+      "webkitCompassHeading": 136.9729,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 7400,
+     "event": {
+      "acceleration": {
+       "x": 0.0534,
+       "y": 0.0864,
+       "z": -0.0983
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0528,
+       "y": 0.0931,
+       "z": 9.7083
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.2152,
+      "beta": -0.5482,
+      "gamma": -0.8797
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 7600,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.8807,
+      "beta": 179.8772,
+      "gamma": 0.0476,
+      "webkitCompassHeading": 138.1969,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 7600,
+     "event": {
+      "acceleration": {
+       "x": 0.0357,
+       "y": -0.0664,
+       "z": -0.0344
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0312,
+       "y": -0.0481,
+       "z": 9.7722
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.6764,
+      "beta": 1.0155,
+      "gamma": 0.1942
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 7800,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.61,
+      "beta": -179.955,
+      "gamma": 0.0498,
+      "webkitCompassHeading": 137.233,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 7800,
+     "event": {
+      "acceleration": {
+       "x": -0.0445,
+       "y": 0.0885,
+       "z": 0.1021
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.0206,
+       "y": 0.0834,
+       "z": 9.9087
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.1644,
+      "beta": 0.3303,
+      "gamma": 1.0084
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 8000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.7764,
+      "beta": 179.9781,
+      "gamma": 0.0262,
+      "webkitCompassHeading": 137.2433,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 8000,
+     "event": {
+      "acceleration": {
+       "x": -0.1722,
+       "y": -0.0368,
+       "z": -0.0092
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.1573,
+       "y": -0.0154,
+       "z": 9.7974
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -1.2649,
+      "beta": -0.4906,
+      "gamma": -1.4751
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 8200,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.5954,
+      "beta": 179.9372,
+      "gamma": 0.0437,
+      "webkitCompassHeading": 137.1321,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 8200,
+     "event": {
+      "acceleration": {
+       "x": 0.0064,
+       "y": -0.0294,
+       "z": -0.0877
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0187,
+       "y": -0.0322,
+       "z": 9.7189
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.0388,
+      "beta": -0.3816,
+      "gamma": -0.434
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 8400,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.8013,
+      "beta": -179.7315,
+      "gamma": 0.0782,
+      "webkitCompassHeading": 137.7899,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 8400,
+     "event": {
+      "acceleration": {
+       "x": 0.0046,
+       "y": 0.0711,
+       "z": -0.0515
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0099,
+       "y": 0.0455,
+       "z": 9.7551
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.736,
+      "beta": 0.7704,
+      "gamma": 0.7354
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 8600,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.904,
+      "beta": 179.9595,
+      "gamma": 0.1951,
+      "webkitCompassHeading": 137.1088,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 8600,
+     "event": {
+      "acceleration": {
+       "x": 0.101,
+       "y": -0.0169,
+       "z": 0.031
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0873,
+       "y": -0.0135,
+       "z": 9.8376
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.5864,
+      "beta": 0.2578,
+      "gamma": 0.2445
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 8800,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.8293,
+      "beta": 179.9714,
+      "gamma": -0.0081,
+      "webkitCompassHeading": 137.1308,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 8800,
+     "event": {
+      "acceleration": {
+       "x": 0.0194,
+       "y": -0.0631,
+       "z": -0.1235
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0316,
+       "y": -0.0458,
+       "z": 9.6831
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.1896,
+      "beta": -0.0527,
+      "gamma": 0.1223
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 9000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.6768,
+      "beta": 179.9553,
+      "gamma": 0.1004,
+      "webkitCompassHeading": 137.4368,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 9000,
+     "event": {
+      "acceleration": {
+       "x": 0.006,
+       "y": 0.023,
+       "z": -0.0488
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.0058,
+       "y": 0.0286,
+       "z": 9.7578
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.0105,
+      "beta": 0.5024,
+      "gamma": -0.3775
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 9200,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.8799,
+      "beta": 179.9141,
+      "gamma": -0.1054,
+      "webkitCompassHeading": 137.6364,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 9200,
+     "event": {
+      "acceleration": {
+       "x": -0.0059,
+       "y": 0.0124,
+       "z": 0.0343
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.0453,
+       "y": 0.0115,
+       "z": 9.8409
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.5287,
+      "beta": -0.3387,
+      "gamma": 0.3058
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 9400,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.8025,
+      "beta": 179.9166,
+      "gamma": -0.0984,
+      "webkitCompassHeading": 137.5673,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 9400,
+     "event": {
+      "acceleration": {
+       "x": 0.1106,
+       "y": 0.1668,
+       "z": -0.0782
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.1154,
+       "y": 0.1626,
+       "z": 9.7284
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 1.263,
+      "beta": -0.5327,
+      "gamma": 0.2776
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 9600,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.9566,
+      "beta": -179.8737,
+      "gamma": 0.1623,
+      "webkitCompassHeading": 137.5644,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 9600,
+     "event": {
+      "acceleration": {
+       "x": 0.0165,
+       "y": -0.0827,
+       "z": -0.0228
+      },
+      "accelerationIncludingGravity": {
+       "x": 0.0157,
+       "y": -0.0988,
+       "z": 9.7838
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.2506,
+      "beta": -0.9867,
+      "gamma": -1.2734
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 9800,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.7749,
+      "beta": 179.951,
+      "gamma": -0.061,
+      "webkitCompassHeading": 137.9077,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 9800,
+     "event": {
+      "acceleration": {
+       "x": 0.0021,
+       "y": 0.0617,
+       "z": 0
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.002,
+       "y": 0.0655,
+       "z": 9.8066
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.6397,
+      "beta": 0.9291,
+      "gamma": -0.424
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 10000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.8232,
+      "beta": -179.9243,
+      "gamma": -0.084,
+      "webkitCompassHeading": 137.3077,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 10000,
+     "event": {
+      "acceleration": {
+       "x": -0.072,
+       "y": -0.0402,
+       "z": 0.0547
+      },
+      "accelerationIncludingGravity": {
+       "x": -0.081,
+       "y": -0.0305,
+       "z": 9.8613
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.6448,
+      "beta": -0.4909,
+      "gamma": 0.0609
+     }
+    }
+   ]
+  },
+  {
+   "pose": "right-edge-down",
+   "startMs": 10500,
+   "endMs": 13500,
+   "events": [
+    {
+     "kind": "orientation",
+     "tMs": 10500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 345.8994,
+      "beta": -0.1143,
+      "gamma": 90.1913,
+      "webkitCompassHeading": 138.0389,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 10500,
+     "event": {
+      "acceleration": {
+       "x": 0.067,
+       "y": -0.0241,
+       "z": -0.0706
+      },
+      "accelerationIncludingGravity": {
+       "x": 9.8736,
+       "y": -0.0293,
+       "z": -0.0637
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.5255,
+      "beta": -0.6255,
+      "gamma": 0.3776
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 10700,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 345.9296,
+      "beta": -0.0591,
+      "gamma": 89.9052,
+      "webkitCompassHeading": 137.0798,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 10700,
+     "event": {
+      "acceleration": {
+       "x": 0.004,
+       "y": -0.0844,
+       "z": -0.1324
+      },
+      "accelerationIncludingGravity": {
+       "x": 9.8106,
+       "y": -0.0407,
+       "z": -0.1302
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -1.2317,
+      "beta": -1.4333,
+      "gamma": -0.45
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 10900,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 345.9782,
+      "beta": -0.0903,
+      "gamma": 89.9033,
+      "webkitCompassHeading": 137.3693,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 10900,
+     "event": {
+      "acceleration": {
+       "x": -0.0168,
+       "y": -0.0942,
+       "z": 0.1094
+      },
+      "accelerationIncludingGravity": {
+       "x": 9.7898,
+       "y": -0.0663,
+       "z": 0.1138
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.2276,
+      "beta": 0.3005,
+      "gamma": 0.9924
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 11100,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 345.8146,
+      "beta": -0.0779,
+      "gamma": 89.9802,
+      "webkitCompassHeading": 137.0382,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 11100,
+     "event": {
+      "acceleration": {
+       "x": 0.1253,
+       "y": -0.1354,
+       "z": -0.0497
+      },
+      "accelerationIncludingGravity": {
+       "x": 9.9319,
+       "y": -0.1374,
+       "z": -0.0306
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.34,
+      "beta": -0.0591,
+      "gamma": -1.0846
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 11300,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 345.8515,
+      "beta": 0.0524,
+      "gamma": 90.0015,
+      "webkitCompassHeading": 137.2265,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 11300,
+     "event": {
+      "acceleration": {
+       "x": 0.1043,
+       "y": 0.0766,
+       "z": -0.0767
+      },
+      "accelerationIncludingGravity": {
+       "x": 9.9109,
+       "y": 0.0771,
+       "z": -0.0817
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.3211,
+      "beta": 0.0969,
+      "gamma": 0.3859
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 11500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 345.967,
+      "beta": -0.0111,
+      "gamma": 89.9505,
+      "webkitCompassHeading": 137.8444,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 11500,
+     "event": {
+      "acceleration": {
+       "x": -0.1588,
+       "y": -0.1125,
+       "z": -0.1227
+      },
+      "accelerationIncludingGravity": {
+       "x": 9.6478,
+       "y": -0.1037,
+       "z": -0.139
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.7836,
+      "beta": 1.0646,
+      "gamma": -1.1446
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 11700,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 346.1572,
+      "beta": 0.1015,
+      "gamma": 89.8964,
+      "webkitCompassHeading": 137.3871,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 11700,
+     "event": {
+      "acceleration": {
+       "x": 0.0019,
+       "y": 0.0333,
+       "z": -0.0425
+      },
+      "accelerationIncludingGravity": {
+       "x": 9.8085,
+       "y": 0.0073,
+       "z": -0.0708
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.3963,
+      "beta": 0.179,
+      "gamma": -0.0321
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 11900,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 345.9034,
+      "beta": -0.1338,
+      "gamma": 89.8313,
+      "webkitCompassHeading": 137.6627,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 11900,
+     "event": {
+      "acceleration": {
+       "x": -0.1417,
+       "y": 0.0851,
+       "z": -0.0045
+      },
+      "accelerationIncludingGravity": {
+       "x": 9.6649,
+       "y": 0.0792,
+       "z": -0.0378
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.7853,
+      "beta": -0.027,
+      "gamma": -1.2069
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 12100,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 345.888,
+      "beta": 0.156,
+      "gamma": 90.0728,
+      "webkitCompassHeading": 138.0429,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 12100,
+     "event": {
+      "acceleration": {
+       "x": 0.0331,
+       "y": 0.057,
+       "z": -0.0202
+      },
+      "accelerationIncludingGravity": {
+       "x": 9.8397,
+       "y": 0.0835,
+       "z": -0.0341
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.7441,
+      "beta": -0.6293,
+      "gamma": -0.7012
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 12300,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 346.0443,
+      "beta": -0.1431,
+      "gamma": 90.0779,
+      "webkitCompassHeading": 138.595,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 12300,
+     "event": {
+      "acceleration": {
+       "x": 0.0199,
+       "y": -0.0082,
+       "z": -0.0184
+      },
+      "accelerationIncludingGravity": {
+       "x": 9.8265,
+       "y": 0.0059,
+       "z": -0.0189
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.0577,
+      "beta": 0.4785,
+      "gamma": 1.2067
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 12500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 346.0736,
+      "beta": -0.1809,
+      "gamma": 90.0677,
+      "webkitCompassHeading": 136.2056,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 12500,
+     "event": {
+      "acceleration": {
+       "x": -0.067,
+       "y": -0.0266,
+       "z": 0.0083
+      },
+      "accelerationIncludingGravity": {
+       "x": 9.7396,
+       "y": -0.0208,
+       "z": 0.0121
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.6875,
+      "beta": -0.7964,
+      "gamma": -0.955
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 12700,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 345.9148,
+      "beta": 0.1028,
+      "gamma": 90.2067,
+      "webkitCompassHeading": 136.5544,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 12700,
+     "event": {
+      "acceleration": {
+       "x": 0.0447,
+       "y": 0.0452,
+       "z": -0.0432
+      },
+      "accelerationIncludingGravity": {
+       "x": 9.8513,
+       "y": 0.0396,
+       "z": -0.0534
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.3172,
+      "beta": 0.9278,
+      "gamma": 0.5437
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 12900,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 346.0004,
+      "beta": 0.0269,
+      "gamma": 89.8357,
+      "webkitCompassHeading": 137.5484,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 12900,
+     "event": {
+      "acceleration": {
+       "x": 0.032,
+       "y": 0.0185,
+       "z": 0.0734
+      },
+      "accelerationIncludingGravity": {
+       "x": 9.8386,
+       "y": 0.0119,
+       "z": 0.0722
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -0.3997,
+      "beta": 0.8003,
+      "gamma": 0.5178
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 13100,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 346.0835,
+      "beta": 0.0822,
+      "gamma": 90.2045,
+      "webkitCompassHeading": 138.5752,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 13100,
+     "event": {
+      "acceleration": {
+       "x": -0.177,
+       "y": 0.0489,
+       "z": 0.0275
+      },
+      "accelerationIncludingGravity": {
+       "x": 9.6296,
+       "y": 0.0397,
+       "z": 0.0033
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.084,
+      "beta": -0.1226,
+      "gamma": 0.7184
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 13300,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 346.1697,
+      "beta": -0.0847,
+      "gamma": 89.9012,
+      "webkitCompassHeading": 137.6853,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 13300,
+     "event": {
+      "acceleration": {
+       "x": 0.0318,
+       "y": 0.031,
+       "z": 0.1365
+      },
+      "accelerationIncludingGravity": {
+       "x": 9.8384,
+       "y": 0.041,
+       "z": 0.1123
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": -1.2195,
+      "beta": 0.0068,
+      "gamma": -0.8704
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 13500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 346.0389,
+      "beta": -0.254,
+      "gamma": 89.9249,
+      "webkitCompassHeading": 137.5618,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "motion",
+     "tMs": 13500,
+     "event": {
+      "acceleration": {
+       "x": 0.0722,
+       "y": 0.0926,
+       "z": 0.1174
+      },
+      "accelerationIncludingGravity": {
+       "x": 9.8788,
+       "y": 0.0948,
+       "z": 0.1208
+      },
+      "interval": 16
+     },
+     "rotationRate": {
+      "alpha": 0.354,
+      "beta": 0.0169,
+      "gamma": -0.1409
+     }
+    }
+   ]
+  },
+  {
+   "pose": "portrait-upright-known-bearing",
+   "startMs": 14000,
+   "endMs": 17000,
+   "note": "portrait, camera on the known bearing; the blind spot where the hypotheses agree",
+   "events": [
+    {
+     "kind": "orientation",
+     "tMs": 14000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.2036,
+      "beta": 85.1244,
+      "gamma": -0.1009,
+      "webkitCompassHeading": 137.8882,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 14200,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.0772,
+      "beta": 85.0722,
+      "gamma": -0.0517,
+      "webkitCompassHeading": 136.7575,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 14400,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.1923,
+      "beta": 85.053,
+      "gamma": -0.1824,
+      "webkitCompassHeading": 138.3244,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 14600,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.0306,
+      "beta": 85.0902,
+      "gamma": 0.0722,
+      "webkitCompassHeading": 138.4731,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 14800,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.1163,
+      "beta": 84.9008,
+      "gamma": -0.0007,
+      "webkitCompassHeading": 137.9873,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 15000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.2517,
+      "beta": 84.9368,
+      "gamma": -0.1771,
+      "webkitCompassHeading": 138.2293,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 15200,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.0623,
+      "beta": 84.9402,
+      "gamma": -0.0977,
+      "webkitCompassHeading": 136.2406,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 15400,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.9552,
+      "beta": 84.9416,
+      "gamma": -0.1973,
+      "webkitCompassHeading": 137.091,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 15600,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 75.9437,
+      "beta": 84.9792,
+      "gamma": -0.1194,
+      "webkitCompassHeading": 137.0557,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 15800,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.1408,
+      "beta": 84.9668,
+      "gamma": -0.027,
+      "webkitCompassHeading": 137.9466,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 16000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.2759,
+      "beta": 85.0897,
+      "gamma": 0.1324,
+      "webkitCompassHeading": 138.678,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 16200,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.1367,
+      "beta": 85.0546,
+      "gamma": -0.103,
+      "webkitCompassHeading": 136.8929,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 16400,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.1895,
+      "beta": 84.874,
+      "gamma": 0.1371,
+      "webkitCompassHeading": 137.23,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 16600,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.1819,
+      "beta": 85.0116,
+      "gamma": 0.0695,
+      "webkitCompassHeading": 137.5575,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 16800,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.2802,
+      "beta": 85.0678,
+      "gamma": -0.0215,
+      "webkitCompassHeading": 138.2531,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 17000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.2448,
+      "beta": 84.7318,
+      "gamma": -0.0649,
+      "webkitCompassHeading": 138.3584,
+      "webkitCompassAccuracy": 8
+     }
+    }
+   ]
+  },
+  {
+   "pose": "landscape-upright-known-bearing-top-right",
+   "startMs": 17500,
+   "endMs": 20500,
+   "note": "top edge to the right of the target; the hypotheses differ by +90 degrees",
+   "events": [
+    {
+     "kind": "orientation",
+     "tMs": 17500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 346.1091,
+      "beta": -0.1185,
+      "gamma": 89.9564,
+      "webkitCompassHeading": 137.1851,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 17700,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 346.2922,
+      "beta": 0.189,
+      "gamma": 89.9926,
+      "webkitCompassHeading": 137.7013,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 17900,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 346.2799,
+      "beta": 0.7456,
+      "gamma": 89.8857,
+      "webkitCompassHeading": 136.7769,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 18100,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 346.1353,
+      "beta": 1.1675,
+      "gamma": 89.788,
+      "webkitCompassHeading": 137.1146,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 18300,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 346.274,
+      "beta": 1.3259,
+      "gamma": 89.8822,
+      "webkitCompassHeading": 137.4461,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 18500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 346.2334,
+      "beta": 1.7973,
+      "gamma": 89.9941,
+      "webkitCompassHeading": 136.3212,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 18700,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 346.4025,
+      "beta": 1.8781,
+      "gamma": 89.8368,
+      "webkitCompassHeading": 136.5674,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 18900,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 346.4147,
+      "beta": 2.4926,
+      "gamma": 89.979,
+      "webkitCompassHeading": 137.2487,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 19100,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 346.2564,
+      "beta": 2.6713,
+      "gamma": 89.9767,
+      "webkitCompassHeading": 136.7016,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 19300,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 346.2956,
+      "beta": 2.8284,
+      "gamma": 90.0601,
+      "webkitCompassHeading": 137.9764,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 19500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 346.3821,
+      "beta": 3.2169,
+      "gamma": 90.1143,
+      "webkitCompassHeading": 137.7616,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 19700,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 346.3242,
+      "beta": 3.6878,
+      "gamma": 89.8473,
+      "webkitCompassHeading": 137.6202,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 19900,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 346.1937,
+      "beta": 4.0345,
+      "gamma": 90.1832,
+      "webkitCompassHeading": 137.1156,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 20100,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 346.2625,
+      "beta": 4.3467,
+      "gamma": 89.8731,
+      "webkitCompassHeading": 137.1549,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 20300,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 346.3243,
+      "beta": 4.7555,
+      "gamma": 90.0627,
+      "webkitCompassHeading": 137.6285,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 20500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 346.5048,
+      "beta": 4.8959,
+      "gamma": 90.1098,
+      "webkitCompassHeading": 138.1737,
+      "webkitCompassAccuracy": 8
+     }
+    }
+   ]
+  },
+  {
+   "pose": "landscape-upright-known-bearing-top-left",
+   "startMs": 21000,
+   "endMs": 24000,
+   "note": "top edge to the left of the target; the hypotheses differ by -90 degrees",
+   "events": [
+    {
+     "kind": "orientation",
+     "tMs": 21000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 270,
+     "event": {
+      "alpha": 166.4249,
+      "beta": 0.0309,
+      "gamma": -90.1115,
+      "webkitCompassHeading": 138.6402,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 21200,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 270,
+     "event": {
+      "alpha": 166.2474,
+      "beta": 0.4679,
+      "gamma": -90.025,
+      "webkitCompassHeading": 137.5859,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 21400,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 270,
+     "event": {
+      "alpha": 166.5426,
+      "beta": 0.6426,
+      "gamma": -90.1482,
+      "webkitCompassHeading": 137.8815,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 21600,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 270,
+     "event": {
+      "alpha": 166.2335,
+      "beta": 1.0672,
+      "gamma": -89.7761,
+      "webkitCompassHeading": 137.2512,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 21800,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 270,
+     "event": {
+      "alpha": 166.455,
+      "beta": 1.2201,
+      "gamma": -90.1145,
+      "webkitCompassHeading": 137.328,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 22000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 270,
+     "event": {
+      "alpha": 166.4579,
+      "beta": 1.6054,
+      "gamma": -89.8706,
+      "webkitCompassHeading": 137.5523,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 22200,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 270,
+     "event": {
+      "alpha": 166.3228,
+      "beta": 2.027,
+      "gamma": -89.9617,
+      "webkitCompassHeading": 137.9908,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 22400,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 270,
+     "event": {
+      "alpha": 166.3875,
+      "beta": 2.2062,
+      "gamma": -90.0501,
+      "webkitCompassHeading": 136.9046,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 22600,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 270,
+     "event": {
+      "alpha": 166.4398,
+      "beta": 2.8187,
+      "gamma": -90.0643,
+      "webkitCompassHeading": 136.6449,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 22800,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 270,
+     "event": {
+      "alpha": 166.4804,
+      "beta": 2.9825,
+      "gamma": -89.9159,
+      "webkitCompassHeading": 138.2033,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 23000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 270,
+     "event": {
+      "alpha": 166.6079,
+      "beta": 3.371,
+      "gamma": -90.0711,
+      "webkitCompassHeading": 137.4958,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 23200,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 270,
+     "event": {
+      "alpha": 166.3295,
+      "beta": 3.6832,
+      "gamma": -89.8864,
+      "webkitCompassHeading": 137.2084,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 23400,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 270,
+     "event": {
+      "alpha": 166.3503,
+      "beta": 3.946,
+      "gamma": -90.0685,
+      "webkitCompassHeading": 137.7822,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 23600,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 270,
+     "event": {
+      "alpha": 166.4446,
+      "beta": 4.4783,
+      "gamma": -90.0667,
+      "webkitCompassHeading": 137.8667,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 23800,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 270,
+     "event": {
+      "alpha": 166.3619,
+      "beta": 4.4956,
+      "gamma": -90.0574,
+      "webkitCompassHeading": 138.3179,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 24000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 270,
+     "event": {
+      "alpha": 166.4714,
+      "beta": 5.0809,
+      "gamma": -90.0313,
+      "webkitCompassHeading": 137.5718,
+      "webkitCompassAccuracy": 8
+     }
+    }
+   ]
+  },
+  {
+   "pose": "tip-past-vertical",
+   "startMs": 24500,
+   "endMs": 27500,
+   "note": "tipped through vertical; the top edge azimuth steps 180 degrees at beta 90",
+   "events": [
+    {
+     "kind": "orientation",
+     "tMs": 24500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.6091,
+      "beta": 70.0695,
+      "gamma": 0.059,
+      "webkitCompassHeading": 136.9694,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 24700,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.4599,
+      "beta": 72.807,
+      "gamma": 0.0808,
+      "webkitCompassHeading": 137.3615,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 24900,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.407,
+      "beta": 75.2932,
+      "gamma": -0.0269,
+      "webkitCompassHeading": 138.0727,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 25100,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.5111,
+      "beta": 78.0396,
+      "gamma": 0.1592,
+      "webkitCompassHeading": 137.0519,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 25300,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.4548,
+      "beta": 80.5846,
+      "gamma": -0.0398,
+      "webkitCompassHeading": 137.7864,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 25500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.3801,
+      "beta": 83.1633,
+      "gamma": 0.2017,
+      "webkitCompassHeading": 138.3104,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 25700,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.5876,
+      "beta": 86.2403,
+      "gamma": -0.0485,
+      "webkitCompassHeading": 137.3829,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 25900,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.3974,
+      "beta": 88.6367,
+      "gamma": 0.0821,
+      "webkitCompassHeading": 137.6653,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 26100,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.4268,
+      "beta": 91.327,
+      "gamma": 0.0959,
+      "webkitCompassHeading": 137.4765,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 26300,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.6876,
+      "beta": 93.9354,
+      "gamma": 0.0054,
+      "webkitCompassHeading": 136.4526,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 26500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.4551,
+      "beta": 96.5096,
+      "gamma": 0.0087,
+      "webkitCompassHeading": 138.1901,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 26700,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.4136,
+      "beta": 99.4993,
+      "gamma": -0.1499,
+      "webkitCompassHeading": 138.7013,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 26900,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.5297,
+      "beta": 102.018,
+      "gamma": 0.1078,
+      "webkitCompassHeading": 138.2583,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 27100,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.4582,
+      "beta": 104.8173,
+      "gamma": -0.0018,
+      "webkitCompassHeading": 136.9555,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 27300,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.6324,
+      "beta": 107.3496,
+      "gamma": 0.0378,
+      "webkitCompassHeading": 138.0682,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 27500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.5429,
+      "beta": 109.8497,
+      "gamma": 0.0534,
+      "webkitCompassHeading": 137.0342,
+      "webkitCompassAccuracy": 8
+     }
+    }
+   ]
+  },
+  {
+   "pose": "roll-about-camera-axis",
+   "startMs": 28000,
+   "endMs": 31000,
+   "note": "rolled about the camera axis with the bearing held",
+   "events": [
+    {
+     "kind": "orientation",
+     "tMs": 28000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 137.048,
+      "beta": 80.0445,
+      "gamma": -60.0189,
+      "webkitCompassHeading": 137.6385,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 28200,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 129.2221,
+      "beta": 80.0545,
+      "gamma": -51.9547,
+      "webkitCompassHeading": 137.7282,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 28400,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 121.0884,
+      "beta": 80.1967,
+      "gamma": -43.9431,
+      "webkitCompassHeading": 137.5351,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 28600,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 113.1226,
+      "beta": 80.0848,
+      "gamma": -35.8772,
+      "webkitCompassHeading": 137.4356,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 28800,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 104.784,
+      "beta": 79.9707,
+      "gamma": -28.1928,
+      "webkitCompassHeading": 137.7247,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 29000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 96.8885,
+      "beta": 79.8234,
+      "gamma": -20.0663,
+      "webkitCompassHeading": 137.7332,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 29200,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 88.8907,
+      "beta": 79.9213,
+      "gamma": -11.8289,
+      "webkitCompassHeading": 137.3657,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 29400,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 80.7794,
+      "beta": 79.8885,
+      "gamma": -3.9078,
+      "webkitCompassHeading": 137.8871,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 29600,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 72.6389,
+      "beta": 80.2513,
+      "gamma": 4.1459,
+      "webkitCompassHeading": 137.5371,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 29800,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 64.4799,
+      "beta": 79.9436,
+      "gamma": 11.9345,
+      "webkitCompassHeading": 137.2994,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 30000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 56.492,
+      "beta": 79.9402,
+      "gamma": 19.9357,
+      "webkitCompassHeading": 136.9042,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 30200,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 48.4226,
+      "beta": 79.9445,
+      "gamma": 27.9607,
+      "webkitCompassHeading": 137.893,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 30400,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 40.3343,
+      "beta": 80.0101,
+      "gamma": 35.9882,
+      "webkitCompassHeading": 137.322,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 30600,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 32.1446,
+      "beta": 79.9241,
+      "gamma": 43.9656,
+      "webkitCompassHeading": 137.4342,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 30800,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 24.5001,
+      "beta": 79.9292,
+      "gamma": 51.918,
+      "webkitCompassHeading": 138.3766,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 31000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 16.2899,
+      "beta": 80.1148,
+      "gamma": 59.8555,
+      "webkitCompassHeading": 137.7921,
+      "webkitCompassAccuracy": 8
+     }
+    }
+   ]
+  },
+  {
+   "pose": "rotate-to-landscape",
+   "startMs": 31500,
+   "endMs": 34500,
+   "note": "portrait upright to landscape upright, so the device roll swings a quarter turn",
+   "events": [
+    {
+     "kind": "orientation",
+     "tMs": 31500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 76.7646,
+      "beta": 84.9529,
+      "gamma": -0.0815,
+      "webkitCompassHeading": 137.8634,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 31700,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 70.5723,
+      "beta": 79.3417,
+      "gamma": 5.954,
+      "webkitCompassHeading": 137.1363,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 31900,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 64.3091,
+      "beta": 73.6688,
+      "gamma": 12.0603,
+      "webkitCompassHeading": 137.2032,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 32100,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 57.3873,
+      "beta": 67.953,
+      "gamma": 18.194,
+      "webkitCompassHeading": 138.0712,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 32300,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 50.1539,
+      "beta": 62.4129,
+      "gamma": 24.0775,
+      "webkitCompassHeading": 137.796,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 32500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 42.0415,
+      "beta": 56.7545,
+      "gamma": 29.9983,
+      "webkitCompassHeading": 137.7084,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 32700,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 33.6849,
+      "beta": 51.0233,
+      "gamma": 36.0419,
+      "webkitCompassHeading": 138.3114,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 32900,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 25.077,
+      "beta": 45.5494,
+      "gamma": 41.8468,
+      "webkitCompassHeading": 137.6766,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 33100,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 16.7817,
+      "beta": 39.4639,
+      "gamma": 47.9241,
+      "webkitCompassHeading": 136.9176,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 33300,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 8.9995,
+      "beta": 34.0136,
+      "gamma": 54.1316,
+      "webkitCompassHeading": 138.0689,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 33500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 2.0945,
+      "beta": 28.2536,
+      "gamma": 60.0423,
+      "webkitCompassHeading": 138.4475,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 33700,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 356.5488,
+      "beta": 22.8441,
+      "gamma": 66.0997,
+      "webkitCompassHeading": 138.3273,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 33900,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 352.2156,
+      "beta": 17.0319,
+      "gamma": 71.9986,
+      "webkitCompassHeading": 137.5017,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 34100,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 349.441,
+      "beta": 11.4427,
+      "gamma": 78.0832,
+      "webkitCompassHeading": 137.0652,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 34300,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 347.5733,
+      "beta": 5.6627,
+      "gamma": 83.903,
+      "webkitCompassHeading": 137.49,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 34500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 346.9459,
+      "beta": -0.0609,
+      "gamma": 90.0166,
+      "webkitCompassHeading": 137.8272,
+      "webkitCompassAccuracy": 8
+     }
+    }
+   ]
+  },
+  {
+   "pose": "still-drift",
+   "startMs": 35000,
+   "endMs": 155000,
+   "note": "flat on a table, untouched",
+   "events": [
+    {
+     "kind": "orientation",
+     "tMs": 35000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 77.0019,
+      "beta": -0.0582,
+      "gamma": 0.0847,
+      "webkitCompassHeading": 137.6097,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 37000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 77.1382,
+      "beta": -0.1164,
+      "gamma": -0.1579,
+      "webkitCompassHeading": 136.786,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 39000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 77.0726,
+      "beta": 0.0419,
+      "gamma": 0.0905,
+      "webkitCompassHeading": 137.7617,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 41000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 77.1487,
+      "beta": -0.0556,
+      "gamma": -0.1982,
+      "webkitCompassHeading": 136.3777,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 43000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 77.2601,
+      "beta": 0.0292,
+      "gamma": -0.028,
+      "webkitCompassHeading": 138.4037,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 45000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 77.292,
+      "beta": -0.0576,
+      "gamma": -0.1815,
+      "webkitCompassHeading": 137.8736,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 47000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 77.573,
+      "beta": 0.0496,
+      "gamma": -0.1414,
+      "webkitCompassHeading": 138.3419,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 49000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 77.4393,
+      "beta": -0.1098,
+      "gamma": -0.0376,
+      "webkitCompassHeading": 137.8901,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 51000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 77.5656,
+      "beta": 0.0534,
+      "gamma": 0.019,
+      "webkitCompassHeading": 137.4588,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 53000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 77.4653,
+      "beta": 0.1018,
+      "gamma": 0.007,
+      "webkitCompassHeading": 137.8363,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 55000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 77.513,
+      "beta": 0.1238,
+      "gamma": 0.0106,
+      "webkitCompassHeading": 137.3797,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 57000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 77.7925,
+      "beta": -0.1601,
+      "gamma": 0.0711,
+      "webkitCompassHeading": 137.2982,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 59000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 77.8238,
+      "beta": -0.0571,
+      "gamma": 0.115,
+      "webkitCompassHeading": 138.0758,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 61000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 154.9722,
+      "beta": 0.1004,
+      "gamma": -0.0509,
+      "webkitCompassHeading": 137.3615,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 63000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 155.0911,
+      "beta": 0.1951,
+      "gamma": -0.1375,
+      "webkitCompassHeading": 137.4057,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 65000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 155.1045,
+      "beta": -0.0649,
+      "gamma": 0.1284,
+      "webkitCompassHeading": 137.8708,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 67000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 155.1797,
+      "beta": 0.1082,
+      "gamma": 0.043,
+      "webkitCompassHeading": 137.5935,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 69000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 155.0944,
+      "beta": 0.1114,
+      "gamma": 0.095,
+      "webkitCompassHeading": 136.6275,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 71000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 155.3518,
+      "beta": 0.132,
+      "gamma": 0.0049,
+      "webkitCompassHeading": 138.645,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 73000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 155.5459,
+      "beta": 0.1092,
+      "gamma": -0.0747,
+      "webkitCompassHeading": 137.5241,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 75000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 155.4302,
+      "beta": -0.046,
+      "gamma": 0.0418,
+      "webkitCompassHeading": 137.7012,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 77000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 155.694,
+      "beta": 0.0559,
+      "gamma": -0.0331,
+      "webkitCompassHeading": 137.6165,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 79000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 155.3981,
+      "beta": 0.0535,
+      "gamma": 0.0658,
+      "webkitCompassHeading": 137.3294,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 81000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 155.5735,
+      "beta": -0.0012,
+      "gamma": 0.0057,
+      "webkitCompassHeading": 137.1342,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 83000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 155.6372,
+      "beta": -0.0081,
+      "gamma": -0.2309,
+      "webkitCompassHeading": 137.7516,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 85000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 155.8259,
+      "beta": -0.0853,
+      "gamma": -0.0788,
+      "webkitCompassHeading": 137.4268,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 87000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 156.0035,
+      "beta": -0.1582,
+      "gamma": -0.1271,
+      "webkitCompassHeading": 137.0103,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 89000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 156.1433,
+      "beta": 0.0571,
+      "gamma": 0.229,
+      "webkitCompassHeading": 137.8497,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 91000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 155.9396,
+      "beta": -0.2472,
+      "gamma": 0.0635,
+      "webkitCompassHeading": 137.0726,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 93000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 156.1503,
+      "beta": 0.0411,
+      "gamma": -0.0891,
+      "webkitCompassHeading": 137.5856,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 95000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 156.2253,
+      "beta": 0.0548,
+      "gamma": 0.0162,
+      "webkitCompassHeading": 136.8706,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 97000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 156.3228,
+      "beta": 0.0657,
+      "gamma": -0.0676,
+      "webkitCompassHeading": 137.4044,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 99000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 156.5658,
+      "beta": 0.0994,
+      "gamma": -0.093,
+      "webkitCompassHeading": 137.2804,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 101000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 156.545,
+      "beta": -0.1266,
+      "gamma": -0.1519,
+      "webkitCompassHeading": 137.3609,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 103000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 156.6166,
+      "beta": 0.0382,
+      "gamma": 0.0107,
+      "webkitCompassHeading": 138.0378,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 105000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 156.7033,
+      "beta": -0.1524,
+      "gamma": 0.0936,
+      "webkitCompassHeading": 137.4292,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 107000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 156.6467,
+      "beta": -0.0612,
+      "gamma": -0.0121,
+      "webkitCompassHeading": 138.5918,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 109000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 156.7182,
+      "beta": 0.0474,
+      "gamma": -0.0334,
+      "webkitCompassHeading": 138.0749,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 111000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 157.0388,
+      "beta": 0.2384,
+      "gamma": 0.0584,
+      "webkitCompassHeading": 137.896,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 113000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 157.013,
+      "beta": -0.0205,
+      "gamma": -0.1067,
+      "webkitCompassHeading": 136.7652,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 115000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 157.2275,
+      "beta": -0.0651,
+      "gamma": 0.0629,
+      "webkitCompassHeading": 137.1366,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 117000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 157.0208,
+      "beta": -0.0913,
+      "gamma": -0.0155,
+      "webkitCompassHeading": 137.4157,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 119000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 157.2742,
+      "beta": -0.0849,
+      "gamma": 0.0114,
+      "webkitCompassHeading": 137.3989,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 121000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 157.1287,
+      "beta": 0.1043,
+      "gamma": -0.1225,
+      "webkitCompassHeading": 136.7758,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 123000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 157.4807,
+      "beta": -0.179,
+      "gamma": -0.0802,
+      "webkitCompassHeading": 138.2703,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 125000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 157.6592,
+      "beta": -0.1745,
+      "gamma": 0.0666,
+      "webkitCompassHeading": 136.7502,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 127000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 157.4387,
+      "beta": -0.1467,
+      "gamma": 0.1339,
+      "webkitCompassHeading": 137.3818,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 129000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 157.6892,
+      "beta": -0.1566,
+      "gamma": 0.1203,
+      "webkitCompassHeading": 137.6594,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 131000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 157.9184,
+      "beta": -0.0878,
+      "gamma": -0.0599,
+      "webkitCompassHeading": 137.8863,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 133000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 157.7073,
+      "beta": -0.099,
+      "gamma": -0.0134,
+      "webkitCompassHeading": 136.4365,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 135000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 157.9938,
+      "beta": 0.0762,
+      "gamma": -0.135,
+      "webkitCompassHeading": 136.8746,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 137000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 157.907,
+      "beta": -0.0902,
+      "gamma": 0.1859,
+      "webkitCompassHeading": 137.7621,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 139000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 158.005,
+      "beta": 0.2179,
+      "gamma": 0.0611,
+      "webkitCompassHeading": 137.7288,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 141000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 158.1193,
+      "beta": 0.0857,
+      "gamma": -0.1097,
+      "webkitCompassHeading": 137.1365,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 143000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 158.1595,
+      "beta": -0.0424,
+      "gamma": -0.2189,
+      "webkitCompassHeading": 137.4137,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 145000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 158.1812,
+      "beta": -0.18,
+      "gamma": -0.1082,
+      "webkitCompassHeading": 137.8896,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 147000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 158.3694,
+      "beta": 0.1544,
+      "gamma": -0.0612,
+      "webkitCompassHeading": 137.7049,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 149000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 158.5424,
+      "beta": 0.0902,
+      "gamma": 0.0573,
+      "webkitCompassHeading": 137.1281,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 151000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 158.527,
+      "beta": -0.0656,
+      "gamma": -0.0417,
+      "webkitCompassHeading": 136.3551,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 153000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 158.5098,
+      "beta": -0.1934,
+      "gamma": 0.0708,
+      "webkitCompassHeading": 137.6202,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 155000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 158.6176,
+      "beta": 0.0572,
+      "gamma": -0.0898,
+      "webkitCompassHeading": 137.1974,
+      "webkitCompassAccuracy": 8
+     }
+    }
+   ]
+  },
+  {
+   "pose": "handling",
+   "startMs": 155500,
+   "endMs": 215500,
+   "note": "picked up, turned, put down",
+   "events": [
+    {
+     "kind": "orientation",
+     "tMs": 155500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 226.4928,
+      "beta": 19.8975,
+      "gamma": -39.936,
+      "webkitCompassHeading": 136.6181,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 156000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 225.4103,
+      "beta": 20.519,
+      "gamma": -39.1981,
+      "webkitCompassHeading": 138.1865,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 156500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 224.5974,
+      "beta": 20.9311,
+      "gamma": -38.5331,
+      "webkitCompassHeading": 137.6173,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 157000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 223.7742,
+      "beta": 21.5938,
+      "gamma": -38.0441,
+      "webkitCompassHeading": 138.3771,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 157500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 222.6908,
+      "beta": 21.8755,
+      "gamma": -37.1872,
+      "webkitCompassHeading": 137.0545,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 158000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 221.5953,
+      "beta": 22.612,
+      "gamma": -36.5916,
+      "webkitCompassHeading": 136.84,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 158500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 220.5021,
+      "beta": 22.9961,
+      "gamma": -35.9688,
+      "webkitCompassHeading": 136.9416,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 159000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 219.5139,
+      "beta": 23.476,
+      "gamma": -35.2708,
+      "webkitCompassHeading": 137.5155,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 159500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 218.4012,
+      "beta": 23.8898,
+      "gamma": -34.9058,
+      "webkitCompassHeading": 137.4389,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 160000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 217.391,
+      "beta": 24.6144,
+      "gamma": -33.8715,
+      "webkitCompassHeading": 137.0045,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 160500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 216.0687,
+      "beta": 25.0579,
+      "gamma": -33.5156,
+      "webkitCompassHeading": 137.3638,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 161000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 215.0467,
+      "beta": 25.5724,
+      "gamma": -32.6814,
+      "webkitCompassHeading": 137.2971,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 161500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 213.8018,
+      "beta": 26.2157,
+      "gamma": -32.0502,
+      "webkitCompassHeading": 137.6391,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 162000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 212.8355,
+      "beta": 26.3406,
+      "gamma": -31.3375,
+      "webkitCompassHeading": 137.4383,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 162500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 211.6592,
+      "beta": 26.9393,
+      "gamma": -30.6538,
+      "webkitCompassHeading": 137.6771,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 163000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 210.2591,
+      "beta": 27.6209,
+      "gamma": -29.9896,
+      "webkitCompassHeading": 137.132,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 163500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 209.242,
+      "beta": 27.851,
+      "gamma": -29.2324,
+      "webkitCompassHeading": 137.7019,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 164000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 208.0167,
+      "beta": 28.4302,
+      "gamma": -28.7767,
+      "webkitCompassHeading": 138.2815,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 164500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 206.9131,
+      "beta": 28.9413,
+      "gamma": -27.8362,
+      "webkitCompassHeading": 137.0096,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 165000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 205.4927,
+      "beta": 29.6413,
+      "gamma": -27.2156,
+      "webkitCompassHeading": 137.4685,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 165500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 204.2535,
+      "beta": 30.0286,
+      "gamma": -26.7549,
+      "webkitCompassHeading": 138.165,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 166000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 203.0821,
+      "beta": 30.6613,
+      "gamma": -25.9018,
+      "webkitCompassHeading": 137.3685,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 166500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 201.9564,
+      "beta": 30.9565,
+      "gamma": -25.3248,
+      "webkitCompassHeading": 137.1368,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 167000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 200.5528,
+      "beta": 31.2477,
+      "gamma": -24.7236,
+      "webkitCompassHeading": 138.1052,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 167500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 199.3586,
+      "beta": 31.9287,
+      "gamma": -24.0488,
+      "webkitCompassHeading": 137.3698,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 168000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 197.8463,
+      "beta": 32.4621,
+      "gamma": -23.1879,
+      "webkitCompassHeading": 137.5406,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 168500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 196.6093,
+      "beta": 32.7811,
+      "gamma": -22.6288,
+      "webkitCompassHeading": 137.7944,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 169000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 195.515,
+      "beta": 33.5611,
+      "gamma": -22.0591,
+      "webkitCompassHeading": 136.5041,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 169500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 194.2765,
+      "beta": 33.9916,
+      "gamma": -21.3109,
+      "webkitCompassHeading": 137.7741,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 170000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 192.9973,
+      "beta": 34.4244,
+      "gamma": -20.7103,
+      "webkitCompassHeading": 137.9583,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 170500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 191.7911,
+      "beta": 35.0275,
+      "gamma": -19.9422,
+      "webkitCompassHeading": 136.9903,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 171000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 190.5306,
+      "beta": 35.5217,
+      "gamma": -19.1868,
+      "webkitCompassHeading": 137.1026,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 171500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 189.1282,
+      "beta": 35.83,
+      "gamma": -18.5413,
+      "webkitCompassHeading": 137.2644,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 172000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 188.1012,
+      "beta": 36.4153,
+      "gamma": -17.9822,
+      "webkitCompassHeading": 137.4142,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 172500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 186.7259,
+      "beta": 36.8368,
+      "gamma": -17.3806,
+      "webkitCompassHeading": 137.3175,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 173000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 185.6321,
+      "beta": 37.6017,
+      "gamma": -16.5275,
+      "webkitCompassHeading": 137.6263,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 173500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 184.2423,
+      "beta": 37.9415,
+      "gamma": -15.981,
+      "webkitCompassHeading": 136.4682,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 174000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 183.2085,
+      "beta": 38.4899,
+      "gamma": -15.1918,
+      "webkitCompassHeading": 136.6449,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 174500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 182.1491,
+      "beta": 38.9913,
+      "gamma": -14.6195,
+      "webkitCompassHeading": 137.2665,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 175000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 180.9403,
+      "beta": 39.5175,
+      "gamma": -13.9962,
+      "webkitCompassHeading": 137.4013,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 175500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 179.9634,
+      "beta": 40.0213,
+      "gamma": -13.3492,
+      "webkitCompassHeading": 137.0669,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 176000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 178.6628,
+      "beta": 40.6041,
+      "gamma": -12.6401,
+      "webkitCompassHeading": 137.644,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 176500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 177.5168,
+      "beta": 41.0271,
+      "gamma": -12.1314,
+      "webkitCompassHeading": 137.5377,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 177000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 176.6745,
+      "beta": 41.5424,
+      "gamma": -11.2393,
+      "webkitCompassHeading": 137.6668,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 177500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 175.4621,
+      "beta": 41.8744,
+      "gamma": -10.681,
+      "webkitCompassHeading": 137.1082,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 178000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 174.3122,
+      "beta": 42.5268,
+      "gamma": -9.9781,
+      "webkitCompassHeading": 137.9746,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 178500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 173.2176,
+      "beta": 43.1464,
+      "gamma": -9.2235,
+      "webkitCompassHeading": 137.3538,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 179000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 171.9646,
+      "beta": 43.6191,
+      "gamma": -8.6721,
+      "webkitCompassHeading": 136.8875,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 179500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 171.3484,
+      "beta": 43.9284,
+      "gamma": -7.9649,
+      "webkitCompassHeading": 137.3182,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 180000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 170.1223,
+      "beta": 44.5525,
+      "gamma": -7.4449,
+      "webkitCompassHeading": 138.0814,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 180500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 169.1863,
+      "beta": 44.9302,
+      "gamma": -6.6747,
+      "webkitCompassHeading": 137.7728,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 181000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 168.2659,
+      "beta": 45.4721,
+      "gamma": -5.9164,
+      "webkitCompassHeading": 137.0665,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 181500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 167.086,
+      "beta": 45.9458,
+      "gamma": -5.3801,
+      "webkitCompassHeading": 138.4144,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 182000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 166.1916,
+      "beta": 46.4137,
+      "gamma": -4.5043,
+      "webkitCompassHeading": 136.6035,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 182500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 165.3196,
+      "beta": 46.8507,
+      "gamma": -3.9739,
+      "webkitCompassHeading": 136.9998,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 183000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 164.374,
+      "beta": 47.52,
+      "gamma": -3.4378,
+      "webkitCompassHeading": 137.0571,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 183500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 163.4082,
+      "beta": 47.9365,
+      "gamma": -2.5341,
+      "webkitCompassHeading": 138.418,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 184000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 162.5668,
+      "beta": 48.5937,
+      "gamma": -1.8832,
+      "webkitCompassHeading": 137.6868,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 184500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 161.6912,
+      "beta": 48.9836,
+      "gamma": -1.3568,
+      "webkitCompassHeading": 137.7002,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 185000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 160.6407,
+      "beta": 49.3886,
+      "gamma": -0.7835,
+      "webkitCompassHeading": 137.8758,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 185500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 159.9332,
+      "beta": 50.0705,
+      "gamma": 0.0996,
+      "webkitCompassHeading": 137.9665,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 186000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 159.2587,
+      "beta": 50.4385,
+      "gamma": 0.5914,
+      "webkitCompassHeading": 137.2967,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 186500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 158.3678,
+      "beta": 50.9213,
+      "gamma": 1.3563,
+      "webkitCompassHeading": 137.3115,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 187000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 157.3894,
+      "beta": 51.4228,
+      "gamma": 1.7804,
+      "webkitCompassHeading": 138.015,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 187500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 156.3797,
+      "beta": 51.9902,
+      "gamma": 2.7445,
+      "webkitCompassHeading": 138.626,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 188000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 155.6569,
+      "beta": 52.4702,
+      "gamma": 3.1551,
+      "webkitCompassHeading": 137.5303,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 188500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 155.0235,
+      "beta": 53.0843,
+      "gamma": 4.123,
+      "webkitCompassHeading": 137.3566,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 189000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 154.3296,
+      "beta": 53.5995,
+      "gamma": 4.6313,
+      "webkitCompassHeading": 137.7547,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 189500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 153.581,
+      "beta": 54.1229,
+      "gamma": 5.283,
+      "webkitCompassHeading": 138.2037,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 190000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 152.7448,
+      "beta": 54.4985,
+      "gamma": 6.0679,
+      "webkitCompassHeading": 136.929,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 190500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 152.1548,
+      "beta": 55.0348,
+      "gamma": 6.6411,
+      "webkitCompassHeading": 137.7555,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 191000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 151.1718,
+      "beta": 55.4398,
+      "gamma": 7.3528,
+      "webkitCompassHeading": 137.4758,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 191500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 150.5,
+      "beta": 55.9934,
+      "gamma": 7.8192,
+      "webkitCompassHeading": 137.0607,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 192000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 149.913,
+      "beta": 56.3341,
+      "gamma": 8.7773,
+      "webkitCompassHeading": 137.7911,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 192500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 149.2939,
+      "beta": 56.9885,
+      "gamma": 9.3118,
+      "webkitCompassHeading": 138.1383,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 193000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 148.2408,
+      "beta": 57.5216,
+      "gamma": 10.0969,
+      "webkitCompassHeading": 137.9722,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 193500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 147.842,
+      "beta": 58.1364,
+      "gamma": 10.6415,
+      "webkitCompassHeading": 137.4243,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 194000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 146.7736,
+      "beta": 58.3004,
+      "gamma": 11.4806,
+      "webkitCompassHeading": 136.4842,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 194500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 146.4226,
+      "beta": 58.9273,
+      "gamma": 12.0014,
+      "webkitCompassHeading": 137.1575,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 195000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 145.6888,
+      "beta": 59.3923,
+      "gamma": 12.7467,
+      "webkitCompassHeading": 136.7634,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 195500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 144.8684,
+      "beta": 60.0093,
+      "gamma": 13.385,
+      "webkitCompassHeading": 137.7005,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 196000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 144.3728,
+      "beta": 60.5467,
+      "gamma": 14.0873,
+      "webkitCompassHeading": 137.7579,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 196500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 143.5853,
+      "beta": 61.1118,
+      "gamma": 14.8041,
+      "webkitCompassHeading": 137.8006,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 197000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 142.9091,
+      "beta": 61.6811,
+      "gamma": 15.279,
+      "webkitCompassHeading": 138.4069,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 197500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 142.2095,
+      "beta": 62.1042,
+      "gamma": 15.9937,
+      "webkitCompassHeading": 137.7863,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 198000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 141.8038,
+      "beta": 62.5602,
+      "gamma": 16.582,
+      "webkitCompassHeading": 138.0559,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 198500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 141.1015,
+      "beta": 62.9939,
+      "gamma": 17.2047,
+      "webkitCompassHeading": 136.7026,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 199000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 140.7483,
+      "beta": 63.4114,
+      "gamma": 18.1264,
+      "webkitCompassHeading": 138.8109,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 199500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 139.8774,
+      "beta": 64.0608,
+      "gamma": 18.6837,
+      "webkitCompassHeading": 137.3828,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 200000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 139.2199,
+      "beta": 64.4787,
+      "gamma": 19.3862,
+      "webkitCompassHeading": 137.8289,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 200500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 138.5787,
+      "beta": 65.1293,
+      "gamma": 19.8409,
+      "webkitCompassHeading": 137.4584,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 201000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 138.1192,
+      "beta": 65.5135,
+      "gamma": 20.5403,
+      "webkitCompassHeading": 137.5466,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 201500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 137.2783,
+      "beta": 65.9786,
+      "gamma": 21.305,
+      "webkitCompassHeading": 137.3069,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 202000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 136.8464,
+      "beta": 66.6033,
+      "gamma": 21.9215,
+      "webkitCompassHeading": 136.8467,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 202500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 136.125,
+      "beta": 67.0896,
+      "gamma": 22.6657,
+      "webkitCompassHeading": 137.9355,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 203000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 135.6132,
+      "beta": 67.5372,
+      "gamma": 23.3529,
+      "webkitCompassHeading": 137.161,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 203500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 134.8251,
+      "beta": 68.1297,
+      "gamma": 24.1042,
+      "webkitCompassHeading": 137.8044,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 204000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 134.1938,
+      "beta": 68.3103,
+      "gamma": 24.7716,
+      "webkitCompassHeading": 137.5114,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 204500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 133.7615,
+      "beta": 68.9753,
+      "gamma": 25.3103,
+      "webkitCompassHeading": 137.5861,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 205000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 133.1126,
+      "beta": 69.3639,
+      "gamma": 25.9402,
+      "webkitCompassHeading": 138.4888,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 205500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 132.5502,
+      "beta": 70.2712,
+      "gamma": 26.6874,
+      "webkitCompassHeading": 136.8625,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 206000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 132.0698,
+      "beta": 70.5644,
+      "gamma": 27.2453,
+      "webkitCompassHeading": 138.1689,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 206500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 131.4347,
+      "beta": 70.9282,
+      "gamma": 28.0459,
+      "webkitCompassHeading": 137.7601,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 207000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 130.8038,
+      "beta": 71.5194,
+      "gamma": 28.7841,
+      "webkitCompassHeading": 136.9656,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 207500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 130.3174,
+      "beta": 71.9576,
+      "gamma": 29.3822,
+      "webkitCompassHeading": 137.5218,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 208000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 129.592,
+      "beta": 72.6309,
+      "gamma": 29.9383,
+      "webkitCompassHeading": 137.4222,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 208500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 129.029,
+      "beta": 72.8437,
+      "gamma": 30.5471,
+      "webkitCompassHeading": 137.0172,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 209000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 128.5888,
+      "beta": 73.4865,
+      "gamma": 31.2351,
+      "webkitCompassHeading": 136.94,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 209500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 127.8349,
+      "beta": 74.0534,
+      "gamma": 32.0003,
+      "webkitCompassHeading": 138.1892,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 210000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 127.2004,
+      "beta": 74.5879,
+      "gamma": 32.6964,
+      "webkitCompassHeading": 137.4438,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 210500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 126.5794,
+      "beta": 74.8834,
+      "gamma": 33.2535,
+      "webkitCompassHeading": 137.4396,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 211000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 126.0983,
+      "beta": 75.617,
+      "gamma": 34.0748,
+      "webkitCompassHeading": 137.9861,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 211500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 125.4675,
+      "beta": 76.0453,
+      "gamma": 34.6002,
+      "webkitCompassHeading": 137.9505,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 212000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 124.8694,
+      "beta": 76.6393,
+      "gamma": 35.3777,
+      "webkitCompassHeading": 137.2877,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 212500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 124.2837,
+      "beta": 76.9876,
+      "gamma": 36.1331,
+      "webkitCompassHeading": 137.9446,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 213000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 123.704,
+      "beta": 77.645,
+      "gamma": 36.6783,
+      "webkitCompassHeading": 138.2163,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 213500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 123.049,
+      "beta": 77.9554,
+      "gamma": 37.4495,
+      "webkitCompassHeading": 136.8824,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 214000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 122.521,
+      "beta": 78.6272,
+      "gamma": 37.8149,
+      "webkitCompassHeading": 138.2024,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 214500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 121.915,
+      "beta": 78.7879,
+      "gamma": 38.6438,
+      "webkitCompassHeading": 137.5968,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 215000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 121.3312,
+      "beta": 79.3984,
+      "gamma": 39.3768,
+      "webkitCompassHeading": 137.5933,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 215500,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 0,
+     "event": {
+      "alpha": 120.6952,
+      "beta": 80.053,
+      "gamma": 39.9876,
+      "webkitCompassHeading": 137.3655,
+      "webkitCompassAccuracy": 8
+     }
+    }
+   ]
+  },
+  {
+   "pose": "sun-capture",
+   "startMs": 216000,
+   "endMs": 219000,
+   "note": "landscape, sun centred horizontally in the frame",
+   "events": [
+    {
+     "kind": "orientation",
+     "tMs": 216000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 71.0952,
+      "beta": 0.0439,
+      "gamma": 79.9115,
+      "webkitCompassHeading": 137.9433,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 216200,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 71.308,
+      "beta": -0.0805,
+      "gamma": 79.9636,
+      "webkitCompassHeading": 137.9208,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 216400,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 70.9621,
+      "beta": 0.2124,
+      "gamma": 80.0199,
+      "webkitCompassHeading": 137.243,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 216600,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 71.1257,
+      "beta": -0.0327,
+      "gamma": 80.1212,
+      "webkitCompassHeading": 137.3967,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 216800,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 71.2026,
+      "beta": 0.1452,
+      "gamma": 80.0042,
+      "webkitCompassHeading": 137.085,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 217000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 70.9579,
+      "beta": -0.0661,
+      "gamma": 80.0189,
+      "webkitCompassHeading": 137.2137,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 217200,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 71.1733,
+      "beta": 0.0414,
+      "gamma": 79.8718,
+      "webkitCompassHeading": 136.7671,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 217400,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 71.1338,
+      "beta": -0.1999,
+      "gamma": 79.9873,
+      "webkitCompassHeading": 137.9014,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 217600,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 71.2993,
+      "beta": 0.0622,
+      "gamma": 80.0252,
+      "webkitCompassHeading": 138.334,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 217800,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 71.065,
+      "beta": 0.0113,
+      "gamma": 79.8474,
+      "webkitCompassHeading": 137.8576,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 218000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 71.262,
+      "beta": 0.1714,
+      "gamma": 80.1735,
+      "webkitCompassHeading": 137.5551,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 218200,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 71.4028,
+      "beta": -0.1618,
+      "gamma": 80.1152,
+      "webkitCompassHeading": 137.0462,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 218400,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 71.0244,
+      "beta": -0.0858,
+      "gamma": 79.9315,
+      "webkitCompassHeading": 137.8411,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 218600,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 71.2317,
+      "beta": -0.1269,
+      "gamma": 80.0942,
+      "webkitCompassHeading": 137.6318,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 218800,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 71.2946,
+      "beta": 0.133,
+      "gamma": 80.1054,
+      "webkitCompassHeading": 137.0972,
+      "webkitCompassAccuracy": 8
+     }
+    },
+    {
+     "kind": "orientation",
+     "tMs": 219000,
+     "type": "deviceorientation",
+     "absolutePresent": false,
+     "screenAngleDeg": 90,
+     "event": {
+      "alpha": 71.3018,
+      "beta": -0.1344,
+      "gamma": 80.0559,
+      "webkitCompassHeading": 136.5517,
+      "webkitCompassAccuracy": 8
+     }
+    }
+   ]
+  }
+ ],
+ "note": "Synthetic. A phone whose webkitCompassHeading obeys the rear-camera-axis hypothesis, built by synthesiseRecording in src/live/recording.ts from closed forms derived by hand from the W3C rotation matrix. Nothing here was recorded from a phone. See README.md for the exact specification."
+}

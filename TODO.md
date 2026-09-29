@@ -21,7 +21,9 @@ after its self-check has run and passed here. The checks are in
 - [x] Build the repository privacy check: no EXIF GPS or coordinate pairs in new files; wire into check
 - [x] Build the web sensor adapter as a pure function of raw Safari and Chromium events
 - [ ] Settle webkitCompassHeading's reference axis for an upright phone from the home recording
-- [ ] Build a recording schema and `analyze:recording` that scores the compass hypotheses automatically
+- [x] Build a recording schema and `analyze:recording` that scores the compass hypotheses automatically
+- [ ] Add `analyze:recording` and `site:package` to package.json
+- [ ] Wire the recording schema into the web app so the home session can save a capture bundle
 - [ ] Only if landscape fails: the iOS alpha-offset hold, re-anchored continuously, invalidated on re-base
 - [ ] Settle the device-roll to screen-roll sign from the home recording
 - [x] Give suggestPoseTrim tests a timeout that holds under parallel load (1.8 s alone, >5 s at load 13)
@@ -29,7 +31,6 @@ after its self-check has run and passed here. The checks are in
 - [x] Import a new Overture peak region covering Bogus Basin's 60 km disc; keep idaho-central unchanged
 - [ ] Decide fetch-peaks' default release now that 2026-06-17.0 is deleted upstream; pin --release in regenerate commands
 - [ ] Stage site packages from package:deploy and publish Bogus Basin from pages.yml
-- [ ] Add `site:package` to package.json
 - [ ] Measure the 360° annotateScene under phone-class CPU throttling (Node: 0.98–1.87 s on 4-core Xeon)
 - [ ] Build the web AR screen in landscape: single-lens camera, live loop, drag, band, sun marker, offline worker
 - [ ] Build the capture bundle and `analyze:field`; bundles never enter the repository

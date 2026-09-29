@@ -808,3 +808,39 @@ raises instead.
 **`testTimeout` is 15 s** in the root vitest config. The CV aligner's real-SRTM cases took
 4.1–4.9 s each against the 5 s default when the suite shares four cores. The acceptance config
 already allows 30 s.
+
+## The home-session recording and its analyzer, `src/live/recording.ts`
+
+A recording is a list of labelled pose segments. Each holds raw orientation and motion fields,
+`webkitCompassHeading` and its accuracy, whether the event carried an `absolute` key,
+`screen.orientation.angle`, and camera track settings. Timestamps are milliseconds from the
+start of the capture. There are thirteen pose labels, and four of them are `calibration.ts`'s
+holds under their own names. `npx tsx scripts/analyze-recording.ts <file> [--brief]` prints
+fourteen verdicts, each with a confidence and its evidence. It writes nothing.
+
+**The known bearing stores the answer, not the inputs.** The device computes the sun's
+azimuth and declination, stores the resulting bearing, and discards position and time. The
+optional true azimuth and declination exist only to check the sign of the declination to
+0.05°. A stored declination narrows the observer to an isogonic band, and that residual leak
+is stated here.
+
+**The parser is strict.** It uses exact key whitelists and a forbidden-key scan over the raw
+document. It refuses any number of 1e9 or more as epoch-shaped, and any ISO date as a wall
+clock. Every problem is collected rather than stopping at the first.
+
+**One relation discriminates the compass hypotheses.** The top-edge azimuth minus the camera
+azimuth is an angle Δ that depends only on beta and gamma. `device-top-edge` predicts
+`reading = camera + Δ`, and `rear-camera-axis` predicts `reading = camera`. Δ is 0 in portrait,
+which is the blind spot, ±90 in landscape, steps from 0 to 180 past vertical, and sweeps under a
+roll. A pose that fits neither hypothesis convicts the whole recording. That rule was added after
+a mutation showed the tip pose alone cannot tell +Δ from −Δ.
+
+Two synthetic recordings differ only in what the compass reports, and the analyzer names each
+correctly. It recovers an injected drift of 2.4 °/min across a 77° re-base as +2.31 °/min. The
+forward model uses hand-reduced closed forms, and a test checks it against the adapter's full
+matrix at more than 100 attitudes. The suite has 62 tests, and six mutations each fail between
+1 and 12 of them.
+
+**Limits.** A portrait-only recording cannot separate the hypotheses, and returns inconclusive
+by design. The drift figure while handling is an upper bound, because of compass lag. The
+screen-angle values in the fixtures are synthetic.
