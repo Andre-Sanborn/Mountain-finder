@@ -1191,3 +1191,25 @@ never settles when no worker is registered.
 There are 50 new unit tests and 5 new e2e tests. Three mutations of the range derivation were
 run. Dropping the margin survived at first, until a test was added that searches for a
 viewpoint where the margin matters.
+
+## The human guides, and the privacy gate's fix-key message
+
+`docs/HOME-SESSION-GUIDE.md` and `docs/FIELD-SESSION-GUIDE.md` are written for the human:
+where each step happens, exact URLs in copyable blocks, and nothing to fill in. The home guide
+copies `home-session.ts`'s 13 steps word for word. When those steps change, the guide changes
+too. The sun window is 15–50°, measured with fists at arm's length. The order is Start and
+permissions, then the offline download, which appears only once there is a fix, then airplane
+mode and a reload. The field guide's steps come from prereg §2.7 and carry a banner until
+field mode lands.
+
+**iOS settings paths:**
+- verified: Settings → Apps → Safari → Camera, and Privacy & Security → Location Services →
+  Safari Websites
+- not verified: any Motion & Orientation Access setting on current iOS. Reports say it went
+  after iOS 13. The guide labels this as unverified.
+
+`refusals.ts` still names the older paths.
+
+**The privacy gate's position-fix finding now names each key and its line**, and says that prose
+counts. That rule is the only one judged over the whole file. Replacing the line number with a
+constant fails 2 tests.

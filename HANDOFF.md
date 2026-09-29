@@ -22,8 +22,10 @@ and self-checks in [IMPLEMENTATION.md](IMPLEMENTATION.md), open work in [TODO.md
 - **Recorded, not asked: how "archive all of our work" was read.** Snapshot the state, archive
   the governance documents, keep the code and build on it. The human can say if they meant a
   whole-tree archive and rebuild.
-- **Coming later, not yet: one home session (~15 min) and one field session (~25 min)** with
-  the phone. Steps will be written when the app is ready for them. Nothing is asked now.
+- **Coming later: the home session (~15 min) and the field session (~25 min).** The steps are
+  written in [docs/HOME-SESSION-GUIDE.md](docs/HOME-SESSION-GUIDE.md) and
+  [docs/FIELD-SESSION-GUIDE.md](docs/FIELD-SESSION-GUIDE.md). Both are blocked on GitHub Pages
+  being on. The home session comes first, because it measures the drag and roll terms.
 
 ## Where the work lives
 

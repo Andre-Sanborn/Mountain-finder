@@ -56,7 +56,11 @@ after its self-check has run and passed here. The checks are in
 - [x] Prereg: gate F3/F4 at one 2σ exceedance and no 3σ; F4 pan to frame edge; accuracy confidence; text fixes
 - [ ] Emit horizontalAccuracyM and accuracyConvention from the live screen into the capture bundle
 - [ ] Re-derive the drag and roll terms from the home-session measurements; record in the prereg revision history
-- [ ] Make the privacy gate's position-fix message say which key set tripped it; prose 'accuracy' trips it now
+- [x] Make the privacy gate's position-fix message say which key set tripped it; prose 'accuracy' trips it now
+
+- [ ] Fix refusals.ts iOS settings paths: Safari moved to Settings → Apps → Safari in iOS 18.2
+- [ ] Decide the motion-permission remedy: no Motion & Orientation Access setting found on current iOS
+- [ ] Replace the field guide's provisional steps with the real screen wording once field mode lands
 
 ## Other open work
 
