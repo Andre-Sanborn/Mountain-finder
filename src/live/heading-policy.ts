@@ -35,16 +35,70 @@
  * true north. Hence `basis`, which every caller has to look at to get the
  * heading out, and `caveat`, which is written for a screen rather than a log.
  *
- * Pure: samples in, decision out. No clock, no device, no I/O.
+ * ── THE FIELD MODEL, AND WHY IT IS A THIRD BASIS ───────────────────────────
+ * The declination is computable. Given the observer's position and a date,
+ * `src/core/declination.ts` evaluates WMM2025 and returns it to about half a
+ * degree, which beats the 10–20° error of leaving a magnetic bearing alone by
+ * more than an order of magnitude. So the policy converts when it can.
+ *
+ * A converted bearing is reported as `true-model`, not as `true`, because the
+ * two are not the same claim. `true` means the platform resolved north itself
+ * from the device's own model and whatever else Core Location knows. That
+ * still wins: it is at least as good, and the app cannot see what went into
+ * it. `true-model` means this repository added a modelled declination, and it
+ * carries the number it added, the model's name, and whether the date fell
+ * inside the model's fit window — so the screen can name the source and its
+ * accuracy instead of presenting north as a bare fact.
+ *
+ * Outside the model's validity window, or with no position, there is nothing
+ * to convert with and the bearing falls back to the labelled `magnetic` path.
+ *
+ * Pure: samples in, decision out. No clock, no device, no I/O. The date is an
+ * argument, exactly as it is in `src/core/declination.ts`.
  */
 
+import {
+  WMM2025_NAME,
+  WMM2025_VALID_FROM,
+  WMM2025_VALID_UNTIL,
+  geomagneticField,
+  type GeomagneticSite,
+} from '../core/declination.js';
 import { smoothedHeading, type FuseOptions, type HeadingSample, type SensorRefusal } from './sensors.js';
 
 /**
  * Where a drawable heading came from. Callers destructure on this, so adding a
  * basis is a compile error at every use site rather than a silent default.
+ *
+ * `true` is the platform's own true heading, or a declination the caller
+ * supplied. `true-model` is a magnetic bearing this repository converted with
+ * WMM2025. `magnetic` is unconverted.
  */
-export type HeadingBasis = 'true' | 'magnetic';
+export type HeadingBasis = 'true' | 'true-model' | 'magnetic';
+
+/** Where and when to evaluate the field model. The date is an input. */
+export interface ModelDeclinationInput {
+  readonly site: GeomagneticSite;
+  /** A decimal year or a `Date`, per `geomagneticField`. */
+  readonly when: number | Date;
+}
+
+/** What the model contributed, so a screen can name it rather than imply it. */
+export interface ModelDeclinationUsed {
+  /** The model's own name, e.g. `WMM-2025`. */
+  readonly modelName: string;
+  /** East-positive declination added to the magnetic bearing, degrees. */
+  readonly declinationDeg: number;
+  /** The decimal year the field was evaluated at. */
+  readonly decimalYear: number;
+  /** Always true on the `true-model` path; false is what sends it to `magnetic`. */
+  readonly withinModelValidity: boolean;
+}
+
+/** `FuseOptions`, plus the position and date the field model needs. */
+export interface HeadingPolicyOptions extends FuseOptions {
+  readonly modelDeclination?: ModelDeclinationInput;
+}
 
 export interface DrawableHeading {
   readonly basis: HeadingBasis;
@@ -57,6 +111,8 @@ export interface DrawableHeading {
    * just an apology.
    */
   readonly caveat: string;
+  /** Present only when `basis` is `true-model`. */
+  readonly model?: ModelDeclinationUsed;
 }
 
 export type HeadingDecision =
@@ -74,6 +130,15 @@ export type HeadingDecision =
  */
 export const TYPICAL_DECLINATION_BOUND_DEG = 15;
 
+/**
+ * The field model's own declination error, degrees RMS, as NOAA states it for
+ * WMM2025. It describes the main and long-wavelength crustal field only, so
+ * local anomalies sit on top of it and reach several degrees over iron-rich
+ * rock. Both numbers go in the caveat: the second is the one that matters to a
+ * user standing on a granite ridge.
+ */
+export const MODEL_DECLINATION_RMS_DEG = 0.5;
+
 const REFUSAL_DETAIL: Readonly<Record<SensorRefusal, string>> = {
   'no-samples': 'the compass has not reported yet',
   stale: 'no compass reading in the last second and a half — the sensor may be off or blocked',
@@ -82,20 +147,32 @@ const REFUSAL_DETAIL: Readonly<Record<SensorRefusal, string>> = {
   'gimbal-degenerate': 'the camera is pointing too near straight up or down',
 };
 
+/** Signed degrees for prose: `+12.6°`, so east and west read at a glance. */
+function signedDeg(valueDeg: number): string {
+  return `${valueDeg >= 0 ? '+' : '−'}${Math.abs(valueDeg).toFixed(1)}°`;
+}
+
 /**
  * The heading to draw with, and what to say about it.
  *
- * Order matters. A true heading is always preferred, and a declination — from
- * the platform or supplied by the caller — always converts. Only when neither
- * is available does the magnetic bearing get drawn, and then it arrives
- * labelled `magnetic` with a caveat rather than as a bare number.
+ * Order matters, and each step is a weaker claim than the one above it:
+ *
+ *   1. the platform's own true heading, or a declination the caller supplied
+ *   2. a magnetic bearing this repository converted with WMM2025
+ *   3. the magnetic bearing, unconverted and labelled
+ *
+ * Step 1 wins over step 2 even when both are available. Core Location resolves
+ * true north from its own field model plus whatever else it knows about the
+ * fix, and the app cannot inspect that, so replacing it with this model would
+ * trade a possibly better answer for one whose error is merely known.
  */
 export function resolveHeadingForDrawing(
   samples: readonly HeadingSample[],
   atMs: number,
-  options: FuseOptions = {},
+  options: HeadingPolicyOptions = {},
 ): HeadingDecision {
-  const asTrue = smoothedHeading(samples, atMs, options);
+  const { modelDeclination, ...fuse } = options;
+  const asTrue = smoothedHeading(samples, atMs, fuse);
   if (asTrue.ok) {
     return {
       ok: true,
@@ -116,11 +193,54 @@ export function resolveHeadingForDrawing(
     return { ok: false, refusal: asTrue.refusal, detail: REFUSAL_DETAIL[asTrue.refusal] };
   }
 
+  // The field model, when the caller knows where and when the observer is.
+  let modelUnavailableNote = '';
+  if (modelDeclination !== undefined) {
+    const field = geomagneticField(modelDeclination.site, modelDeclination.when);
+    if (field.withinModelValidity) {
+      const converted = smoothedHeading(samples, atMs, {
+        ...fuse,
+        declinationDeg: field.declinationDeg,
+      });
+      if (!converted.ok) {
+        return { ok: false, refusal: converted.refusal, detail: REFUSAL_DETAIL[converted.refusal] };
+      }
+      return {
+        ok: true,
+        heading: {
+          basis: 'true-model',
+          headingDeg: converted.field.valueDeg,
+          spreadDeg: converted.field.spreadDeg,
+          sampleCount: converted.field.sampleCount,
+          model: {
+            modelName: WMM2025_NAME,
+            declinationDeg: field.declinationDeg,
+            decimalYear: field.decimalYear,
+            withinModelValidity: field.withinModelValidity,
+          },
+          caveat:
+            `True north from the ${WMM2025_NAME} magnetic model, not from the phone — the ` +
+            `compass gave a magnetic bearing and the model's ${signedDeg(field.declinationDeg)} ` +
+            `of local declination was added. The model is good to about ` +
+            `${MODEL_DECLINATION_RMS_DEG}° RMS, and local rock can shift the field by several ` +
+            'degrees more. Drag the overlay sideways if it looks off.',
+        },
+      };
+    }
+    // Outside the fit window the coefficients extrapolate, and the drift is
+    // unbounded rather than merely larger. Say why the model went unused, so
+    // the fallback does not look like the app forgetting the position.
+    modelUnavailableNote =
+      ` The ${WMM2025_NAME} model could not convert it: the date given ` +
+      `(${field.decimalYear.toFixed(1)}) is outside its ${WMM2025_VALID_FROM.toFixed(1)}–` +
+      `${WMM2025_VALID_UNTIL.toFixed(1)} validity window.`;
+  }
+
   // Re-run with an explicit zero declination. That is NOT a claim that the
   // declination is zero — it is the arithmetic that leaves the magnetic
   // bearing untouched, and the result is labelled `magnetic` precisely so the
   // number is never mistaken for the true one.
-  const asMagnetic = smoothedHeading(samples, atMs, { ...options, declinationDeg: 0 });
+  const asMagnetic = smoothedHeading(samples, atMs, { ...fuse, declinationDeg: 0 });
   if (!asMagnetic.ok) {
     return { ok: false, refusal: asMagnetic.refusal, detail: REFUSAL_DETAIL[asMagnetic.refusal] };
   }
@@ -135,7 +255,8 @@ export function resolveHeadingForDrawing(
       caveat:
         'Magnetic north, not true north — the overlay is offset by the local magnetic ' +
         `declination (typically under ${TYPICAL_DECLINATION_BOUND_DEG}°, larger at high ` +
-        'latitudes). Drag the overlay sideways to line it up.',
+        'latitudes). Drag the overlay sideways to line it up.' +
+        modelUnavailableNote,
     },
   };
 }

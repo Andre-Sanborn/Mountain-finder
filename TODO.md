@@ -9,7 +9,9 @@ after its self-check has run and passed here. The checks are in
 - [x] Fix the portrait FOV axis in core, the phone shell and annotate-photo; re-derive the drag-trim test
 - [ ] Settle long-side vs CIPA-diagonal 35 mm equivalence against the solved Railroad Ridge pose (~2°, 3% scale)
 - [x] Build WMM2025 declination in src/core; reproduce NOAA's test values to 0.05°; cross-check a second source
-- [ ] Wire src/core/declination into the live heading policy, labelled "true (model)"
+- [x] Wire src/core/declination into the live heading policy, labelled "true (model)"
+- [ ] Hold the user's trim across a heading-basis change, so the first fix does not jump the overlay
+- [ ] Use the WMM2025 path in the web shell's heading, as the phone shell now does
 - [x] Build sun and moon position in src/core against Meeus worked examples
 - [ ] Draw the sun and moon discs in the AR screen; bench-test heading, pitch and FOV against them
 - [x] Deploy the web app to GitHub Pages from Actions, gated on test:deploy and a no-GPS privacy check

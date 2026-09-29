@@ -499,7 +499,7 @@ agrees with the IGRF-14 cross-check of +12.8° for 2026-09-29.
 - A date outside 2025.0–2030.0 returns a field flagged `withinModelValidity: false`.
 - `heightM` is treated as ellipsoidal height. Using an SRTM orthometric height instead changes
   declination far less than the model's own error.
-- The module is not yet wired into the heading policy.
+- The heading policy uses it; see "WMM2025 in the live heading policy" below.
 
 ## The web app publishes itself to GitHub Pages
 
@@ -585,3 +585,30 @@ error that shifts them all together.
 in the suite. Each transcribed book value was re-derived from its own example's inputs instead.
 UTC is treated as UT1 (up to 0.5″ of lunar motion). Lunar light-time is ignored (about 0.7″).
 The horizon is taken as normal to the ellipsoid, not the plumb line.
+
+## WMM2025 in the live heading policy
+
+`resolveHeadingForDrawing` resolves a drawable heading in three steps, each a weaker claim than
+the one before, and labels which one answered:
+1. `true`: the platform's own true heading, or a declination the caller supplied.
+2. `true-model`: a magnetic bearing converted with WMM2025 from the observer's position and a
+   date.
+3. `magnetic`: labelled MAG, amber and dashed, per D9.
+
+`true-model` is its own basis rather than a second kind of `true`, so the screen names the
+source. It carries the declination added, the model name and `withinModelValidity`, and its
+caveat quotes 0.5° RMS. The platform's true heading still wins, because swapping it for a
+heading whose error is merely known would be a downgrade. Two conditions fall back to MAG: no
+position, or a date outside 2025.0–2030.0.
+
+The phone shell watches position at `Accuracy.Balanced`, refreshed every 1 km or 60 s, and
+passes position and fix time to `HorizonScreen`, whose readout prints `true`, `true (WMM)` or
+`MAG`. The iOS bundle is now 752 modules and 1.8 MB.
+
+The test expectation at Bogus Basin (100.00° magnetic becomes 112.605° true) is cited from the
+NOAA-verified module. The sign is asserted separately. Negating the applied declination fails 2
+tests; negating only the application, leaving the reported figure intact, also fails 2.
+
+**Limits.** Nothing in `mobile/` has tests: the wiring is held by typecheck, lint and the bundle
+only. The first fix flips the readout by the local declination, about 12° at Bogus Basin, and
+the trim is not carried across the flip.

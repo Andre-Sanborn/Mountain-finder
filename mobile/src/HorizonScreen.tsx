@@ -48,7 +48,11 @@ import {
 } from '../../src/core/projection';
 import type { CameraPose } from '../../src/core/types';
 import { trimFromDrag } from '../../src/live/drag-trim';
-import { resolveHeadingForDrawing } from '../../src/live/heading-policy';
+import {
+  resolveHeadingForDrawing,
+  type HeadingBasis,
+  type ModelDeclinationInput,
+} from '../../src/live/heading-policy';
 import { poseWithSensors, type SensorAnswer } from '../../src/live/sensors';
 import { colors, styles } from './theme';
 import type { DeviceSensors } from './useDeviceSensors';
@@ -83,6 +87,21 @@ const PHONE_LENSES: readonly PhoneLenses[] = [
 
 /** The main camera, which is where both models' second entry sits. */
 const DEFAULT_LENS_INDEX = 1;
+
+/**
+ * What the readout calls each heading basis.
+ *
+ * Three labels, because there are three different claims. `true` is the
+ * platform's own north. `true (WMM)` is a magnetic bearing this app converted
+ * with the WMM2025 field model, good to about a degree — the caveat below the
+ * readout names the model and its error. `MAG` is an unconverted magnetic
+ * bearing, offset by the whole local declination.
+ */
+const BASIS_LABEL: Readonly<Record<HeadingBasis, string>> = {
+  true: 'true',
+  'true-model': 'true (WMM)',
+  magnetic: 'MAG',
+};
 
 /** Bearings marked along the horizon, degrees. */
 const TICK_STEP_DEG = 15;
@@ -148,7 +167,14 @@ function answerText(answer: SensorAnswer): string {
   return `${answer.field.valueDeg.toFixed(1)}°` + (spread === undefined ? '' : ` ±${spread.toFixed(1)}`);
 }
 
-export function HorizonScreen({ sensors }: { sensors: DeviceSensors }) {
+export function HorizonScreen({
+  sensors,
+  modelDeclination,
+}: {
+  sensors: DeviceSensors;
+  /** Position and date for the WMM2025 model; absent means no fix yet. */
+  modelDeclination?: ModelDeclinationInput;
+}) {
   const [permission, requestPermission] = useCameraPermissions();
   const [modelIndex, setModelIndex] = useState(0);
   const [lensIndex, setLensIndex] = useState(DEFAULT_LENS_INDEX);
@@ -205,11 +231,10 @@ export function HorizonScreen({ sensors }: { sensors: DeviceSensors }) {
   // The heading is resolved through the policy module, which prefers true
   // north, converts with a declination when one exists, and only then falls
   // back to a labelled magnetic bearing.
-  const headingDecision = resolveHeadingForDrawing(
-    sensors.headingSamples,
-    sensors.atMs,
-    sensors.declinationDeg === undefined ? {} : { declinationDeg: sensors.declinationDeg },
-  );
+  const headingDecision = resolveHeadingForDrawing(sensors.headingSamples, sensors.atMs, {
+    ...(sensors.declinationDeg === undefined ? {} : { declinationDeg: sensors.declinationDeg }),
+    ...(modelDeclination === undefined ? {} : { modelDeclination }),
+  });
 
   let pose: CameraPose | undefined;
   if (ready && focalLength35mm !== undefined && headingDecision.ok) {
@@ -302,7 +327,7 @@ export function HorizonScreen({ sensors }: { sensors: DeviceSensors }) {
         <View style={styles.row}>
           <Text style={styles.mono}>
             {headingDecision.ok
-              ? `${headingDecision.heading.basis === 'true' ? 'true' : 'MAG'} ${headingDecision.heading.headingDeg.toFixed(1)}°`
+              ? `${BASIS_LABEL[headingDecision.heading.basis]} ${headingDecision.heading.headingDeg.toFixed(1)}°`
               : `heading: ${headingDecision.refusal}`}
           </Text>
           <Text style={styles.mono}>pitch {answerText(sensors.pose.pitch)}</Text>
