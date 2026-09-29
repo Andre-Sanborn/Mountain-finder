@@ -31,19 +31,20 @@ F3.near     no-sample  1            F3.near                  no-sample  1
 F3.mid      no-sample  0            F3.mid                   no-sample  0
 F3.far      pass       3            F3.far                   fail       1
 F3.distant  no-sample  0            F3.distant               no-sample  0
-F3.horizon  no-sample  1            F3.horizon               no-sample  1
+F3.horizon  no-sample  0            F3.horizon               no-sample  0
+F3.anchor   no-sample  1            F3.anchor                no-sample  1
 F4.near     no-sample  0            F3.truth-unidentifiable  no-sample  1
 F4.mid      no-sample  0            F4.near                  no-sample  0
-F4.far      pass       6            F4.mid                   no-sample  0
+F4.far      pass       5            F4.mid                   no-sample  0
 F4.distant  no-sample  0            F4.far                   no-sample  0
-F4.horizon  no-sample  1            F4.distant               no-sample  0
-F5a         pass       16           F4.horizon               no-sample  0
-F5b         pass       4            F5a                      fail       4
-F5c         pass       4            F5b                      pass       1
-                                    F5c                      fail       1
+F4.horizon  no-sample  0            F4.distant               no-sample  0
+F4.anchor   no-sample  2            F4.horizon               no-sample  0
+F5a         pass       16           F5a                      fail       4
+F5b         pass       4            F5b                      pass       1
+F5c         pass       4            F5c                      fail       1
 
 aligned: 7 passed, 0 failed,        stray: 1 passed, 3 failed,
-8 without a sample                  12 without a sample; failing:
+10 without a sample                 13 without a sample; failing:
                                     F3.far, F5a, F5c
 ```
 
@@ -101,8 +102,8 @@ capture carries the drag anchor to 0.84 of the half-frame (the registered pan ta
 every capture reports a fix accuracy of 8.4 m under the bundle's declared convention, so the
 bands are graded against the limits that accuracy derives rather than the registered ones.
 Three summits sit in the `far` band, which is § 2.0's stop-rule floor, so that band returns a
-verdict; the `near` and `horizon` bands hold one graded summit each and are reported
-`no-sample` with the stop rule named. Deer Point is annotated from a landmark — the crest
+verdict; the `near` band holds one graded summit and is reported `no-sample` with the stop
+rule named. Deer Point is annotated from a landmark — the crest
 under the tallest mast — and the report lists it apart from the rest. Its two annotators
 worked under different methods, `bare-frame` and `frame-and-map`, and the report says which.
 
@@ -117,6 +118,23 @@ read and returns `no-sample`.
 To regenerate either pair, build a `SynthSpec` and write
 `synthesiseFieldBundle(spec).bundle` and `.truth` as JSON. The synthesiser is
 deterministic and takes no seed, so the files are byte-identical on any machine.
+
+## The drag anchor
+
+Neither F3 nor F4 grades the summit the drag was anchored on (§ 1.1). The drag aligned the
+overlay onto that summit, so its residual measures the drag's own precision rather than the
+budget the other summits are held to. The grader reports it under `F3.anchor` and
+`F4.anchor` with its residual, and counts it there.
+
+Both fixtures carry the anchor rule:
+
+- `aligned-bundle.json` anchors `c2` and `c3` on Trinity Mountain, the one `horizon` summit
+  either capture draws, so the `horizon` band reports that the only observations drawn in it
+  were the anchor. `c4` anchors on Shafer Butte, which drops `F4.far` from six graded
+  observations to five.
+- `stray-bundle.json` anchors its single capture on Trinity Mountain and draws that marker
+  exactly on its apex. Its anchor line reads 0.000° on both axes, which is what grading an
+  anchor against itself measures.
 
 ## What the truth documents say
 

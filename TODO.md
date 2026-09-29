@@ -92,6 +92,9 @@ after its self-check has run and passed here. The checks are in
 - [x] Write the IMG_7270 188° derivation as a cited doc with runnable probes (187.9° ± 0.9°, −4.94° ± 0.26°)
 - [ ] Record both annotator pixels, not one agreed pixel, on the next apex read
 
+- [x] Exclude each capture's drag anchor from F3 and F4; report its residual under F3.anchor/F4.anchor
+- [ ] Test whether annotators given a top-down map can identify non-anchor summits (bare frame: 0 of 37)
+
 ## Other open work
 
 - [ ] Find a real photograph that exercises D8's self-occlusion rule; it has never fired on one

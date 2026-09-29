@@ -1531,3 +1531,23 @@ slip, 0.54°.
   turn from compass drift.
 
 The frames are still a still image, so F4 tests arithmetic only.
+
+## The drag anchor is not graded against itself
+
+F3 and F4 exclude each capture's `dragAnchorSummitId`. Moved captures inherit the anchor by
+walking `movedFromCaptureId`, with a cycle guard. The drag aligns the anchor by construction,
+so its residual measures the finger, not the budget. It is still reported, with its residual,
+under `F3.anchor` and `F4.anchor`. Those residuals are the field measurement of drag precision
+that §1.6 wants.
+
+**How it was found.** Grading the rehearsal against annotators C and D gave `F3.near pass
+n = 3`. All three observations were Deer Point, the anchor, at 0.215° across.
+- Annotators C and D, bare frame, independently put Deer Point at (1340, 538) and (1340, 534),
+  4 px or 0.18° apart.
+- They answered `cannotIdentify` for all 37 other summits and used `absent` for none.
+
+With the anchor excluded, the rehearsal grades nothing positional, which is the honest result.
+So agent annotators on a bare frame can place landmark summits only. Whether a top-down map
+changes that is being tested.
+
+F4 on the rehearsal is not a measurement, because the fake camera is still.

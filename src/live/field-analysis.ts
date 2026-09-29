@@ -2231,6 +2231,14 @@ export interface FieldAnalysis {
    * which they are keeps that from being read as the app doing better.
    */
   readonly landmarkObservations: readonly string[];
+  /**
+   * The drag anchor of each after-drag and moved capture, with its residual.
+   *
+   * The drag aligned the overlay onto this summit, so what its residual measures
+   * is the drag's own precision (§ 1.1). Reported for information and graded by
+   * nothing, which is why it is kept out of {@link FieldAnalysis.graded}.
+   */
+  readonly anchorObservations: readonly string[];
   /** Problems that stop a capture being graded at all. */
   readonly refusals: readonly string[];
   /**
@@ -2606,6 +2614,46 @@ function gradeF2Pose(observations: readonly Observation[]): Criterion {
 }
 
 /**
+ * The summit the drag that this capture was taken under was anchored on.
+ *
+ * A moved capture inherits the anchor of the capture it moved from, because no
+ * drag happened in between. Its own `dragAnchorSummitId` wins when it carries
+ * one. The walk stops at a capture it has already seen, so a bundle whose
+ * `movedFromCaptureId` links form a cycle returns nothing rather than hanging.
+ */
+function anchorSummitIdOf(
+  capture: Capture,
+  byId: ReadonlyMap<string, Capture>,
+): string | undefined {
+  const seen = new Set<string>();
+  let current: Capture | undefined = capture;
+  while (current !== undefined && !seen.has(current.captureId)) {
+    if (current.dragAnchorSummitId !== undefined) return current.dragAnchorSummitId;
+    seen.add(current.captureId);
+    current =
+      current.movedFromCaptureId === undefined ? undefined : byId.get(current.movedFromCaptureId);
+  }
+  return undefined;
+}
+
+/** One line reporting an anchor's residual, or why there is none to report. */
+function anchorLineOf(
+  capture: Capture,
+  summit: DrawnSummit,
+  truth: SummitTruth,
+): string {
+  const head = `${capture.captureId} ${summit.name}: anchor, not graded`;
+  if (truth.kind !== 'located') return `${head} — its truth gives no apex to measure against`;
+  const row = gradedSummitOf(capture, summit, truth);
+  if (row === undefined) return `${head} — it falls in no tolerance band, so it has no residual`;
+  return (
+    `${head}. Its residual is ${Math.abs(row.residual.horizontalDeg).toFixed(3)}° across and ` +
+    `${Math.abs(row.residual.verticalDeg).toFixed(3)}° up/down, at ${(row.frameOffset * 100).toFixed(0)}% ` +
+    `of the half-frame, in the ${row.band} band`
+  );
+}
+
+/**
  * Grade the after-drag residuals of whichever captures `select` picks.
  *
  * The verdict is the band's, not the summit's. Every summit is reported against
@@ -2613,22 +2661,39 @@ function gradeF2Pose(observations: readonly Observation[]): Criterion {
  * {@link MAX_TWO_SIGMA_EXCEEDANCES} summit-axes sit past 2σ, or when any one
  * sits past 3σ. A single 2σ exceedance is what a correct budget produces at this
  * n, so treating it as a failure would grade the sample size.
+ *
+ * **The drag anchor is not graded.** The drag aligned the overlay onto that one
+ * summit, so its residual is the drag's own precision and nothing else (§ 1.1):
+ * grading it would report the anchor against itself and count a residual that is
+ * near zero by construction as evidence about the other summits. It is reported
+ * with its residual under `<id>.anchor` and counted there.
  */
 function gradePositional(
   id: string,
   claim: string,
   observations: readonly Observation[],
+  anchorOf: (capture: Capture) => string | undefined,
   select: (capture: Capture) => boolean,
 ): readonly Criterion[] {
   const rows: GradedSummit[] = [];
   const disputed: string[] = [];
   const excluded: string[] = [];
+  const anchors: string[] = [];
   /** Drawn summits per band, whatever their truth. The stop rule counts these. */
   const drawnPerBand = new Map<BandId, number>();
+  /** Anchor observations per band, which the stop rule counts apart. */
+  const anchorsPerBand = new Map<BandId, number>();
 
   for (const { capture, summit, truth } of observations) {
     if (!select(capture)) continue;
     const drawnBand = bandFor(summit.distanceKm);
+    if (summit.summitId === anchorOf(capture)) {
+      if (drawnBand !== undefined) {
+        anchorsPerBand.set(drawnBand.band, (anchorsPerBand.get(drawnBand.band) ?? 0) + 1);
+      }
+      anchors.push(anchorLineOf(capture, summit, truth));
+      continue;
+    }
     if (drawnBand !== undefined) {
       drawnPerBand.set(drawnBand.band, (drawnPerBand.get(drawnBand.band) ?? 0) + 1);
     }
@@ -2664,12 +2729,17 @@ function gradePositional(
       const mark = row.landmark === undefined ? '' : ` [landmark: ${row.landmark}]`;
       return `${row.captureId} ${row.name}: ${Math.abs(row.residual.horizontalDeg).toFixed(3)}° across (2σ ${across?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${across?.threeSigmaDeg.toFixed(2) ?? '?'}°), ${Math.abs(row.residual.verticalDeg).toFixed(3)}° up/down (2σ ${upDown?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${upDown?.threeSigmaDeg.toFixed(2) ?? '?'}°), at ${(row.frameOffset * 100).toFixed(0)}% of the half-frame, truth ±${row.truthDisagreementDeg.toFixed(3)}°${mark}${flag}`;
     });
+    const anchorCount = anchorsPerBand.get(threshold.band) ?? 0;
+    const anchorTail =
+      anchorCount === 0 ? '' : `, beside ${anchorCount} anchor observation(s) this band never grades`;
     // The stop rule withholds a pass, never a failure: one summit past 3σ
     // refutes the budget whatever the sample size (§ 2.0).
     const stopRuleLine =
       drawn === 0
-        ? 'no summit was drawn in this band, so there was nothing for the truth instrument to settle'
-        : `${band.length} of ${drawn} drawn summit-observation(s) in this band were graded, under the pre-registered floor of ${MIN_GRADED_PER_BAND}; the truth instrument limited this row, not the app (§ 2.0 stop rule)`;
+        ? anchorCount === 0
+          ? 'no summit was drawn in this band, so there was nothing for the truth instrument to settle'
+          : 'the only summit-observation(s) drawn in this band were the drag anchor, which the drag aligned the overlay onto and which is not graded against itself (§ 1.1)'
+        : `${band.length} of ${drawn} drawn summit-observation(s) in this band were graded${anchorTail}, under the pre-registered floor of ${MIN_GRADED_PER_BAND}; the truth instrument limited this row, not the app (§ 2.0 stop rule)`;
     return {
       id: `${id}.${threshold.band}`,
       claim: `${claim} (${threshold.band}: ${threshold.fromKm}${Number.isFinite(threshold.toKm) ? `–${threshold.toKm}` : '+'} km)`,
@@ -2687,6 +2757,19 @@ function gradePositional(
     };
   });
 
+  if (anchors.length > 0) {
+    criteria.push({
+      id: `${id}.anchor`,
+      claim:
+        'the summit the drag was anchored on, reported with its residual and graded against nothing',
+      outcome: 'no-sample',
+      n: anchors.length,
+      evidence: [
+        'the drag aligned the overlay onto this summit, so its residual measures the drag rather than the budget (§ 1.1)',
+        ...anchors,
+      ],
+    });
+  }
   if (disputed.length > 0) {
     criteria.push({
       id: `${id}.truth-disputed`,
@@ -2726,11 +2809,7 @@ function gradeF4Envelope(captures: readonly Capture[]): readonly string[] {
     const pan = capture.panFromReferenceDeg;
     const tilt = capture.tiltFromReferenceDeg;
     if (pan !== undefined && pan !== 0) {
-      const from =
-        capture.movedFromCaptureId === undefined
-          ? undefined
-          : byId.get(capture.movedFromCaptureId);
-      const anchorId = capture.dragAnchorSummitId ?? from?.dragAnchorSummitId;
+      const anchorId = anchorSummitIdOf(capture, byId);
       const anchor = capture.overlay.drawn.find((summit) => summit.summitId === anchorId);
       if (anchor === undefined) {
         problems.push(
@@ -2912,19 +2991,23 @@ export function analyseFieldRun(
   }
 
   const observations = observationsOf(gradable, truth);
+  const byId = new Map(gradable.map((capture) => [capture.captureId, capture]));
+  const anchorOf = (capture: Capture): string | undefined => anchorSummitIdOf(capture, byId);
   const criteria: Criterion[] = [
     gradeF2(observations),
     gradeF2Pose(observations),
     ...gradePositional(
       'F3',
-      'after one drag, every labelled summit sits within the budget',
+      'after one drag anchored on one summit, every other labelled summit sits within the budget',
       observations,
+      anchorOf,
       (capture) => capture.role === 'after-drag',
     ),
     ...gradePositional(
       'F4',
       'the drag holds after a pan and a tilt',
       observations,
+      anchorOf,
       (capture) => capture.role === 'moved',
     ),
     gradeF5a(observations),
@@ -2945,8 +3028,14 @@ export function analyseFieldRun(
   }
 
   const graded: GradedSummit[] = [];
+  const anchorObservations: string[] = [];
   for (const { capture, summit, truth: reduced } of observations) {
-    if (capture.role === 'before-drag' || reduced.kind !== 'located') continue;
+    if (capture.role === 'before-drag') continue;
+    if (summit.summitId === anchorOf(capture)) {
+      anchorObservations.push(anchorLineOf(capture, summit, reduced));
+      continue;
+    }
+    if (reduced.kind !== 'located') continue;
     const row = gradedSummitOf(capture, summit, reduced);
     if (row !== undefined) graded.push(row);
   }
@@ -2964,6 +3053,7 @@ export function analyseFieldRun(
     graded,
     annotatorMethods: annotatorMethodLines(truth),
     landmarkObservations,
+    anchorObservations,
     refusals,
     notes,
   };
@@ -3017,6 +3107,11 @@ export function renderFieldReport(analysis: FieldAnalysis, options: { brief?: bo
     lines.push('');
     lines.push('located from a named point feature, reported apart:');
     for (const line of analysis.landmarkObservations) lines.push(`  △ ${line}`);
+  }
+  if (analysis.anchorObservations.length > 0) {
+    lines.push('');
+    lines.push('the drag anchor, reported and not graded:');
+    for (const line of analysis.anchorObservations) lines.push(`  ⚓ ${line}`);
   }
   if (analysis.refusals.length > 0) {
     lines.push('');
@@ -3110,6 +3205,14 @@ export interface SynthCapture {
   readonly hFovDeg?: number;
   readonly vFovDeg?: number;
   readonly horizontalAccuracyM?: number;
+  /**
+   * The summit the drag was anchored on. Ignored on a before-drag capture.
+   *
+   * Defaults to {@link SYNTH_ANCHOR_NOT_DRAWN}, a summit no capture draws, so a
+   * spec that says nothing about the anchor has every summit it lists graded. A
+   * test about the anchor rule names the summit here.
+   */
+  readonly dragAnchorSummitId?: string;
   /** The pose's pitch. Defaults to {@link SYNTH_PITCH_DEG}. */
   readonly pitchDeg?: number;
   /** The re-anchor correction already inside the pose's heading. Defaults to 0. */
@@ -3133,6 +3236,15 @@ const SYNTH_OVERLAY = { widthPx: 956, heightPx: 440 } as const;
 const SYNTH_HFOV = 73.74;
 const SYNTH_VFOV = 38.088;
 const SYNTH_PITCH_DEG = 0.5;
+
+/**
+ * The anchor a synthetic capture names when its spec does not.
+ *
+ * It is a summit id no synthetic capture draws, so the anchor rule excludes
+ * nothing a spec listed and a test's summits are all graded unless it says
+ * otherwise.
+ */
+export const SYNTH_ANCHOR_NOT_DRAWN = 'overture/synthetic-anchor-not-drawn';
 
 /**
  * Build a bundle and its truth document from injected pixel errors.
@@ -3269,7 +3381,9 @@ export function synthesiseFieldBundle(spec: SynthSpec): {
         hasUnquantifiedVertical: false,
       },
       overlay: { drawn, withheld: synth.withheld ?? [] },
-      ...(synth.role === 'before-drag' ? {} : { dragAnchorSummitId: synth.summits[0]?.summitId ?? 'none' }),
+      ...(synth.role === 'before-drag'
+        ? {}
+        : { dragAnchorSummitId: synth.dragAnchorSummitId ?? SYNTH_ANCHOR_NOT_DRAWN }),
       ...(synth.role === 'moved' ? { movedFromCaptureId: 'c2' } : {}),
       ...(synth.panFromReferenceDeg !== undefined
         ? { panFromReferenceDeg: synth.panFromReferenceDeg }

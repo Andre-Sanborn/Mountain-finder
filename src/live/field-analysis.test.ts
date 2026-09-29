@@ -976,12 +976,118 @@ describe('F4', () => {
   });
 });
 
+describe('the drag anchor is not graded against itself', () => {
+  // The drag aligned the overlay onto the anchor, so the anchor's residual is
+  // the drag's own precision and nothing else (§ 1.1). A band whose only
+  // observations are the anchor has nothing F3 or F4 can grade.
+
+  it('reports no sample when the only located summit is the anchor', () => {
+    // Three after-drag captures, each drawing the anchor alone. Three
+    // observations is MIN_GRADED_PER_BAND, so a grader that graded the anchor
+    // would clear the stop rule and pass the band on the anchor's own residual.
+    const analysis = run(
+      ['c2', 'c7', 'c8'].map((captureId) => ({
+        captureId,
+        role: 'after-drag' as const,
+        dragAnchorSummitId: FAR,
+        summits: [summit({ summitId: FAR, errorPx: { xPx: 20, yPx: 0 } })],
+      })),
+    );
+    expect(criterion(analysis, 'F3.far')?.n).toBe(0);
+    expect(criterion(analysis, 'F3.far')?.outcome).toBe('no-sample');
+    expect(criterion(analysis, 'F3.far')?.evidence.join('\n')).toContain(
+      'the only summit-observation(s) drawn in this band were the drag anchor',
+    );
+    expect(criterion(analysis, 'F3.anchor')?.n).toBe(3);
+    expect(analysis.graded).toHaveLength(0);
+  });
+
+  it('reports the anchor’s residual for information', () => {
+    // 20 px across at the frame centre is atan(20 / 1279.99524) = 0.895177°,
+    // and the apex sits at x = 960, the frame centre, so its offset is 0 %.
+    expect(degreesAcross(0, 20)).toBeCloseTo(0.895177, 6);
+    const analysis = run([
+      {
+        captureId: 'c2',
+        role: 'after-drag',
+        dragAnchorSummitId: FAR,
+        summits: [summit({ summitId: FAR, errorPx: { xPx: 20, yPx: 0 } })],
+      },
+    ]);
+    const line = criterion(analysis, 'F3.anchor')?.evidence.join('\n') ?? '';
+    expect(line).toContain('anchor, not graded');
+    expect(line).toContain('0.895° across and 0.000° up/down, at 0% of the half-frame');
+    expect(analysis.anchorObservations).toHaveLength(1);
+  });
+
+  it('grades the three summits beside the anchor, and not the anchor', () => {
+    // One anchor and three others, all in the far band: n = 3, which is the
+    // stop rule's floor, so the band returns a verdict on the three.
+    const analysis = run([
+      {
+        captureId: 'c2',
+        role: 'after-drag',
+        dragAnchorSummitId: FAR,
+        summits: [
+          summit({ summitId: FAR, errorPx: { xPx: 20, yPx: 0 } }),
+          ...padBand(12, [FAR]).map((padding) => ({ ...padding, distanceKm: 12 })),
+          summit({
+            summitId: DISTANT,
+            distanceKm: 12,
+            truthPx: { xPx: 1200, yPx: 500 },
+            errorPx: { xPx: 0, yPx: 0 },
+          }),
+        ],
+      },
+    ]);
+    expect(criterion(analysis, 'F3.far')?.n).toBe(MIN_GRADED_PER_BAND);
+    expect(criterion(analysis, 'F3.far')?.outcome).toBe('pass');
+    expect(criterion(analysis, 'F3.anchor')?.n).toBe(1);
+    expect(gradedIn(analysis, 'far').map((row) => row.summitId)).not.toContain(FAR);
+  });
+
+  it('excludes the anchor a moved capture inherited from the capture it moved from', () => {
+    // A moved capture carries no drag of its own, so its anchor is the one the
+    // after-drag capture it moved from was dragged onto.
+    const { bundle, truth } = synthesiseFieldBundle({
+      captures: [
+        {
+          captureId: 'c2',
+          role: 'after-drag',
+          dragAnchorSummitId: FAR,
+          summits: [summit({ summitId: FAR })],
+        },
+        {
+          captureId: 'c3',
+          role: 'moved',
+          tiltFromReferenceDeg: -10,
+          summits: [summit({ summitId: FAR, errorPx: { xPx: 20, yPx: 0 } })],
+        },
+      ],
+    });
+    const raw = JSON.parse(JSON.stringify(bundle)) as {
+      captures: { captureId: string; dragAnchorSummitId?: string }[];
+    };
+    const moved = raw.captures.find((capture) => capture.captureId === 'c3');
+    expect(moved).toBeDefined();
+    if (moved === undefined) return;
+    delete moved.dragAnchorSummitId;
+    const parsed = parseFieldBundle(raw);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.captures[1]?.dragAnchorSummitId).toBeUndefined();
+    const analysis = analyseFieldRun(parsed.value, truth, lookup);
+    expect(criterion(analysis, 'F4.far')?.n).toBe(0);
+    expect(criterion(analysis, 'F4.anchor')?.n).toBe(1);
+  });
+});
+
 describe('the F4 pan target', () => {
   // The registered movement is "pan until the anchor summit sits at the frame
   // edge", read as the anchor's drawn offset reaching 0.8 of the half-frame. On
   // a 1920 px frame that is |x − 960| >= 768 px, so a truth apex at x = 150 is
-  // 0.844 of the half-frame and one at x = 400 is 0.583. The synthesiser anchors
-  // the drag on the first summit of a capture.
+  // 0.844 of the half-frame and one at x = 400 is 0.583. Each capture below
+  // names FAR as its anchor, because the anchor is what the pan is aimed at.
   it('registers the target at 0.8 of the half-frame', () => {
     expect(PAN_ANCHOR_EDGE_OFFSET).toBe(0.8);
     expect(Math.abs(150 - 960) / 960).toBeCloseTo(0.84375, 5);
@@ -993,6 +1099,7 @@ describe('the F4 pan target', () => {
       {
         captureId: 'c3',
         role: 'moved',
+        dragAnchorSummitId: FAR,
         panFromReferenceDeg: 26,
         summits: [summit({ summitId: FAR, truthPx: { xPx: 150, yPx: 442 } })],
       },
@@ -1005,6 +1112,7 @@ describe('the F4 pan target', () => {
       {
         captureId: 'c3',
         role: 'moved',
+        dragAnchorSummitId: FAR,
         panFromReferenceDeg: 26,
         summits: [summit({ summitId: FAR, truthPx: { xPx: 400, yPx: 442 } })],
       },
@@ -1020,6 +1128,7 @@ describe('the F4 pan target', () => {
       {
         captureId: 'c3',
         role: 'moved',
+        dragAnchorSummitId: FAR,
         panFromReferenceDeg: 40,
         summits: [summit({ summitId: FAR, truthPx: { xPx: 150, yPx: 442 } })],
       },
@@ -1033,6 +1142,7 @@ describe('the F4 pan target', () => {
         {
           captureId: 'c3',
           role: 'moved',
+          dragAnchorSummitId: FAR,
           panFromReferenceDeg: 26,
           summits: [summit({ summitId: FAR, truthPx: { xPx: 150, yPx: 442 } })],
         },
@@ -2397,14 +2507,19 @@ describe('the committed synthetic fixtures', () => {
     const analysis = analyseFieldRun(bundle.value, truth.value, lookup);
     expect(criterion(analysis, 'F3.far')?.n).toBe(MIN_GRADED_PER_BAND);
     expect(criterion(analysis, 'F3.far')?.outcome).toBe('pass');
-    // One graded summit apiece, so the stop rule withholds a verdict.
-    for (const id of ['F3.near', 'F3.horizon']) {
-      expect(criterion(analysis, id)?.n).toBe(1);
-      expect(criterion(analysis, id)?.outcome).toBe('no-sample');
-      expect(criterion(analysis, id)?.evidence.join('\n')).toContain(
-        'the truth instrument limited this row, not the app',
-      );
-    }
+    // Deer Point is the one near summit, so the stop rule withholds a verdict.
+    expect(criterion(analysis, 'F3.near')?.n).toBe(1);
+    expect(criterion(analysis, 'F3.near')?.outcome).toBe('no-sample');
+    expect(criterion(analysis, 'F3.near')?.evidence.join('\n')).toContain(
+      'the truth instrument limited this row, not the app',
+    );
+    // Trinity Mountain is the drag anchor and the one horizon summit, so the
+    // horizon band holds nothing F3 grades.
+    expect(criterion(analysis, 'F3.horizon')?.n).toBe(0);
+    expect(criterion(analysis, 'F3.horizon')?.outcome).toBe('no-sample');
+    expect(criterion(analysis, 'F3.horizon')?.evidence.join('\n')).toContain(
+      'the only summit-observation(s) drawn in this band were the drag anchor',
+    );
     expect(analysis.landmarkObservations).toHaveLength(1);
     expect(analysis.annotatorMethods).toHaveLength(2);
   });

@@ -635,7 +635,18 @@ the budget.
 frame-angle residual between the marker as drawn and the truth apex, per axis. Frame angles
 are the tangent-plane angles about the optical axis, which is exactly what the drag trims.
 
-**Sample.** Every graded summit in every after-drag capture, binned by distance.
+**The anchor is excluded from the graded set.** The capture names the summit the drag was
+anchored on (`dragAnchorSummitId`), and that summit is not graded in the capture it anchored.
+The drag aligned the overlay onto it, so its residual is the drag's own precision and the
+annotators' reading of one apex: `(e_a − e_a) + (drag precision)` by § 1.1, near zero by
+construction. Grading it would report the anchor against itself, and three captures anchored
+on the same summit would clear the stop rule on three copies of that one number. The anchor is
+**reported, with its residual, as "anchor, not graded", and counted** — the count is what says
+how many observations the rule removed, and the residual is the field measurement of the drag
+that § 1.6 asks for. It is not part of any band's verdict.
+
+**Sample.** Every graded summit in every after-drag capture except that capture's anchor,
+binned by distance.
 
 **Limits — 2σ of the budget in §1.5 rounded to 0.05°, and 3σ at 1.5 × that, rounded up:**
 
@@ -662,7 +673,8 @@ and its truth disagreement are printed whether it is inside or outside.
 - **Any summit-axis past 3σ fails the band on its own**, whatever else is in it.
 - **A band with fewer than three graded summits may not pass.** It is reported `no-sample`
   under § 2.0's stop rule, with the truth instrument named. A band that fails the count
-  above still fails at any n.
+  above still fails at any n. A band whose only observations were the anchor says so, rather
+  than naming the truth instrument: nothing was withheld there, and nothing was graded.
 
 **Why one exceedance is tolerated, with the arithmetic.** The budget's terms are 1σ and each
 summit-axis is one draw, so a *correct* budget puts draws outside 2σ at the normal rate:
@@ -752,7 +764,10 @@ estimate. Gating on the pan angle in the pose would gate the sensor's account of
 as well, inside a criterion whose subject is the drag.
 
 **Sample.** Four movement captures per after-drag capture; the same graded summits, minus
-any the movement pushed out of frame. A capture whose anchor did not reach u = 0.8, or whose
+any the movement pushed out of frame, and minus the anchor. A moved capture carries no drag
+of its own, so its anchor is the one the after-drag capture it moved from
+(`movedFromCaptureId`) was dragged onto, and the exclusion and the reporting of § 2.3 apply to
+it unchanged. A moved capture that names its own `dragAnchorSummitId` is read by that. A capture whose anchor did not reach u = 0.8, or whose
 anchor the overlay did not draw at all, is reported off-protocol and not graded. A tilt must
 still be within 5–15°, read from the pose.
 
@@ -856,6 +871,11 @@ bundle.
 **The thresholds live in code as `PREREGISTERED_THRESHOLDS`**, and the analyzer takes no
 threshold argument. A run cannot be graded against anything but this document, and changing
 a number there changes it here, in the same commit, with the reason.
+
+**The anchor of each after-drag and moved capture is printed apart from the graded table**,
+with its residual and its band, under `F3.anchor` and `F4.anchor`. A capture's anchor is its
+own `dragAnchorSummitId`, or, for a moved capture that carries none, the anchor of the capture
+its `movedFromCaptureId` names.
 
 **The analyzer prints no coordinates, and no distances or bearings either.** A distance and
 a bearing to a named summit *is* a position fix. So the bundle carries no bearings at all,
@@ -1078,3 +1098,30 @@ two committed fixture pairs is unchanged except for the new criterion line: the 
 pair's compass sits 4.077° from the heading its four located summits solve for, inside the
 8.700° band that capture displayed, and the stray pair's single capture is `after-drag`, so
 the criterion has nothing to read.
+
+### 2026-09-29 — the drag anchor is excluded from F3 and F4
+
+Still before any field number exists. F3 and F4 graded the summit the drag was anchored on,
+which measures the drag against itself.
+
+- **§ 2.3 excludes each capture's `dragAnchorSummitId` from the graded set**, and § 2.4 does
+  the same for the moved captures, which inherit the anchor of the capture they moved from.
+  The residual of an anchored summit is `(e_a − e_a) + (drag precision)` under § 1.1, near
+  zero by construction, so a band holding it reports the drag's precision as evidence about
+  the peak data, the field of view and the roll.
+- **The anchor is reported and counted, not dropped.** The grader prints its residual, its
+  frame offset and its band as "anchor, not graded" and counts the observations under
+  `F3.anchor` and `F4.anchor`, so a reader can see how many the rule removed. Those residuals
+  are the field measurement of the drag precision § 1.6 schedules.
+- **What it would have done to the headless rehearsal.** Grading `out/rehearsal/bundle.json`
+  reported `F3.near pass n = 3`. All three observations were Deer Point, the anchor, on the
+  three after-drag captures, with residuals of 0.215° across and 0.049–0.064° up/down. The
+  band now reports `no-sample` and names the anchor as the reason. `F4.near` reported `fail`
+  on four observations that were the same anchor on the four moved captures, and now reports
+  `no-sample` as well.
+- **§ 2.3's stop rule distinguishes two empty bands.** A band the truth instrument could not
+  settle names the instrument; a band whose only observations were the anchor says that
+  instead.
+
+Nothing about the thresholds, the bands or the error budget moved. What moved is which
+observations reach them.
