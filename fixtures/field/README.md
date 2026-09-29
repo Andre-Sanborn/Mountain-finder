@@ -81,7 +81,7 @@ The errors injected into `stray-bundle.json`, and the criterion each one breaks:
 
 | injected | criterion |
 |---|---|
-| Shafer Butte drawn 50 px off its apex, which is 2.223° where the `far` band's 3σ limit is 1.95° | `F3.far` |
+| Shafer Butte drawn 70 px off its apex, which is 3.130° where the `far` band's 3σ limit is 2.85° | `F3.far` |
 | Mores Mountain drawn `visible` while both annotators report clear sky where it would sit | `F5a` |
 | Trinity Mountain drawn with a verdict from 55 km, beyond the capture's 30 km sweep | `F5c` |
 
@@ -92,7 +92,7 @@ counted in `F3.truth-unidentifiable`. Turning that exclusion into an agreed
 absence would make the fixture fail `F5a` twice, which is the mistake the
 three-state truth schema exists to prevent.
 
-The 50 px is a **3σ** excursion on purpose. A band tolerates one summit-axis past 2σ, so a
+The 70 px is a **3σ** excursion on purpose. A band tolerates one summit-axis past 2σ, so a
 single 2σ exceedance would pass and the fixture would assert nothing. The two-exceedance half
 of the gate is exercised in `src/live/field-analysis.test.ts`, where a capture can hold two
 summits in one band.

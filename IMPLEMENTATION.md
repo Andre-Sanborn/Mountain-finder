@@ -416,7 +416,7 @@ cross-checked against an independent package before being called verified.
 **Human sessions: one home session and one field session.** The home session (about 15
 minutes) opens the URL, grants permissions, reopens in airplane mode, runs the four calibration
 holds, records 10 s of raw sensor events, captures the sun, sweeps the field of view and tests
-lens switching. The field session (about 25 minutes, Bogus Basin proposed) runs in a Safari
+lens switching. The field session (about half an hour, Bogus Basin proposed) runs in a Safari
 tab, not from the home screen. Capture bundles travel only by the human's own action to their
 own email, and are never committed.
 
@@ -1675,12 +1675,47 @@ so annotators work from summit ids and heights.
 The e2e waits for the turn to reach the pose before the capture step. Without that, the turn
 landed inside the still window. On site the guide tells the person to hold still after turning.
 
-## The anchor moved to 2 km and the budget did not
+## The budget charges the anchor at 2 km
 
-§ 1.5 charges the anchor at 7 to 20 km. The registered anchor is Deer Point at 2.0 km, whose own
-term is 0.716° horizontally against the 0.143° charged. Carried through, it would raise the
-horizontal 1σ from 0.642° to 0.951° at 10 km. The table and limits stand as written, because a
-limit widened to fit the anchor has no measurement behind it (§ 1.6). § 1.1 says instead that a
-band failing by less than that gap is decomposed against the anchor's error before the app is
-blamed. The field session is now 19 steps and 10 captures, about half an hour.
+§ 2.7 registers Deer Point at 2.0 km as the drag anchor, so `BUDGET_TERMS.anchorDistanceKm` is 2.
+The anchor's error is subtracted from every other summit. At 2 km it is 0.716° horizontally and
+0.327° vertically, the largest single term beyond 3 km. The 2.025 km in the peak data changes
+the term by 0.009°, below the 0.05° rounding of any limit.
+
+| band | 1σ H / V | 2σ limit H / V | 3σ limit H / V |
+|---|---|---|---|
+| near (2 km) | 1.182° / 0.783° | 2.35° / 1.55° | 3.55° / 2.35° |
+| mid (5 km) | 0.983° / 0.724° | 1.95° / 1.45° | 2.95° / 2.20° |
+| far, distant, horizon | 0.951° / 0.715° | 1.90° / 1.45° | 2.85° / 2.20° |
+
+An independent script implementing § 1.5 and the grader's `bandSigmaFor` agree on every figure.
+Limits round 2σ to the nearest 0.05°, and a test pins that rule. Distant and horizon carry the
+far row, which widens their vertical limit by 0.05° over their own 1.40°.
+
+`near` is loosest because its graded summit and the anchor are both 2 km out; § 2.0 pre-declares
+it `no-sample`. A 60 km summit is no harder to label than a 10 km one; the anchor is what got
+harder.
+
+This is a recomputation from a protocol input fixed before any field data, not a limit moved
+after a run, so § 1.6 allows it. Keeping the 7 to 20 km charge was rejected: with the gate at
+1.37σ of the true spread, a correct app would fail F3.far about one time in three.
+
+§ 2.3 states the gate's pass probability at the sample sizes a band reaches: 0.960 at n = 6, 0.782
+at 18, 0.580 at 30. The binomial ignores two effects that make a band easier to fail: three
+after-drag captures grade the same summits, so one wrong summit is three correlated
+exceedances, and terms are charged at the frame edge.
+
+The same pass registered Deer Point's rule text in `REGISTERED_APEX_RULES`, which the truth
+parser enforces verbatim. It also refuses a `turned` capture carrying a pan or tilt, and a
+`before-drag` capture naming an anchor or reference capture. The north-east direction is
+Sun-free from September to April; from May to early August the Sun crosses that frame between
+about 07:30 and 08:45 MDT, so those captures are taken in the afternoon. Its ten named summits
+are 25 to 55 km out at apparent altitudes from −0.7° to +0.1°, and the frame also reaches `far`
+summits. `fixtures/field/stray-bundle.json`'s injected F3.far offset rose from 50 px to 70 px
+so it stays a 3σ excursion under the new limits.
+
+## The field session is nineteen steps and ten captures
+
+The guided run ends with the turn to the north-east and two captures there, about half an hour
+in all against F6's 40 minute threshold.
 

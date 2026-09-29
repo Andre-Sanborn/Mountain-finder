@@ -67,7 +67,9 @@
  *
  * An apex may also carry `rule`, the registered apex rule the annotator
  * followed, written before any field data existed (pre-registration § 2.0
- * "Registered apex rules"). A rule-bound pick is graded like any other, and the
+ * "Registered apex rules") and quoted verbatim: the parser refuses any other
+ * text, so the two annotators of a rule-bound summit quoted the same rule and
+ * `REGISTERED_APEX_RULES` is where that text lives. A rule-bound pick is graded like any other, and the
  * report counts the rule-bound summits and reports their truth disagreement
  * apart from the free ones: a rule removes the choice of which point on a flat
  * crest to take, so the two groups' agreement measures different things.
@@ -165,9 +167,11 @@ export interface BandThreshold extends BandLimits {
  * 1.5 × that, rounded up to 0.05°.
  *
  * The last three bands carry the same figure because the budget is flat beyond
- * 7 km — the drag, the roll and the field-of-view scale do not care how far a
- * summit is, and beyond 7 km they are the whole budget. They stay separate rows
- * so the result reports how many summits each band actually held.
+ * 7 km — the drag, the roll, the field-of-view scale and the 2 km anchor's own
+ * error do not care how far the graded summit is, and beyond 7 km they are the
+ * whole budget. Their raw 2σ figures differ by under 0.01°, and only a rounding
+ * boundary separates the vertical ones, so all three take the `far` row. They
+ * stay separate rows so the result reports how many summits each band held.
  */
 export const PREREGISTERED_THRESHOLDS: readonly BandThreshold[] = [
   {
@@ -175,50 +179,50 @@ export const PREREGISTERED_THRESHOLDS: readonly BandThreshold[] = [
     fromKm: 0,
     toKm: 3,
     budgetDistanceKm: 2,
-    horizontalDeg: 1.9,
-    verticalDeg: 1.45,
-    horizontal3SigmaDeg: 2.85,
-    vertical3SigmaDeg: 2.2,
+    horizontalDeg: 2.35,
+    verticalDeg: 1.55,
+    horizontal3SigmaDeg: 3.55,
+    vertical3SigmaDeg: 2.35,
   },
   {
     band: 'mid',
     fromKm: 3,
     toKm: 7,
     budgetDistanceKm: 5,
-    horizontalDeg: 1.4,
-    verticalDeg: 1.3,
-    horizontal3SigmaDeg: 2.1,
-    vertical3SigmaDeg: 1.95,
+    horizontalDeg: 1.95,
+    verticalDeg: 1.45,
+    horizontal3SigmaDeg: 2.95,
+    vertical3SigmaDeg: 2.2,
   },
   {
     band: 'far',
     fromKm: 7,
     toKm: 20,
     budgetDistanceKm: 10,
-    horizontalDeg: 1.3,
-    verticalDeg: 1.3,
-    horizontal3SigmaDeg: 1.95,
-    vertical3SigmaDeg: 1.95,
+    horizontalDeg: 1.9,
+    verticalDeg: 1.45,
+    horizontal3SigmaDeg: 2.85,
+    vertical3SigmaDeg: 2.2,
   },
   {
     band: 'distant',
     fromKm: 20,
     toKm: 45,
     budgetDistanceKm: 30,
-    horizontalDeg: 1.3,
-    verticalDeg: 1.3,
-    horizontal3SigmaDeg: 1.95,
-    vertical3SigmaDeg: 1.95,
+    horizontalDeg: 1.9,
+    verticalDeg: 1.45,
+    horizontal3SigmaDeg: 2.85,
+    vertical3SigmaDeg: 2.2,
   },
   {
     band: 'horizon',
     fromKm: 45,
     toKm: Infinity,
     budgetDistanceKm: 60,
-    horizontalDeg: 1.3,
-    verticalDeg: 1.3,
-    horizontal3SigmaDeg: 1.95,
-    vertical3SigmaDeg: 1.95,
+    horizontalDeg: 1.9,
+    verticalDeg: 1.45,
+    horizontal3SigmaDeg: 2.85,
+    vertical3SigmaDeg: 2.2,
   },
 ];
 
@@ -226,11 +230,12 @@ export const PREREGISTERED_THRESHOLDS: readonly BandThreshold[] = [
  * How many summit-axes in one band may sit past 2σ and the band still pass.
  *
  * One. At 2σ a correct budget puts 4.55 % of axis draws outside, so "every axis
- * inside 2σ" passes a correct budget with probability 0.9545^n — 0.225 at the
- * 32 axis draws two or three captures produce. A gate that a correct budget
- * fails three times in four measures the sample size. Tolerating one exceedance
- * while refusing any 3σ excursion passes 0.936 at n = 8 and 0.815 at n = 16
- * (pre-registration § 2.3).
+ * inside 2σ" passes a correct budget with probability 0.9545^n — 0.432 at the
+ * 18 axis draws a three-summit band produces over three after-drag captures,
+ * and 0.247 at 30. A gate a correct budget fails more than half the time
+ * measures the sample size. Tolerating one exceedance while refusing any 3σ
+ * excursion passes 0.782 at n = 18 and 0.580 at n = 30 (pre-registration
+ * § 2.3), which is better and still short of confirming a correct budget.
  */
 export const MAX_TWO_SIGMA_EXCEEDANCES = 1;
 
@@ -276,8 +281,15 @@ export const BUDGET_TERMS = {
   observerPositionM: 15,
   /** Term 3b under the DEM-ground choice. */
   observerHeightM: 10,
-  /** The band § 1.1 charges the drag anchor at. */
-  anchorDistanceKm: 10,
+  /**
+   * The distance § 1.1 charges the drag anchor at: the registered anchor's own.
+   *
+   * Deer Point, 2.0 km from the viewpoint (§ 2.7). The committed peak data puts
+   * it at 2.025 km; 2 km is what the protocol registers and what the table is
+   * computed on, and the 25 m between them moves the anchor term by 0.009°,
+   * which no limit's 0.05° rounding can see.
+   */
+  anchorDistanceKm: 2,
   /** Term 6 at the frame edge, calibrated. */
   fovHorizontalDeg: 0.275,
   fovVerticalDeg: 0.039,
@@ -428,6 +440,20 @@ export const REGISTERED_STORED_FRAME = { minWidthPx: 1920, aspectTolerance: 0.02
 
 /** How many of the most prominent predicted summits F5b requires a name on. */
 export const PROMINENT_LABEL_COUNT = 3;
+
+/**
+ * The apex rules § 2.0 of the pre-registration registers, keyed by the summit
+ * each one binds.
+ *
+ * One rule, written before any field data existed, and nothing is added to the
+ * list once a field frame exists. The parser refuses a `rule` that is not this
+ * summit's registered text, so a paraphrase cannot pass as the rule and a rule
+ * cannot be quoted against a summit that has none.
+ */
+export const REGISTERED_APEX_RULES: Readonly<Record<string, string>> = {
+  // Deer Point, the registered drag anchor.
+  'overture/bb7147e9-f16f-3d21-a0cb-a60a47cc8873': 'the crest under the tallest mast, not its tip',
+};
 
 /** Largest height disagreement between bundle and committed peak data, metres. */
 export const MAX_ELEVATION_DISAGREEMENT_M = 1;
@@ -783,12 +809,12 @@ export type ApexAnnotation =
        */
       readonly landmark?: string;
       /**
-       * The registered apex rule this pick followed, quoted.
+       * The registered apex rule this pick followed, quoted verbatim.
        *
-       * A string rather than a flag, so the report says which rule was in force
-       * and a rule the annotator paraphrased is visible as a different text. The
-       * rules are written before any field data exists and are listed in
-       * § 2.0 "Registered apex rules" of the pre-registration.
+       * A string rather than a flag, so the report says which rule was in force.
+       * It must equal {@link REGISTERED_APEX_RULES} for this summit; a
+       * paraphrase, an unregistered summit and an empty text are all refused,
+       * because a rule that can be reworded is not the rule that was registered.
        */
       readonly rule?: string;
       readonly note?: string;
@@ -1480,7 +1506,8 @@ function parseCapture(p: Problems, path: string, value: unknown): Capture | unde
   }
   if (role === 'turned') {
     // Nothing was dragged in this direction and nothing was moved from a
-    // reference frame, so either key would claim a drag the session never made.
+    // reference frame, so any of these keys would claim a drag or a movement the
+    // session never made.
     if (dragAnchorSummitId !== undefined) {
       p.add(
         `${path}.dragAnchorSummitId`,
@@ -1491,6 +1518,28 @@ function parseCapture(p: Problems, path: string, value: unknown): Capture | unde
       p.add(
         `${path}.movedFromCaptureId`,
         'a turned capture is a new direction, not a movement from an after-drag capture',
+      );
+    }
+    if (panFromReferenceDeg !== undefined || tiltFromReferenceDeg !== undefined) {
+      p.add(
+        `${path}.panFromReferenceDeg`,
+        'a turned capture has no reference frame to be panned or tilted from: the turn is the direction, not a movement within one',
+      );
+    }
+  }
+  if (role === 'before-drag') {
+    // The capture was taken before anything was dragged, so it can neither name
+    // an anchor nor have come from a capture that did.
+    if (dragAnchorSummitId !== undefined) {
+      p.add(
+        `${path}.dragAnchorSummitId`,
+        'a before-drag capture was taken before the drag, so it names no anchor',
+      );
+    }
+    if (movedFromCaptureId !== undefined) {
+      p.add(
+        `${path}.movedFromCaptureId`,
+        'a before-drag capture is the reference frame, not a movement from one',
       );
     }
   }
@@ -1680,6 +1729,20 @@ function parseApex(p: Problems, path: string, value: unknown): ApexAnnotation | 
     const landmark =
       'landmark' in obj ? asString(p, `${path}.landmark`, obj.landmark) : undefined;
     const rule = 'rule' in obj ? asString(p, `${path}.rule`, obj.rule) : undefined;
+    if (rule !== undefined && summitId !== undefined) {
+      const registered = REGISTERED_APEX_RULES[summitId];
+      if (registered === undefined) {
+        p.add(
+          `${path}.rule`,
+          `no apex rule is registered for ${summitId}; § 2.0 registers one summit's rule and the list is closed`,
+        );
+      } else if (rule !== registered) {
+        p.add(
+          `${path}.rule`,
+          `an apex rule is quoted verbatim from § 2.0, which registers "${registered}" for this summit`,
+        );
+      }
+    }
     if ('reason' in obj) p.add(`${path}.reason`, 'a reason belongs to an absent answer');
     if (summitId === undefined || apexPx === undefined) return undefined;
     return {
@@ -2109,7 +2172,9 @@ export type SummitTruth =
       /**
        * The registered apex rule both annotators followed, when both quoted one.
        *
-       * Both must quote a rule for the summit to count as rule-bound: a rule one
+       * Both quote the same text, because the parser accepts only the summit's
+       * registered one. Both must quote a rule for the summit to count as
+       * rule-bound: a rule one
        * annotator applied and the other did not is not a shared instruction, and
        * the disagreement it produces belongs with the free summits. Two different
        * texts are both kept, joined, because the difference is the finding.
@@ -2182,10 +2247,9 @@ export function reduceTruth(
   const landmark = landmarks.every((entry): entry is string => entry !== undefined)
     ? [...new Set(landmarks)].join(' / ')
     : undefined;
-  const rules = [first.rule, second.rule];
-  const rule = rules.every((entry): entry is string => entry !== undefined)
-    ? [...new Set(rules)].join(' / ')
-    : undefined;
+  // Both texts are the summit's registered rule or the document did not parse,
+  // so one of them is the rule. A summit only one annotator quoted is free.
+  const rule = first.rule !== undefined && second.rule !== undefined ? first.rule : undefined;
   const dxPx = first.apexPx.xPx - second.apexPx.xPx;
   const dyPx = first.apexPx.yPx - second.apexPx.yPx;
   const disagreementPx = Math.hypot(dxPx, dyPx);
@@ -2584,7 +2648,7 @@ function gradeF2(observations: readonly Observation[]): Criterion {
       claim,
       outcome: 'no-sample',
       n: 0,
-      evidence: ['no before-drag capture carried a located summit'],
+      evidence: ['no before-drag or turned capture carried a located summit'],
     };
   }
   return {
@@ -2698,7 +2762,7 @@ function gradeF2Pose(observations: readonly Observation[]): Criterion {
       n: 0,
       evidence:
         thin === 0
-          ? ['no before-drag capture carried a located summit']
+          ? ['no before-drag or turned capture carried a located summit']
           : evidence,
     };
   }

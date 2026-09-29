@@ -65,7 +65,7 @@ test cannot use.
 
 ### Check the forecast for visibility, not just for weather
 
-The summits that matter are far away. Ten of the tallest-looking ones are 34 to 58 km out.
+The summits that matter are far away. Ten of the tallest-looking ones are 25 to 55 km out.
 Rain is not the problem; haze is.
 
 Before you go, check:
@@ -76,6 +76,10 @@ Before you go, check:
   percentage.
 - **Sun position.** Shooting straight into a low sun washes the skyline out. Mid-morning or
   mid-afternoon with the sun behind or beside you is best.
+- **In summer, go in the afternoon.** From May to early August the morning sun sits low in
+  the north-east, right where steps 17 to 19 point the camera, between about 7:30 and 8:45.
+  Go after lunch instead in those months. From September to April the sun is never in that
+  part of the sky and any daylight hour works.
 
 If you can see far ridges from Boise that morning, the trip is on. If the range is a grey
 smudge, go another day. A session with nothing identifiable on the skyline produces no
@@ -356,7 +360,7 @@ button appears reading **Put the labels back and drag again**. Tap it, then drag
 same anchor summit and capture.
 
 Three drags onto one summit is how the session measures how much your own aim varies. It is
-the largest single term in the error budget.
+one of the two largest terms in the error budget, and the only one you control.
 
 ### Steps 17 to 19 — The far mountains to the north-east
 
@@ -370,8 +374,9 @@ Then two more captures, one after the other:
 
 > Without dragging anything, hold still and capture the same view a second time.
 
-These two are the far mountains, 20 to 60 km out. **Do not drag a label and do not tap Fix
-direction** on this side. The labels keep the correction they already have, and carrying it
+These two are the far mountains, 25 to 55 km out. **Do not drag a label and do not tap Fix
+direction** on this side. In May, June, July and early August, do this in the afternoon: the
+morning sun sits in that exact part of the sky and washes the ridges out. The labels keep the correction they already have, and carrying it
 round the turn is part of what is being tested. Three or four minutes, and the session is
 done.
 

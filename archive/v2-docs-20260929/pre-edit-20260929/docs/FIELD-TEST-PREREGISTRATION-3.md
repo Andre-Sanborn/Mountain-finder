@@ -49,20 +49,20 @@ that summit carries is subtracted from every other summit. The residual for summ
 anchored on summit *a* is therefore `(e_i − e_a) + (drag precision)`, and the anchor's own
 error enters every row of the table. **The protocol names the anchor rather than leaving it
 to the person**: the drag is anchored on the summit § 2.7 registers, and the bundle records
-which one (`dragAnchorSummitId`). **The table below charges the anchor at its own
-distance**, which is a protocol input rather than an assumption: the anchor is named before
-the session, so how far away it is is known before any residual exists.
+which one (`dragAnchorSummitId`). The table below charges the anchor at the 7–20 km band.
 
 **The registered anchor at this site is Deer Point, 2.0 km away** (§ 2.7). It is the summit
 the session faces, and the only one in that frame carrying a registered apex rule (§ 2.0).
-A near anchor carries a large angular error, and every other summit inherits it: 25 m of
-horizontal geodesy is 0.716° at 2 km, 0.143° at 10 km and 0.026° at 55 km. The anchor term
-in § 1.5 is therefore 0.716° horizontally and 0.327° vertically on every row, and it is the
-largest term in the budget beyond 3 km.
-
-The committed peak data puts Deer Point at 2.025 km. The table is computed at the 2.0 km
-§ 2.7 registers; the 25 m between them is worth 0.009° of anchor term, which no limit's
-0.05° rounding can see.
+A farther anchor would carry a smaller angular error — 25 m of horizontal geodesy is 0.143°
+at 10 km, 0.026° at 55 km, and 0.716° at 2 km — so the 7–20 km charge in the table below is
+**not** conservative for this anchor. Carrying the 2 km figure through § 1.5 instead would
+raise the horizontal 1σ from 0.951° to 1.182° at 2 km and from 0.642° to 0.951° at 10 km.
+**The table is left as written, and the limits with it.** A limit re-derived to fit the
+anchor would be a limit widened before a run, which this document permits only with the
+measurement behind it (§ 1.6), and no such measurement exists. What it means for a run is
+stated rather than hidden: a band that fails by less than that gap is a candidate for the
+anchor's own error rather than for the app's, and the decomposition § 2.3 already requires
+starts there.
 
 ### 1.2 The viewport the budget is computed on
 
@@ -343,49 +343,39 @@ summit (recorded, not gated).
 **RSS, not worst case.** Nine terms of comparable size do not all reach their maxima with
 the same sign, and a worst-case sum would set a tolerance nothing could fail — which is the
 opposite of a test. The worst-case sum is computed alongside, and the ratio is stated, so a
-reader can see how much the choice is worth: at 2 km the linear sum is 2.284° horizontally
-against an RSS of 1.182°, a factor of 1.93; at 10 km it is 1.711° against 0.951°, a factor
-of 1.80; at 60 km it is 1.592° against 0.941°, a factor of 1.69.
+reader can see how much the choice is worth: at 2 km the linear sum is 1.712° horizontally
+against an RSS of 0.951°, a factor of 1.80; beyond 10 km the factor is about 1.6.
 
 ### 1.5 The budget, per distance band
 
-Per-summit 1σ, at the frame edge (u = 1.0, the worst position in the frame), anchored on the
-registered 2 km summit, with the calibrated field of view, the DEM-ground observer height
-and the 2 s hold:
+Per-summit 1σ, at the frame edge (u = 1.0, the worst position in the frame), anchored on a
+7–20 km summit, with the calibrated field of view, the DEM-ground observer height and the
+2 s hold:
 
 | D | peak+obs, H | peak+obs, V | anchor H | anchor V | FOV H | FOV V | roll H | roll V | drag | **1σ H** | **1σ V** |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 2 km | 0.716° | 0.327° | 0.716° | 0.327° | 0.275° | 0.039° | 0.034° | 0.322° | 0.543° | **1.182°** | **0.783°** |
-| 5 km | 0.286° | 0.131° | 0.716° | 0.327° | 0.275° | 0.039° | 0.034° | 0.322° | 0.543° | **0.983°** | **0.724°** |
-| 10 km | 0.143° | 0.065° | 0.716° | 0.327° | 0.275° | 0.039° | 0.034° | 0.322° | 0.543° | **0.951°** | **0.715°** |
-| 30 km | 0.048° | 0.022° | 0.716° | 0.327° | 0.275° | 0.039° | 0.034° | 0.322° | 0.543° | **0.942°** | **0.712°** |
-| 60 km | 0.024° | 0.011° | 0.716° | 0.327° | 0.275° | 0.039° | 0.034° | 0.322° | 0.543° | **0.941°** | **0.712°** |
+| 2 km | 0.716° | 0.327° | 0.143° | 0.065° | 0.275° | 0.039° | 0.034° | 0.322° | 0.543° | **0.951°** | **0.715°** |
+| 5 km | 0.286° | 0.131° | 0.143° | 0.065° | 0.275° | 0.039° | 0.034° | 0.322° | 0.543° | **0.689°** | **0.649°** |
+| 10 km | 0.143° | 0.065° | 0.143° | 0.065° | 0.275° | 0.039° | 0.034° | 0.322° | 0.543° | **0.642°** | **0.639°** |
+| 30 km | 0.048° | 0.022° | 0.143° | 0.065° | 0.275° | 0.039° | 0.034° | 0.322° | 0.543° | **0.628°** | **0.636°** |
+| 60 km | 0.024° | 0.011° | 0.143° | 0.065° | 0.275° | 0.039° | 0.034° | 0.322° | 0.543° | **0.627°** | **0.636°** |
 
 Horizontal geodesy is `sqrt(20² + 15²) = 25 m` over D; vertical is
 `sqrt(5.5² + 10²) = 11.41 m` over D. When a capture reports its own fix accuracy, the 15 m
 becomes that fix's per-axis 1σ by term 3a and the row is recomputed for that capture; § 2.3
 gives the recomputed limits for a 10 m fix.
 
-**The headline.** Beyond about 3 km the budget is flat, because the drag, the roll, the
-field-of-view scale and the anchor's own error do not care how far away the graded summit
-is, and together they are 0.94° horizontally. The graded summit's own geodesy only matters
-in the near band: at 2 km it is 0.716° horizontally, the largest single term in the row;
-at 10 km it is 0.143°, a seventh of the total; at 60 km it is 0.024°, invisible. **So a
-60 km summit is still no harder to label than a 10 km one**, which is worth knowing before
-anyone budgets a 42 MB terrain mosaic to reach one.
-
-**What is expensive here is the anchor, not the distance.** A drag subtracts the anchor's
-own error from every other summit, so the anchor's distance sets the whole table. At the
-registered 2 km it contributes 0.716° horizontally and the flat floor is 0.94°; an anchor
-10 km out would contribute 0.143° and put that floor at 0.61°, with every row 0.23° to
-0.31° tighter. The sensitivity is worth carrying into any later site: a near anchor is the
-easiest summit to drag onto and the most expensive one to inherit.
+**The headline.** Beyond about 3 km the budget is flat, because the drag, the roll and the
+field-of-view scale do not care how far away a summit is, and together they are 0.62°.
+The geodesy only matters in the near band: at 2 km it is 0.716° horizontally, larger than
+everything else combined; at 10 km it is 0.143°, a fifth of the total; at 60 km it is
+0.024°, invisible. **So a 60 km summit is no harder to label than a 10 km one**, which is
+worth knowing before anyone budgets a 42 MB terrain mosaic to reach one.
 
 ### 1.6 The two terms that are measured before the session
 
-Two of the terms above are judgements rather than measurements, and beyond 3 km they are the
-two largest that are not geodesy: only the anchor's own position error, at 0.716°
-horizontally, is larger. **Both are measured in the home session, and the limits are re-derived from
+Two of the terms above are judgements rather than measurements, and they are the two largest
+beyond 3 km. **Both are measured in the home session, and the limits are re-derived from
 those measurements before the field session** — not from a second judgement.
 
 - **Drag precision (term 9), assumed 0.543°.** The home session records three repeated drags
@@ -453,9 +443,9 @@ The protocol:
 4. Truth for a summit is the midpoint of the two picks. The **disagreement** is the distance
    between them, recorded in pixels and degrees for every graded summit.
 5. **A summit whose annotators disagree by more than 0.30° is not graded.** It is reported
-   as `truth-disputed` with its disagreement. 0.30° is under a quarter of the tightest F3
-   threshold, which is 1.45°: truth at least four times finer than the tolerance is the
-   least that makes a verdict mean anything.
+   as `truth-disputed` with its disagreement. 0.30° is a quarter of the tightest F3
+   threshold: truth four times finer than the tolerance is the least that makes a verdict
+   mean anything.
 6. **The disagreement rules, in order.** Either annotator answering `cannotIdentify`
    **excludes** the summit from F3, F4 and F5a, whatever the other said, and the count of
    exclusions is reported. Two `absent` answers make the summit absent, and the two reasons
@@ -479,9 +469,8 @@ The protocol:
    show no buildings, so that is as far as the terrain can tie a feature to a node. **The
    distance from the feature to the node is an unquantified truth term** on every rule-bound
    summit, and this document does not estimate it. Each annotator records the rule they
-   followed in a `rule` field on the apex, **quoted verbatim from the list below** — the
-   parser refuses any other text, so the two annotators of a rule-bound summit agree on which
-   rule was in force by construction. A summit counts as rule-bound only when both quoted it.
+   followed in a `rule` field on the apex, and a summit counts as rule-bound only when both
+   quoted one.
 9. **A bearing-and-lens prediction may direct an annotator's attention. It may never place a
    pixel.** Both map annotators of the rehearsal frame fitted a focal length on one summit
    and predicted the rest from map bearings. That is a model of the same pinhole camera the
@@ -543,17 +532,11 @@ drag on Deer Point.
 **F3.near and F4.near are site-limited, and are expected `no-sample` by construction.**
 Within 3 km of the viewpoint the package holds four summits besides Shafer Butte itself:
 Doe Point 1.9 km at 198°, Deer Point 2.0 km at 204°, Bob's Knob 2.1 km at 123° and Mores
-Mountain 2.2 km at 356°. At the registered 73.74° hFOV a frame holds no more than two of
-them at once — Doe Point and Deer Point, 6.6° apart; the next nearest pair, Doe Point and
-Bob's Knob, is 75.0° apart — and one of those two is the drag anchor, which § 2.3 excludes.
-The near band's whole possible graded sample is therefore Doe Point, one summit against a
-stop rule that asks for three.
-
-A frame wider than the registration would hold three: § 1.2 reports rather than refuses a
-viewport up to 10 % off, so a capture drawn at up to 81.1° could reach Bob's Knob as well.
-That does not change the outcome. Three drawn summits are two graded ones once the anchor is
-excluded, and the stop rule asks for three graded. **The site limits this, not the app**, and
-it is written here for the same reason the other pre-declared limits are.
+Mountain 2.2 km at 356°. A 73.74° frame holds no more than two of them at once — Doe Point
+and Deer Point, 6° apart; the next nearest pair is 75° apart — and one of those two is the
+drag anchor, which § 2.3 excludes. The near band's whole possible graded sample is therefore
+Doe Point, one summit against a stop rule that asks for three. **The site limits this, not
+the app**, and it is written here for the same reason the other pre-declared limits are.
 
 **Which bands the south direction can sample.** Beyond the near band, the summits the
 registered direction can reach are:
@@ -567,8 +550,8 @@ registered direction can reach are:
 **A hazy day is predicted to give `no-sample` in `far` and `distant`.** The rehearsal
 annotation left every valley butte 20 km and beyond `cannotIdentify` in midday haze, and a
 summit the annotators cannot identify is one the truth instrument did not settle. The
-`far`, `distant` and `horizon` bands are all reached by the north-east direction § 2.7
-registers, which F3 and F4 do not grade at all (§ 2.2).
+`distant` and `horizon` bands are reached by the north-east direction § 2.7 registers, which
+F3 and F4 do not grade at all (§ 2.2).
 
 **Rule-bound counts are expected to read zero in every graded band.** Deer Point's rule is
 the only one registered below, and Deer Point is the drag anchor, which is never graded. So
@@ -723,29 +706,14 @@ on F5, not on the south frame alone.
 **The north-east direction is registered, and F3 and F4 do not grade it.** § 2.7 adds two
 captures centred about 45° true, toward Hawley Mountain, Charters Mountain, Scott Mountain,
 Jackson Peak, Wilson Peak, Freeman Peak, Pilot Peak, Sunset Mountain, Granite Mountain and
-Grand Mountain — 25 to 55 km out, at apparent altitudes from about −0.7° (Charters Mountain)
-to +0.1° (Freeman Peak), computed at a 1.6 m eye height with refraction at k = 0.13. That is
-a skyline at or just below level rather than ground. They are taken after the south drag,
-under the gross heading offset the Deer Point re-anchor set and carried across the turn, with
-**no new anchor**: a second re-anchor would throw away the first direction's compass reading,
-and outside May to August the Sun is never in a north-east frame at an altitude this protocol
-would use.
+Grand Mountain — 20 to 60 km out, at apparent altitudes of about −1.3° to +0.4°, which is a
+skyline rather than ground. They are taken after the south drag, under the gross heading
+offset the Deer Point re-anchor set and carried across the turn, with **no new anchor**: the
+Sun is not in a north-east frame at any hour this protocol allows, and a second re-anchor
+would throw away the first direction's compass reading.
 
-**In May, June, July and early August the north-east captures are taken in the afternoon.**
-From the site coordinate the morning Sun sits at azimuth 72° to 82° and 15° to 26° above the
-horizon between about 07:30 and 08:45 MDT, which is inside the 8.1° to 81.9° span of a 73.74°
-frame centred on 45°, and usually inside its vertical span too. Shooting into it washes the
-skyline out and would make the direction unusable for both annotators. From September to
-April the Sun never reaches that corner of the sky at a working altitude, and the hour is
-free.
-
-- **What they feed**: F2 on the drawn markers; `F2.pose`, which has two located summits more
-  than 20° apart to solve with; and all three parts of F5. F5a counts every summit they draw
-  `visible`, F5b ranks each frame's three most prominent, and F5c reads each capture's sweep
-  radius: the grader applies those three to every capture whatever its role.
-- **Which F2 bands they reach.** Not only `distant` and `horizon`. The same frame holds
-  Sugarloaf Rock at 7.6 km, Harris Creek Summit at 14.6 km and Warm Springs Point at 13.1 km,
-  which are `far`, so a turned capture can report F2 observations in three bands.
+- **What they feed**: F2 on the drawn markers, in the `distant` and `horizon` bands;
+  `F2.pose`, which has two located summits more than 20° apart to solve with; and F5b.
 - **What they do not feed**: **F3 and F4**. Those two criteria are about a drag, and these
   captures carry a trim set on a summit about 100° away. The grader gives them their own
   capture role so that neither criterion reads them and neither reports them off-protocol
@@ -795,24 +763,16 @@ binned by distance.
 
 | band | distance | 2σ H | 2σ V | 3σ H | 3σ V | 2σ at a 1920 px frame |
 |---|---|---|---|---|---|---|
-| `near` | 0 to under 3 km | **2.35°** | **1.55°** | 3.55° | 2.35° | 52.5 px / 34.6 px |
-| `mid` | 3 to under 7 km | **1.95°** | **1.45°** | 2.95° | 2.20° | 43.6 px / 32.4 px |
-| `far` | 7 to under 20 km | **1.90°** | **1.45°** | 2.85° | 2.20° | 42.5 px / 32.4 px |
-| `distant` | 20 to under 45 km | **1.90°** | **1.45°** | 2.85° | 2.20° | 42.5 px / 32.4 px |
-| `horizon` | 45 km and beyond | **1.90°** | **1.45°** | 2.85° | 2.20° | 42.5 px / 32.4 px |
-
-**Why `near` is the loosest row by so much.** Its graded summit and the drag anchor are both
-2 km away, so the geodesy is charged twice at its largest: 0.716° horizontally in each of two
-terms, which is 1.182° of 1σ and 2.35° at 2σ. It is also the row this site cannot fill.
-§ 2.0 pre-declares `F3.near` and `F4.near` `no-sample`, because the only graded near summit
-available is Doe Point and the stop rule asks for three.
+| `near` | 0 to under 3 km | **1.90°** | **1.45°** | 2.85° | 2.20° | 42.4 px / 32.4 px |
+| `mid` | 3 to under 7 km | **1.40°** | **1.30°** | 2.10° | 1.95° | 31.3 px / 29.0 px |
+| `far` | 7 to under 20 km | **1.30°** | **1.30°** | 1.95° | 1.95° | 29.0 px / 29.0 px |
+| `distant` | 20 to under 45 km | **1.30°** | **1.30°** | 1.95° | 1.95° | 29.0 px / 29.0 px |
+| `horizon` | 45 km and beyond | **1.30°** | **1.30°** | 1.95° | 1.95° | 29.0 px / 29.0 px |
 
 A band's lower bound is inclusive and its upper bound exclusive, so a summit exactly 3 km
 away is graded against `mid`. A boundary goes to the tighter of the two bands. The last
-three bands are identical because the budget is flat beyond 7 km: their raw 2σ figures
-differ by under 0.01°, and only a rounding boundary separates the vertical ones, so all
-three take the `far` row. Collapsing them would hide the flatness, so they are listed
-separately and the result reports n per band.
+three bands are identical because the budget is flat beyond 7 km, and collapsing them would
+hide that; they are listed separately so the result reports n per band.
 
 **Every summit is reported against the 2σ band.** Its residual, its axis, its frame offset
 and its truth disagreement are printed whether it is inside or outside.
@@ -839,35 +799,25 @@ p1 = P(between 2σ, 3σ) = 0.04550 − 0.00270 = 0.04280
 A gate of "every axis inside 2σ" passes a correct budget with probability `p0^n`:
 
 ```
-n = 6 :  0.95450^6  = 0.756
-n = 18:  0.95450^18 = 0.432
-n = 30:  0.95450^30 = 0.247
+n = 8 :  0.95450^8  = 0.689
+n = 16:  0.95450^16 = 0.475
+n = 32:  0.95450^32 = 0.225
 ```
 
-Those are the sizes a band here reaches. A band holds three to five settled summits (§ 2.0),
-each graded in each of the three after-drag captures, so it is 18 to 30 axis draws; a band
-scraping the stop rule on one capture is 6. A correct budget would fail an "every axis
-inside 2σ" gate more than half the time at the sizes this session produces, which measures
-the sample rather than the app. **Tolerating one 2σ exceedance and refusing any 3σ
-excursion** passes with `p0^n + n·p1·p0^(n−1)`:
+At the 16 to 32 axis draws two or three captures produce, a correct budget would fail such a
+gate between half and three quarters of the time. That gate measures the sample size rather
+than the app. **Tolerating one 2σ exceedance and refusing any 3σ excursion** passes with
+`p0^n + n·p1·p0^(n−1)`:
 
 ```
-n = 6 :  0.756 + 6  × 0.04280 × 0.95450^5  = 0.756 + 0.204 = 0.960
-n = 18:  0.432 + 18 × 0.04280 × 0.95450^17 = 0.432 + 0.350 = 0.782
-n = 30:  0.247 + 30 × 0.04280 × 0.95450^29 = 0.247 + 0.332 = 0.580
+n = 8 :  0.689 + 8 × 0.04280 × 0.95450^7  = 0.689 + 0.247 = 0.936
+n = 16:  0.475 + 16 × 0.04280 × 0.95450^15 = 0.475 + 0.341 = 0.815
 ```
 
-So a correct budget passes a band with probability 0.960 at n = 6, 0.782 at n = 18 and
-0.580 at n = 30. The gate still catches a budget that is wrong by a factor — two axes past
-2σ, or one past 3σ, is what a 1.5× understated term looks like at these sizes — and it is
-still short of an instrument that could confirm a correct budget, which is why § 2.0 lets
-this session refute the budget and not confirm it. Two further things the arithmetic does
-not model are stated rather than buried: the three captures grade the same summits, so a
-summit whose peak position is wrong contributes three correlated exceedances rather than
-three draws, and the budget's terms are charged at the frame edge while a summit near the
-axis carries less. Both make a band easier to fail than `p0^n` says. 2σ stays the band the
-app displays and the figure every summit is reported against; 3σ is a limit no single draw
-should reach.
+So a correct budget passes a band at n = 8 with probability 0.936 and at n = 16 with 0.815,
+and the gate still catches a budget that is wrong by a factor: two axes past 2σ, or one past
+3σ, is what a 1.5× understated term looks like at this n. 2σ stays the band the app displays
+and the figure every summit is reported against; 3σ is a limit no single draw should reach.
 
 **When the capture reports a fix accuracy, the limits are recomputed from it** (term 3a), and
 the tighter of the registered and the recomputed figure applies. For a 10 m accuracy, which
@@ -875,16 +825,14 @@ is 4.09 m of 1σ per axis:
 
 | band | 2σ H | 2σ V | 3σ H | 3σ V |
 |---|---|---|---|---|
-| `near` | 2.10° | 1.55° | 3.15° | 2.35° |
-| `mid` | 1.80° | 1.45° | 2.70° | 2.20° |
-| `far` | 1.75° | 1.45° | 2.65° | 2.20° |
-| `distant` | 1.70° | 1.45° | 2.55° | 2.20° |
-| `horizon` | 1.70° | 1.45° | 2.55° | 2.20° |
+| `near` | 1.75° | 1.45° | 2.65° | 2.20° |
+| `mid` | 1.35° | 1.30° | 2.05° | 1.95° |
+| `far` | 1.30° | 1.30° | 1.95° | 1.95° |
+| `distant` | 1.25° | 1.30° | 1.90° | 1.95° |
+| `horizon` | 1.25° | 1.30° | 1.90° | 1.95° |
 
 The vertical column does not move, because the observer's height comes from the DEM rather
-than from the fix. Every horizontal row moves, because the fix enters twice: once for the
-graded summit and once for the 2 km anchor, whose term is the larger of the two beyond
-3 km.
+than from the fix. The near band moves most, which is where the observer term lives.
 
 **Failure.** A band that fails the count above. **What happens then:** the residual is
 decomposed against §1.3 — is it one summit (check the cross-release diff and the truth
@@ -977,8 +925,7 @@ verdict from beyond the measured terrain is a fabricated claim and fails outrigh
 
 ### 2.6 F6 — Human time on site
 
-**Claim.** The field session fits the half hour IMPLEMENTATION.md budgets for it, at 19
-steps and 10 captures.
+**Claim.** The field session fits the 25 minutes IMPLEMENTATION.md budgets for it.
 
 **The exact measurement.** Elapsed minutes from the tab opening to the last capture,
 recorded by the person on site, split into: permissions and start, field-of-view
@@ -988,7 +935,7 @@ relative durations only.
 **Sample.** n = 1. It is one session. This is stated rather than dressed up.
 
 **Threshold.** ≤ 40 minutes total, and the field-of-view calibration ≤ 10 minutes.
-40 rather than 30 because the estimate is 30 and a criterion set at the estimate measures
+40 rather than 25 because the estimate is 25 and a criterion set at the estimate measures
 the estimate rather than the protocol.
 
 **Failure.** Over 40 minutes, or the session abandoned incomplete. **What happens then:**
@@ -1025,10 +972,7 @@ The order the session is run in, because several criteria depend on it.
 10. Repeat the drag onto Deer Point three times, so its spread is recorded (§ 1.6).
 11. **Turn to face north-east, about 45° true, and capture twice.** Do not drag anything and
     do not re-anchor: the trim and the gross heading offset travel round the turn with you.
-    These two captures feed F2, `F2.pose` and all of F5, and F3 and F4 do not read them
-    (§ 2.2). **From May to early August this step is done in the afternoon**, because the
-    morning Sun sits inside a north-east frame from about 07:30 to 08:45 MDT (§ 2.2). From
-    September to April any daylight hour will do.
+    These two captures feed F2, `F2.pose` and F5b, and F3 and F4 do not read them (§ 2.2).
 12. Note the minutes each step took (F6).
 
 ---
@@ -1082,23 +1026,18 @@ tell them apart is re-annotated rather than reinterpreted. Each annotation is ex
 an apex pixel, `absent` with its reason, or `cannotIdentify`, and each reading names the
 method it was made under.
 
-**An apex may carry a `rule`**, the registered apex rule the annotator followed, quoted
-verbatim. The rules live in the grader as `REGISTERED_APEX_RULES`, keyed by summit, and the
-parser refuses any other text: a paraphrase, an empty string, and a rule quoted against a
-summit § 2.0 registers none for. So the two annotators of a rule-bound summit necessarily
-quoted the same text. It is optional, so a truth document written without one is read
-unchanged, and a summit counts as rule-bound only when both annotators quoted the rule. The report prints how many graded
+**An apex may carry a `rule`**, the registered apex rule the annotator followed, quoted. It
+is optional, so a truth document written without one is read unchanged, and a summit counts
+as rule-bound only when both annotators quoted a rule. The report prints how many graded
 summits were rule-bound and the truth disagreement of the rule-bound and the free summits
 apart (§ 2.0). A rule on an answer that locates nothing is refused, as a landmark already is.
 
 **A capture of the north-east direction carries the role `turned`.** F3 and F4 read only the
 `after-drag` and `moved` roles, so a turned capture reaches neither, and the movement
 envelope check reads only `moved`, so neither is it reported off-protocol. F2 and `F2.pose`
-read `before-drag` and `turned` together, and F5 reads every role. A turned capture names no
-`dragAnchorSummitId`, no `movedFromCaptureId` and neither `panFromReferenceDeg` nor
-`tiltFromReferenceDeg`, and the parser refuses one that does: nothing was dragged in that
-direction and nothing was moved from a reference frame. A `before-drag` capture is refused
-the same two drag keys, because it was taken before the drag existed.
+read `before-drag` and `turned` together. A turned capture names no `dragAnchorSummitId` and
+no `movedFromCaptureId`, and the parser refuses one that does: nothing was dragged in that
+direction and nothing was moved from a reference frame.
 
 `fixtures/field/` holds synthetic bundles with known injected errors, and nothing recorded
 from a phone.
@@ -1357,79 +1296,3 @@ ambiguity it had already hit.
   not.
 
 Nothing about the thresholds, the bands or the error budget moved.
-
-### 2026-09-29 — the budget charges the anchor at the registered anchor's distance
-
-Still before any field number exists. The budget charged the drag anchor at 7–20 km while
-the protocol registers a 2.0 km anchor, so every row was computed on a summit the session
-will not use.
-
-- **§ 1.5 charges the anchor at 2 km, the distance § 2.7 registers.** The anchor term goes
-  from 0.143° to 0.716° horizontally and from 0.065° to 0.327° vertically, on every row. The
-  1σ column follows: 1.182° / 0.783° at 2 km, 0.951° / 0.715° at 10 km, 0.941° / 0.712° at
-  60 km.
-- **§ 2.3's limits follow the budget, in both tables.** `near` is 2.35° / 1.55°, `mid` is
-  1.95° / 1.45°, and the three bands beyond 7 km are 1.90° / 1.45°. The 10 m-fix table is
-  recomputed with them, and every figure is generated from `BUDGET_TERMS` rather than typed.
-- **Why this is not a threshold widened to fit a run.** The anchor's distance is a protocol
-  input, registered in § 2.7 before the session and known without any field data. The rule
-  at the top of this document forbids moving a limit after a run and § 1.6 forbids replacing
-  a judgement with a second judgement; recomputing a term from a registered input is neither.
-  No field number exists to have motivated it.
-- **§ 1.1 no longer offers the gap as an excuse.** The previous revision left the table on
-  the 7–20 km charge and told a reader to decompose a marginal failure against the anchor
-  first. A band that fails now fails against the budget the anchor actually implies.
-- **What it would have done to the headless rehearsal.** Nothing. `out/rehearsal/bundle.json`
-  reports `no-sample` in every F3 and F4 band under the anchor-exclusion rule, whatever the
-  limits are.
-- **What moved in the fixtures.** `fixtures/field/stray-bundle.json` injects its `F3.far`
-  failure as a 3σ excursion, so the injected offset goes from 50 px to 70 px on the stored
-  frame — 3.130° against the band's 2.85°. The verdict table it produces is unchanged.
-- **§ 2.3's exceedance arithmetic is stated at the sample sizes a band here reaches**, 6 to
-  30 axis draws rather than a worked n = 8, and the two effects the binomial does not model
-  — repeated grading of the same summits, and terms charged at the frame edge — are named.
-  The gate itself did not move.
-
-The bands, the criteria and the terms of § 1.3 are unchanged. What moved is the distance one
-of those terms is charged at.
-
-### 2026-09-29 — the north-east direction's hour, and what reads a turned capture
-
-Still before any field number exists. A verification pass against the solar geometry, the
-committed peak data and the grader found six statements this document made that its own
-inputs do not support.
-
-- **The Sun claim is now seasonal (§ 2.2, § 2.7).** "The Sun is not in a north-east frame at
-  any hour this protocol allows" holds from September to April and fails from May to early
-  August, when the Sun sits at azimuth 72° to 82° and 15° to 26° up between about 07:30 and
-  08:45 MDT — inside the 8.1° to 81.9° span of the registered frame. In those months the
-  north-east captures are taken in the afternoon, and
-  [FIELD-SESSION-GUIDE.md](FIELD-SESSION-GUIDE.md) says so in plain words. The no-new-anchor
-  rule is unchanged and now rests on the reason that always held: a second re-anchor throws
-  away the first direction's compass reading.
-- **The north-east apparent altitudes are corrected (§ 2.2)**, from "about −1.3° to +0.4°" to
-  about −0.7° (Charters Mountain) to +0.1° (Freeman Peak), computed from the committed peak
-  data at a 1.6 m eye height with refraction at k = 0.13. The ten named summits are 25 to
-  55 km out, not 20 to 60.
-- **The north-east captures feed all of F5, not F5b alone (§ 2.2, § 3).** F5a counts every
-  summit any capture draws `visible`, and F5c reads every capture's sweep radius. A test now
-  grades a turned capture through all three, so a role filter added to any of them fails.
-- **The north-east frame reaches the `far` band too (§ 2.2, § 2.0).** Sugarloaf Rock at
-  7.6 km, Warm Springs Point at 13.1 km and Harris Creek Summit at 14.6 km sit in it, so its
-  F2 observations are not confined to `distant` and `horizon`.
-- **An apex rule is quoted verbatim (§ 2.0, § 3).** The grader holds the registered rules as
-  `REGISTERED_APEX_RULES`, keyed by summit, and the parser refuses a rule that is not that
-  summit's registered text, including a paraphrase, an empty string and a rule quoted against
-  a summit with none. The two annotators of a rule-bound summit therefore quote the same
-  text by construction.
-- **The parser refuses two more impossible captures (§ 3).** A `turned` capture carrying
-  `panFromReferenceDeg` or `tiltFromReferenceDeg` — there is no reference frame to have moved
-  from — and a `before-drag` capture carrying `dragAnchorSummitId` or `movedFromCaptureId`.
-- **§ 2.0's near-band claim is stated at the registered field of view.** Two near summits in
-  one frame is a fact about 73.74°; a viewport up to 10 % wider, which § 1.2 reports rather
-  than refuses, would reach Bob's Knob 75.0° from Doe Point. F3.near is `no-sample` either
-  way, because three drawn summits are two graded ones once the anchor is excluded.
-- **§ 2.6 cites the half-hour estimate** the session is now sized at, and its 40-minute
-  threshold is justified against that rather than against a superseded 25.
-
-No threshold moved, and no criterion changed what it grades.
