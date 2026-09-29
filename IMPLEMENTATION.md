@@ -672,3 +672,39 @@ calibration vectors, so the suite proves the reading of the specs, not the hardw
 9. The four calibration holds as raw events. The verdict must be `matches-convention`.
 10. The event rate and timestamp jitter, and whether the motion-permission grant survives a
     reload and airplane mode.
+
+## Repository privacy gate, `npm run check:privacy`
+
+The gate is the first step of `npm run check`, and takes about 2 s. It scans tracked files,
+newly staged files, and unignored untracked files, so a capture fails before it is committed. It
+fails on four things:
+- GPS EXIF in an image
+- a `.heic`, `.heif` or `.dng` whose EXIF `exifr` cannot read. Several committed HEICs are
+  unreadable to it, and a refusal is no evidence of a clean file.
+- a decimal-degree pair in `.json`, `.ts`, `.tsx`, `.csv` or `.txt` that also takes a capture
+  shape: `coords` or `geolocation` nearby, a wall-clock timestamp nearby, the
+  latitude/longitude/accuracy key set, or a capture-shaped path
+- any file under `captures/` or `bundles/`
+
+**Why the capture shape.** 164 of 339 tracked text files hold a coordinate pair, legitimately:
+peak data, viewpoints, WMM values, synthetic scenes. Bare `latitude`/`longitude` keys flagged
+30 files, and bare 10-digit integers flagged 15, including GERS ids and an LCG multiplier. The
+shaped rule flags 4. Those 4 files, plus 14 images, are cleared by path and sha256 in
+`scripts/privacy-allowlist.json`:
+- 5 synthetic JPEGs with authored EXIF
+- 9 files in `fixtures/photos/real/`
+- 4 test or fixture files holding published coordinates and test dates
+
+An agent reviewed all of these on 2026-09-29, not the human. `--approve` refuses to run in CI.
+Detection is shared with the deploy gate through `scripts/lib/privacy-detect.ts`.
+
+Ten mutations, one per rule, each fail exactly that rule's test. The test file carries no
+coordinate literals, so it cannot trip the gate it tests.
+
+**Limits.**
+- An untracked and gitignored file is invisible to the gate, so `.gitignore` is the defence
+  there.
+- Markdown is out of scope.
+- Editing a cleared file breaks its hash, so it needs one `--approve` per edit.
+- If `src/exif/testing/generate.ts` is not byte-deterministic, regenerating the synthetic
+  JPEGs needs re-approval.

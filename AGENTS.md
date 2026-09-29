@@ -322,10 +322,14 @@ they moved. These rules apply to every one of them.
 - **A capture bundle travels only by the human's own action, to their own
   account** — Web Share to their own email, for instance. It is never committed,
   never attached to an issue, and never published.
-- **A repository check enforces this, and it is not built yet.** It belongs in
-  `npm run check`, and it fails on EXIF GPS in a new image file and on
-  decimal-degree coordinate pairs in a new fixture. The seven photographs above
-  are its allow-list, as the standing exception.
+- **`npm run check:privacy` enforces this, as the first step of `npm run check`.** It fails
+  on GPS EXIF in an image, on an unreadable camera original, on a coordinate pair that takes a
+  capture shape (beside `coords`, `geolocation`, a wall-clock timestamp, or a position-fix key
+  set), and on any file under `captures/` or `bundles/`. Reviewed files are cleared by path and
+  sha256 in `scripts/privacy-allowlist.json` with
+  `npm run check:privacy -- --approve <path>`, which refuses to run in CI. Clear a file only
+  after reading it. Say in the commit who reviewed it: the agent reviews that cleared the
+  initial list on 2026-09-29 were not human approvals.
 
 ## Evidence
 

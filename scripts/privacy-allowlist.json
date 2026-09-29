@@ -1,0 +1,97 @@
+{
+  "$comment": "Files a human reviewed and cleared for this repository. See the header of scripts/check-repo-privacy.ts. Add one with: npm run check:privacy -- --approve <path>",
+  "images": [
+    {
+      "path": "fixtures/photos/aconcagua-south-west.jpg",
+      "sha256": "f2b8328c9fa243618d5ffea083a2e5829f848774291bb04c4c37b3c3cf0521bc",
+      "note": "synthetic frame with authored EXIF from src/exif/testing/generate.ts; the position is an invented test value"
+    },
+    {
+      "path": "fixtures/photos/chamonix-north-east.jpg",
+      "sha256": "5469c66c5f419f52ea15e94ffa5f457f44729258d7fc0ea1ea49f8d68f735275",
+      "note": "synthetic frame with authored EXIF from src/exif/testing/generate.ts; the position is an invented test value"
+    },
+    {
+      "path": "fixtures/photos/dead-sea-below-sea-level.jpg",
+      "sha256": "8ccb232ce596f62e6cc934174a0879df2e1fabeda861b76ca0967e2a230b2384",
+      "note": "synthetic frame with authored EXIF from src/exif/testing/generate.ts; the position is an invented test value"
+    },
+    {
+      "path": "fixtures/photos/gornergrat-matterhorn.jpg",
+      "sha256": "063ba27f29270536b3c190a8dc06d0391c0aafbb3ab5f2e9405f48705a8fae3a",
+      "note": "synthetic frame with authored EXIF from src/exif/testing/generate.ts; the position is an invented test value"
+    },
+    {
+      "path": "fixtures/photos/portrait-orientation-6.jpg",
+      "sha256": "9eb04bec4eb3df137138eb75c198d61f5ebe4d8da9de7551cc1ed36cc14e43c3",
+      "note": "synthetic frame with authored EXIF from src/exif/testing/generate.ts; the position is an invented test value"
+    },
+    {
+      "path": "fixtures/photos/real/hdr-gainmap-6594.heic",
+      "sha256": "e3cf3056e0356217a206b74aa16cf6e5b334a435020c3a82a73809b4532dc5cd",
+      "note": "standing exception: an iPhone original the photographer supplied for this project, AGENTS.md \"Privacy\""
+    },
+    {
+      "path": "fixtures/photos/real/hdr-gainmap-7270.heic",
+      "sha256": "ff547aa26017067d1096c8233d40b21214b6685ad42c7636372fbf451bd53346",
+      "note": "standing exception: an iPhone original the photographer supplied for this project, AGENTS.md \"Privacy\""
+    },
+    {
+      "path": "fixtures/photos/real/idaho-6750-480mm.heic",
+      "sha256": "a5edaf91104025c4c1c62b90131e1c6ad0be890b9932d9e9c3c3f621e358c0fb",
+      "note": "standing exception: an iPhone original the photographer supplied for this project, AGENTS.md \"Privacy\""
+    },
+    {
+      "path": "fixtures/photos/real/idaho-6812-14mm.heic",
+      "sha256": "57a9d25aadb3d4f9e3f1bdcfe799fa50ea46db085ded86aa7a2e90f895edcd13",
+      "note": "standing exception: an iPhone original the photographer supplied for this project, AGENTS.md \"Privacy\""
+    },
+    {
+      "path": "fixtures/photos/real/idaho-6815-24mm.heic",
+      "sha256": "ae6f2679b5f1a819db275bf4d106bc8e9eb90351c2df18081cc5827d66aca606",
+      "note": "standing exception: an iPhone original the photographer supplied for this project, AGENTS.md \"Privacy\""
+    },
+    {
+      "path": "fixtures/photos/real/lookout-snow-haze.heic",
+      "sha256": "310b31fa1efd05aca92e40162780ac8907822edd787d0d783d019073b7d9863e",
+      "note": "standing exception: an iPhone original the photographer supplied for this project, AGENTS.md \"Privacy\""
+    },
+    {
+      "path": "fixtures/photos/real/railroad-ridge-14mm.heic",
+      "sha256": "d40bc9817fd16ed6c7681f29b73fc89e5ea0914de12b2e412790e128f37fc41f",
+      "note": "standing exception: an iPhone original the photographer supplied for this project, AGENTS.md \"Privacy\""
+    },
+    {
+      "path": "fixtures/photos/real/railroad-ridge-24mm.heic",
+      "sha256": "370c4da25f24d7ee4ef099ea66dcbd3ee3b61548d3831b81f7c4db7d9e25823f",
+      "note": "standing exception: an iPhone original the photographer supplied for this project, AGENTS.md \"Privacy\""
+    },
+    {
+      "path": "fixtures/photos/real/railroad-ridge-48mm.heic",
+      "sha256": "dd10352eed4515590fd04995e4b515e887a72d2a5910edad3593b4e504183622",
+      "note": "standing exception: an iPhone original the photographer supplied for this project, AGENTS.md \"Privacy\""
+    }
+  ],
+  "coordinateFiles": [
+    {
+      "path": "fixtures/api/zermatt/overpass-peaks.json",
+      "sha256": "e27f6350be1d915e2a8126c7529ba264370cf41e849b9248b682839dd5e1a12a",
+      "note": "hand-authored Overpass response: real summit names and coordinates near Zermatt, with an invented response date"
+    },
+    {
+      "path": "src/core/celestial.test.ts",
+      "sha256": "e53bc7087f517081cb613dd31da80e7e1792dde3ccc035161960018fba7d66cb",
+      "note": "public test coordinates: observer sites for published Meeus ephemeris examples, with the instants those examples are computed for"
+    },
+    {
+      "path": "src/live/heading-policy.test.ts",
+      "sha256": "0de63981382075d9156373483c4c7b6528736729332b8d25744e8f1c72be73ff",
+      "note": "public coordinates: the Bogus Basin field site, with the date the WMM2025 declination is stated for"
+    },
+    {
+      "path": "tests/acceptance/cases/sunset-mountain-lookout.ts",
+      "sha256": "0ef50abb5ac41c5d96ac5835f35203533b78723e7db9dc704f02351577146458",
+      "note": "public coordinates: a named summit node from the committed Overture/OSM import, with the frame's stated local time"
+    }
+  ]
+}

@@ -18,7 +18,7 @@ after its self-check has run and passed here. The checks are in
 - [ ] Confirm the first Pages run on GitHub; if enablement fails, the human sets Source to GitHub Actions
 - [ ] Measure what the phone downloads from Pages; drop --gzip if the .gz siblings go unread
 - [ ] Add the Idaho field-site tiles to the Pages workflow's fetch:tiles line
-- [ ] Build the repository privacy check: no EXIF GPS or coordinate pairs in new files; wire into check
+- [x] Build the repository privacy check: no EXIF GPS or coordinate pairs in new files; wire into check
 - [x] Build the web sensor adapter as a pure function of raw Safari and Chromium events
 - [ ] Settle webkitCompassHeading's reference axis for an upright phone from the home recording
 - [ ] Maintain the iOS alpha offset in the live loop: sample it while tilted, hold it while upright

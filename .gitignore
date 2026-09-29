@@ -23,6 +23,10 @@ data/tiles/*.hgt.gz
 # Overture parquet footers cached by npm run fetch:peaks
 data/overture/
 
+# Field-site packages built by npm run site:package — tens of MB of mosaicked
+# radar, rebuilt from sites/<id>.json and data/tiles/
+data/sites/
+
 # Agent scratch space — never committed
 scratch/
 
@@ -33,3 +37,10 @@ mobile/.expo/
 # app.json; they are build artefacts, not sources, and regenerate on demand.
 mobile/ios/
 mobile/android/
+
+# Sensor capture bundles from a phone session. A bundle records where someone
+# stood and when, and travels only by the human's own action to their own
+# account (AGENTS.md, "Captures from the phone"). npm run check:privacy fails on
+# any file under either directory, so a `git add -f` does not get past it.
+captures/
+bundles/

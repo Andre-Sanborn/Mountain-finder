@@ -35,40 +35,23 @@
  * It reads files and computes hashes. It never touches the network.
  */
 
-import { createHash } from 'node:crypto';
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { readdir, stat } from 'node:fs/promises';
 import { basename, join, relative, resolve } from 'node:path';
 
-import exifr from 'exifr';
+import {
+  hasExtension,
+  IMAGE_EXTENSIONS,
+  readGpsVerdict,
+  sha256OfFile,
+} from './lib/privacy-detect.js';
 
 /** The standing-exception directory whose contents must never be published. */
 const PRIVATE_PHOTO_DIR = 'fixtures/photos/real';
-
-/**
- * Extensions worth asking for EXIF. A `.hgt` grid is int16 samples and a
- * `.json` cell is text; neither can hold an EXIF block, and the tiles are
- * 25 MB each, so they are not parsed.
- */
-const IMAGE_EXTENSIONS: readonly string[] = [
-  '.heic',
-  '.heif',
-  '.jpg',
-  '.jpeg',
-  '.png',
-  '.tif',
-  '.tiff',
-  '.webp',
-  '.avif',
-];
 
 interface PrivateFile {
   readonly name: string;
   readonly size: number;
   readonly sha256: string;
-}
-
-async function sha256(path: string): Promise<string> {
-  return createHash('sha256').update(await readFile(path)).digest('hex');
 }
 
 /** Every file under `fixtures/photos/real/`, by name, size and content hash. */
@@ -82,7 +65,7 @@ async function readPrivatePhotos(root: string): Promise<readonly PrivateFile[]> 
     files.push({
       name: entry.name,
       size: (await stat(path)).size,
-      sha256: await sha256(path),
+      sha256: await sha256OfFile(path),
     });
   }
   return files;
@@ -96,26 +79,16 @@ async function* walk(directory: string): AsyncGenerator<string> {
   }
 }
 
-function hasCoordinates(gps: unknown): boolean {
-  if (typeof gps !== 'object' || gps === null) return false;
-  const { latitude, longitude } = gps as { latitude?: unknown; longitude?: unknown };
-  return typeof latitude === 'number' && typeof longitude === 'number';
-}
-
 /**
  * `true` when this file carries a GPS position.
  *
- * A parse failure is reported as "no GPS", deliberately: this runs over a
- * package full of files that are not images at all, and treating an unparseable
- * byte string as a privacy breach would make the gate useless. The name and
- * hash rules above do not depend on parsing.
+ * A file `exifr` cannot parse is reported as "no GPS", deliberately: this runs
+ * over a package full of files that are not images at all, and treating an
+ * unparseable byte string as a privacy breach would make the gate useless. The
+ * name and hash rules above do not depend on parsing.
  */
 async function carriesGps(path: string): Promise<boolean> {
-  try {
-    return hasCoordinates(await exifr.gps(path));
-  } catch {
-    return false;
-  }
+  return (await readGpsVerdict(path)) === 'gps';
 }
 
 async function main(): Promise<void> {
@@ -160,7 +133,7 @@ async function main(): Promise<void> {
     // tiles without reading them.
     const sameSize = bySize.get((await stat(path)).size);
     if (sameSize !== undefined) {
-      const digest = await sha256(path);
+      const digest = await sha256OfFile(path);
       const match = sameSize.find((photo) => photo.sha256 === digest);
       if (match !== undefined) {
         problems.push(
@@ -170,7 +143,7 @@ async function main(): Promise<void> {
       }
     }
 
-    if (IMAGE_EXTENSIONS.some((extension) => lower.endsWith(extension))) {
+    if (hasExtension(lower, IMAGE_EXTENSIONS)) {
       imagesParsed += 1;
       if (await carriesGps(path)) {
         problems.push(`${shown} — an image carrying GPS EXIF (the place someone stood)`);
