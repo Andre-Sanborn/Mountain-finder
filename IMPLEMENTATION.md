@@ -1826,3 +1826,28 @@ drift. Other figures from the run: 720 of 720 rays to 60 km in 2496 ms, re-ancho
 against −92.398°, drag closed to 0.16 px. The spec no longer requires zero crowded-out summits;
 it keeps the 960 px viewport for the exact 16:9 match the grader's residual scaling needs.
 
+## Four desktop-pipeline fixes
+
+**`npm run annotate` warns on an unchecked EXIF heading.** Finding X-10 measured
+`GPSImgDirection` 92.4° wrong on one of the nine real frames, and nothing in a file tells that
+frame from the others. So every run whose heading came from EXIF prints a warning naming the
+checks that can settle it: a summit in the frame, the sun at the recorded time, or `--auto-trim`
+inside its compass budget. It is silent under `--heading`, and so is the magnetic-reference
+warning. The rule is the pure function `headingNotes`.
+
+**A summit behind the camera is not "hidden behind a nearer hill".** The sweep covers twice the
+field of view, so on a lens wider than 90° it reaches behind the camera. `buildNotes` now filters
+occluded summits through `isBehindCamera` in `src/core/projection.ts`, the `d·forward ≤ 0` test
+`projectToImage` already computes. `ImagePoint.inFrame` cannot separate a summit just past the
+frame edge from one behind the camera.
+
+**A non-finite observer elevation is refused.** A NaN `groundElevationM` used to return a
+successful, empty overlay, with a note claiming the database held no summit within 200 km.
+`resolveObserver` now refuses it under `observer-elevation-not-finite`, for all three elevation
+sources.
+
+**The export carries its own pose.** Each overlay is stamped with `overlayRequestKey`, the key
+the rebuild keys off. Export is disabled, and refused at the click, while the displayed overlay's
+stamp differs from the current request. Stamping was preferred to waiting, since waiting needs
+the same comparison.
+

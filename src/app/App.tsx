@@ -36,7 +36,13 @@ import {
   type TrimSuggester,
   type TrimSuggestionView,
 } from './seam';
-import { deriveSession, exportDisabledReason, INITIAL_STATE, reducer } from './state';
+import {
+  deriveSession,
+  exportDisabledReason,
+  INITIAL_STATE,
+  overlayRequestKey,
+  reducer,
+} from './state';
 
 export interface AppProps {
   /**
@@ -53,7 +59,17 @@ export interface AppProps {
 
 export function App({ overlayBuilder, pngExporter, trimSuggester }: AppProps = {}): JSX.Element {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
-  const [overlay, setOverlay] = useState<OverlayResult | undefined>(undefined);
+  /**
+   * The overlay, stamped with the request it was built for.
+   *
+   * The stamp is what keeps the export honest. A pose change starts a rebuild
+   * and leaves the previous overlay on screen while it runs, so for that
+   * window the picture and the pose readout disagree; comparing the stamp
+   * against the current request is how the export control knows.
+   */
+  const [overlay, setOverlay] = useState<{ result: OverlayResult; requestKey: string } | undefined>(
+    undefined,
+  );
   const [overlayError, setOverlayError] = useState<string | undefined>(undefined);
   const [overlayBusy, setOverlayBusy] = useState(false);
   const [trimSuggestion, setTrimSuggestion] = useState<TrimSuggestionView | undefined>(undefined);
@@ -92,7 +108,7 @@ export function App({ overlayBuilder, pngExporter, trimSuggester }: AppProps = {
   // The request is rebuilt on every render, so the effect keys off its VALUE
   // rather than its identity; otherwise the pipeline would be re-run on every
   // keystroke that changes nothing it depends on.
-  const requestKey = request === undefined ? '' : JSON.stringify(request);
+  const requestKey = overlayRequestKey(request);
   useEffect(() => {
     if (overlayBuilder === undefined || request === undefined) {
       setOverlay(undefined);
@@ -105,7 +121,7 @@ export function App({ overlayBuilder, pngExporter, trimSuggester }: AppProps = {
     void overlayBuilder({ ...request, signal: controller.signal })
       .then((result) => {
         if (!live) return;
-        setOverlay(result);
+        setOverlay({ result, requestKey });
         setOverlayError(undefined);
       })
       .catch((error: unknown) => {
@@ -131,9 +147,10 @@ export function App({ overlayBuilder, pngExporter, trimSuggester }: AppProps = {
   // state the sliders do. Keyed off the overlay object: a new overlay (new
   // pose, new photo) restarts the suggestion; anything else leaves it alone.
   const photoUrlForTrim = session?.photo.url;
+  const alignment = overlay?.result.alignment;
   useEffect(() => {
     setTrimSuggestion(undefined);
-    if (trimSuggester === undefined || overlay?.alignment === undefined || photoUrlForTrim === undefined) {
+    if (trimSuggester === undefined || alignment === undefined || photoUrlForTrim === undefined) {
       setTrimSuggestionBusy(false);
       return;
     }
@@ -141,8 +158,8 @@ export function App({ overlayBuilder, pngExporter, trimSuggester }: AppProps = {
     setTrimSuggestionBusy(true);
     void trimSuggester({
       photoUrl: photoUrlForTrim,
-      camera: overlay.alignment.camera,
-      horizon: overlay.alignment.horizon,
+      camera: alignment.camera,
+      horizon: alignment.horizon,
     })
       .then((view) => {
         if (live) setTrimSuggestion(view);
@@ -161,17 +178,30 @@ export function App({ overlayBuilder, pngExporter, trimSuggester }: AppProps = {
     return () => {
       live = false;
     };
-  }, [trimSuggester, overlay, photoUrlForTrim]);
+  }, [trimSuggester, alignment, photoUrlForTrim]);
 
   const downloadName = annotatedFileName(session?.photo.fileName ?? 'photo.jpg');
 
+  const overlayIsCurrent = overlay !== undefined && overlay.requestKey === requestKey;
+
   const handleExport = useCallback(() => {
     if (pngExporter === undefined || overlay === undefined || session === undefined) return;
+    // Re-checked at the click rather than trusted from the disabled state: the
+    // button and the overlay are rendered from the same state, but a click
+    // that arrives with a rebuild already in flight must not write the old
+    // pose's labels into a PNG.
+    if (overlay.requestKey !== requestKey) {
+      setExportMessage(
+        'Not exported: the skyline is being recomputed for the pose you just changed. ' +
+          'Wait for it, then export.',
+      );
+      return;
+    }
     setExportBusy(true);
     setExportMessage(undefined);
     void pngExporter({
       photoUrl: session.photo.url,
-      svgMarkup: overlay.svgMarkup,
+      svgMarkup: overlay.result.svgMarkup,
       frame: { widthPx: session.photo.widthPx, heightPx: session.photo.heightPx },
     })
       .then((blob) => {
@@ -193,13 +223,14 @@ export function App({ overlayBuilder, pngExporter, trimSuggester }: AppProps = {
       .finally(() => {
         setExportBusy(false);
       });
-  }, [pngExporter, overlay, session, downloadName]);
+  }, [pngExporter, overlay, requestKey, session, downloadName]);
 
   const disabledReason = exportDisabledReason({
     hasPhoto: session !== undefined,
     missingFieldCount: session?.missing.length ?? 0,
     hasOverlay: overlay !== undefined,
     hasExporter: pngExporter !== undefined,
+    overlayIsCurrent,
   });
 
   return (
@@ -232,7 +263,7 @@ export function App({ overlayBuilder, pngExporter, trimSuggester }: AppProps = {
             <div className="app__column">
               <PhotoView
                 photo={session.photo}
-                overlay={overlay}
+                overlay={overlay?.result}
                 busy={overlayBusy}
                 errorMessage={overlayError}
                 builderWired={overlayBuilder !== undefined}

@@ -26,13 +26,14 @@
  * missing pose field: unknown is a state with a reason, never a zero.
  */
 
+import { isBehindCamera } from '../core/projection';
 import type { CameraPose, LatLng, PeakVisibility } from '../core/types';
 import { annotateScene } from '../pipeline/annotate';
 import type { PeakSource, PipelineConfig, SweepConfig } from '../pipeline/types';
 import type { ElevationProvider } from '../providers/elevation';
 import type { TerrainCoverage } from '../providers/http-terrain-store';
 import { buildOverlaySvgFromLayout, layoutOverlay } from '../render';
-import type { OverlayLayout, OverlayOptions, OverlayScene } from '../render/types';
+import type { OverlayOptions, OverlayScene } from '../render/types';
 import type { OverlayBuilder, OverlayRequest, OverlayResult } from './seam';
 
 /**
@@ -195,16 +196,33 @@ export function noTerrainMessage(coverage: TerrainCoverage, at: LatLng): string 
   );
 }
 
-function buildNotes(
+/**
+ * Everything one note needs to know about one summit. `bearingDeg` and
+ * `altitudeDeg` are there for the behind-the-camera test below.
+ */
+interface NotePeak {
+  readonly name: string;
+  readonly bearingDeg: number;
+  readonly altitudeDeg: number;
+}
+
+/**
+ * The notes shown under a sparse overlay, one per reason.
+ *
+ * Exported for its tests: each note makes a claim about the world ("hidden
+ * behind nearer hills"), and a claim that can be wrong gets a test.
+ */
+export function buildNotes(
+  pose: CameraPose,
   scene: {
     readonly peaks: readonly { readonly name: string }[];
-    readonly foregroundOccluded: readonly { readonly name: string }[];
+    readonly foregroundOccluded: readonly NotePeak[];
     readonly marginal: readonly { readonly name: string }[];
     readonly unmeasured: readonly { readonly name: string }[];
     readonly sweep: { readonly raysRequested: number; readonly raysWithTerrain: number };
     readonly config: { readonly peakRadiusKm: number; readonly sweep: { readonly maxRangeKm: number } };
   },
-  layout: OverlayLayout,
+  layout: { readonly offFramePeaks: readonly { readonly name: string }[] },
   at: LatLng,
 ): string[] {
   const notes: string[] = [];
@@ -223,11 +241,20 @@ function buildNotes(
         `${nameList(layout.offFramePeaks.map((peak) => peak.name))}.`,
     );
   }
-  if (scene.foregroundOccluded.length > 0) {
+  // A sweep is twice the field of view wide, so it reaches round past the film
+  // plane whenever the lens is wider than 90°, and a summit back there gets an
+  // occlusion verdict like any other. Counting one here would tell the viewer
+  // a mountain behind them is missing from the frame because a hill is in the
+  // way. The terrain in front of it is real and the verdict stands; it is only
+  // no reason this photograph does not show it.
+  const occludedInView = scene.foregroundOccluded.filter(
+    (peak) => !isBehindCamera(pose, peak.bearingDeg, peak.altitudeDeg),
+  );
+  if (occludedInView.length > 0) {
     notes.push(
-      `${scene.foregroundOccluded.length} summit${scene.foregroundOccluded.length === 1 ? ' is' : 's are'} ` +
-        `hidden behind nearer, different hills and ${scene.foregroundOccluded.length === 1 ? 'is' : 'are'} ` +
-        `never labelled: ${nameList(scene.foregroundOccluded.map((peak) => peak.name))}.`,
+      `${occludedInView.length} summit${occludedInView.length === 1 ? ' is' : 's are'} ` +
+        `hidden behind nearer, different hills and ${occludedInView.length === 1 ? 'is' : 'are'} ` +
+        `never labelled: ${nameList(occludedInView.map((peak) => peak.name))}.`,
     );
   }
   if (scene.marginal.length > 0) {
@@ -310,7 +337,7 @@ export function createOverlayBuilder(deps: OverlayBuilderDeps): OverlayBuilder {
     };
 
     const layout = layoutOverlay(overlayScene, deps.overlayOptions ?? {});
-    const notes = buildNotes(scene, layout, observer);
+    const notes = buildNotes(pose, scene, layout, observer);
 
     return {
       svgMarkup: buildOverlaySvgFromLayout(layout),

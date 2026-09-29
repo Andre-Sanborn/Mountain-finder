@@ -83,7 +83,7 @@ after its self-check has run and passed here. The checks are in
 - [x] Let the field anchor picker offer crowded-out summits, and force-label the one picked
 - [x] Make the anchor-drift warning compare the compass change with the phone's own turn
 - [x] Refresh the rehearsal spec's drift-line notes; they still describe the compass-only check
-- [ ] Make `npm run annotate` warn when GPSImgDirection is the only heading source (X-10)
+- [x] Make `npm run annotate` warn when GPSImgDirection is the only heading source (X-10)
 - [x] Renumber the duplicate X-7 and X-8 ids in docs/FINDINGS.md (now X-11, X-12)
 - [ ] Replace FINDINGS X-8's IMG_1371.HEIC citation; the file is not committed, heif.test.ts covers it
 - [ ] Add lookout-snow-haze.heic to heif.test.ts's committed-originals cases and fix its 52-byte comment
@@ -130,9 +130,10 @@ after its self-check has run and passed here. The checks are in
 - [ ] R-2: reconcile `src/cv/rays.ts:profileCoverage` onto the exact coverage notion in `src/core/horizon.ts`.
 - [ ] R-3: decide whether `'nearest-valid'` stays discontinuous at a grid line, and record the decision either way.
 - [x] X-4: reconcile FINDINGS.md's X-4 row with the height-sensitivity note now in the Kerry Park case file.
-- [ ] Check Wave 2's suspicion that a non-finite `groundElevationM` yields an empty overlay rather than a refusal.
-- [ ] Fix `buildNotes` counting foreground-occluded peaks that are behind the camera.
-- [ ] Close the export/pose race: clicking Export mid-rebuild can write a PNG whose labels belong to the old pose.
+- [x] Check Wave 2's suspicion that a non-finite `groundElevationM` yields an empty overlay rather than a refusal (confirmed; now refused).
+- [x] Fix `buildNotes` counting foreground-occluded peaks that are behind the camera.
+- [ ] buildNotes: "no summit in the database" fires when every peak went unmeasured; split the two
+- [x] Close the export/pose race: clicking Export mid-rebuild can write a PNG whose labels belong to the old pose.
 - [ ] Decide what `missingTilesFor` should ask for when an `HttpTerrainStore` serves windows, not SRTM tiles.
 
 ## Blocked on network egress, not on code

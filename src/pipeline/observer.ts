@@ -78,6 +78,21 @@ function build(at: LatLng, groundElevationM: number, eyeHeightM: number): Observ
   if (!Number.isFinite(eyeHeightM)) {
     throw new PipelineError('incomplete-pose', `eyeHeightM must be a finite number`);
   }
+  // NaN propagates instead of failing: every sight line, every horizon angle
+  // and every clearance comparison goes NaN, the sweep keeps no profile point
+  // and every peak comes back unjudged. The run then looks like a viewpoint
+  // with nothing to see rather than a run that never happened, so the
+  // non-finite figure is refused here, where it enters.
+  if (!Number.isFinite(groundElevationM)) {
+    throw new PipelineError(
+      'observer-elevation-not-finite',
+      `The observer's ground elevation at ${at.lat}, ${at.lon} is ${String(groundElevationM)}, ` +
+        'not a finite number of metres. Nothing can be measured from it: every horizon angle ' +
+        'and every visibility verdict would be NaN, and the empty overlay that produces reads ' +
+        'as "no peaks are visible from here". Supply a ground elevation, or leave it unset and ' +
+        'let the terrain answer.',
+    );
+  }
   return { lat: at.lat, lon: at.lon, groundElevationM, eyeHeightM };
 }
 

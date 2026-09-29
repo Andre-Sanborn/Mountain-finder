@@ -7,6 +7,7 @@ import {
   focalLength35mmFromHFovDeg,
   fovDegFromFocalLength35mm,
   hFovDegFromFocalLength35mm,
+  isBehindCamera,
   longSideFovDegFromFocalLength35mm,
   projectToImage,
   vFovDegFromHFovDeg,
@@ -413,5 +414,36 @@ describe('projectToImage — framing', () => {
     const image = projectToImage(square90, 0, 60);
     expect(image.y).toBeCloseTo(0.5 - Math.tan(toRadians(60)) / 2, 12);
     expect(image.inFrame).toBe(false);
+  });
+});
+
+describe('isBehindCamera — the half of `inFrame: false` that says why', () => {
+  const east: CameraPose = { headingDeg: 90, pitchDeg: 0, rollDeg: 0, hFovDeg: 60, vFovDeg: 45 };
+
+  it('turns over at 90° off the optical axis', () => {
+    // d·forward = cos(off-axis angle): +1 dead ahead, −0.5 at 120° off.
+    // A direction exactly 90° off lies in the film plane and its dot product
+    // is zero to within floating-point noise, so nothing either side of the
+    // boundary is claimed by a hair — 89.9° and 90.1° are.
+    expect(isBehindCamera(east, 90, 0)).toBe(false);
+    expect(isBehindCamera(east, 179.9, 0)).toBe(false);
+    expect(isBehindCamera(east, 180.1, 0)).toBe(true);
+    expect(isBehindCamera(east, 210, 0)).toBe(true);
+    expect(isBehindCamera(east, 270, 0)).toBe(true);
+  });
+
+  it('separates a summit just off the frame edge from one round the back', () => {
+    // Both project to `inFrame: false` — the half-FOV here is 30°.
+    expect(projectToImage(east, 140, 0).inFrame).toBe(false);
+    expect(projectToImage(east, 260, 0).inFrame).toBe(false);
+    expect(isBehindCamera(east, 140, 0)).toBe(false);
+    expect(isBehindCamera(east, 260, 0)).toBe(true);
+  });
+
+  it('follows the optical axis rather than the compass', () => {
+    // Lens 80° down, summit 30° up on the heading: 110° apart, cos110° < 0.
+    const down: CameraPose = { ...east, pitchDeg: -80 };
+    expect(isBehindCamera(down, 90, 30)).toBe(true);
+    expect(isBehindCamera(down, 90, -80)).toBe(false);
   });
 });

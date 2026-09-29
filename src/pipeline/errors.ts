@@ -11,6 +11,8 @@
 export type PipelineErrorCode =
   /** No elevation could be established for the observer's own coordinate. */
   | 'observer-elevation-unknown'
+  /** An elevation was supplied for the observer, but it is NaN or infinite. */
+  | 'observer-elevation-not-finite'
   /** The terrain sweep produced no usable samples, so there is no horizon. */
   | 'no-terrain'
   /** A pose field is missing and no override supplied it. */

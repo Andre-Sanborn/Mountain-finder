@@ -210,12 +210,42 @@ export interface DerivedSession {
   readonly overlayRequest?: OverlayRequest;
 }
 
+/**
+ * The identity of one overlay request: two requests share a key exactly when
+ * the same overlay answers both.
+ *
+ * It is the app's rebuild trigger and its staleness test at once, which is the
+ * point of having one function for it. The overlay carries the key it was
+ * built for; while a rebuild is in flight the overlay on screen carries the
+ * previous pose's key, and that is what stops the export writing the old
+ * labels into a new pose's PNG.
+ *
+ * `JSON.stringify` is enough because the request is built field by field by
+ * `deriveSession` — same construction order every time, numbers and booleans
+ * only — and the AbortSignal is attached after this is taken.
+ */
+export function overlayRequestKey(request: OverlayRequest | undefined): string {
+  if (request === undefined) return '';
+  const { frame, observer, pose, showObscuredPeaks } = request;
+  return JSON.stringify([frame, observer, pose, showObscuredPeaks]);
+}
+
 /** What the export control needs before it can do anything. */
 export interface ExportReadiness {
   readonly hasPhoto: boolean;
   readonly missingFieldCount: number;
   readonly hasOverlay: boolean;
   readonly hasExporter: boolean;
+  /**
+   * Was the overlay on screen built for the pose now in effect?
+   *
+   * False from the moment the pose changes until the rebuild it triggers
+   * lands. The overlay still displayed through that window belongs to the
+   * previous pose, and a PNG written from it would carry labels in the old
+   * places under a pose readout showing the new ones — a picture nothing ever
+   * computed. The photograph and the labels must come from one pose.
+   */
+  readonly overlayIsCurrent: boolean;
 }
 
 /**
@@ -235,6 +265,11 @@ export function exportDisabledReason(readiness: ExportReadiness): string | undef
   }
   if (!readiness.hasOverlay) {
     return 'There is no overlay to export: the skyline for this photo has not been computed.';
+  }
+  if (!readiness.overlayIsCurrent) {
+    return 'The skyline is being recomputed for the pose you just changed. The overlay on ' +
+      'screen is still the previous pose\u2019s, so exporting now would save labels that do not ' +
+      'belong to it.';
   }
   return undefined;
 }

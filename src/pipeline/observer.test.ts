@@ -65,6 +65,33 @@ describe('resolveObserver', () => {
     });
   });
 
+  it('refuses a non-finite supplied ground elevation instead of measuring from NaN', async () => {
+    // NaN does not throw anywhere downstream: it propagates through every
+    // sight line, empties the horizon profile and leaves every peak unjudged,
+    // so the run comes back as an empty overlay — "nothing is visible from
+    // here" — rather than as a refusal.
+    const source = new FunctionElevationSource(() => 1608, 'srtm1');
+    for (const groundElevationM of [Number.NaN, Number.POSITIVE_INFINITY]) {
+      await expect(
+        resolveObserver({ ...ZERMATT, eyeHeightM: 1.6, groundElevationM }, source),
+      ).rejects.toMatchObject({ code: 'observer-elevation-not-finite' });
+    }
+  });
+
+  it('refuses a non-finite figure whichever of the three sources produced it', async () => {
+    const nanTerrain = new FunctionElevationSource(() => Number.NaN, 'srtm1');
+    await expect(resolveObserver({ ...ZERMATT, eyeHeightM: 1.6 }, nanTerrain)).rejects.toMatchObject(
+      { code: 'observer-elevation-not-finite' },
+    );
+    const noTerrain = new FunctionElevationSource(() => null, 'local-tiles(missing)');
+    await expect(
+      resolveObserver(
+        { ...ZERMATT, eyeHeightM: 1.6, fallbackGroundElevationM: Number.NaN },
+        noTerrain,
+      ),
+    ).rejects.toMatchObject({ code: 'observer-elevation-not-finite' });
+  });
+
   it('names the fetch command in the failure, so the fix is obvious', async () => {
     const source = new FunctionElevationSource(() => null);
     await expect(resolveObserver({ ...ZERMATT, eyeHeightM: 1.6 }, source)).rejects.toThrow(

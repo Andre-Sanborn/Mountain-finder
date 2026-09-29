@@ -38,7 +38,8 @@
  */
 
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { decode as decodeJpeg } from 'jpeg-js';
 
@@ -176,6 +177,51 @@ function usage(): void {
 }
 
 /**
+ * What must be said about the heading before any bearing below is read.
+ *
+ * Both warnings are about the EXIF tag, so both are silent once `--heading`
+ * has replaced it: an operator who typed a heading is not being told their own
+ * number is magnetic, or unchecked.
+ *
+ * Pure and exported so the warnings are tested. They are the script's only
+ * defence against finding X-10, and a warning that fires on the wrong runs —
+ * or not on the right ones — is worse than none.
+ */
+export function headingNotes(source: {
+  /** True when `--heading` supplied the number, so EXIF's is unused. */
+  readonly overridden: boolean;
+  /** `GPSImgDirectionRef`: 'T' for true north, 'M' for magnetic. */
+  readonly imgDirectionRef?: string;
+}): readonly string[] {
+  if (source.overridden) return [];
+  const notes: string[] = [];
+  if (source.imgDirectionRef === 'M') {
+    notes.push(
+      '  WARNING: GPSImgDirectionRef is "M" — this heading is MAGNETIC and no',
+      '           declination correction has been applied. Every bearing below is',
+      '           wrong by the local declination until one is.',
+    );
+  }
+  // X-10: hdr-gainmap-7270.heic records 280.336 deg T where the camera faced
+  // 187.938 deg — 92.4 deg out, on a frame whose ref tag is 'T' and whose
+  // orientation is upright. Nothing in the file says which of the eight real
+  // photographs is the wrong one, so the tag is a hint on all of them.
+  notes.push(
+    '  WARNING: the heading above is GPSImgDirection, and nothing has checked it.',
+    '           An iPhone wrote 280.336 deg T for a frame whose camera faced',
+    '           187.9 deg — 92.4 deg wrong, with the ref tag reading "T" and the',
+    '           frame upright (docs/FINDINGS.md X-10). GPSImgDirection is a hint to',
+    '           be checked against the picture, never a documented pose. Check it',
+    '           with a second instrument before believing a label: identify a summit',
+    '           the frame already contains, work back from the sun at the recorded',
+    '           time, or run --auto-trim and accept its trim only inside the compass',
+    '           budget it reports. Every bearing and every label below rests on this',
+    '           one number.',
+  );
+  return notes;
+}
+
+/**
  * The pose, from EXIF, with every missing piece named rather than defaulted.
  *
  * A `--heading` override is allowed because a magnetometer reading can be
@@ -200,11 +246,6 @@ function poseFrom(exif: PhotoExif, options: Options, sourceLabel: string): Camer
         '  Pass it with --exif, e.g.\n' +
         '    npm run annotate -- <photo> --exif <original.heic>',
     );
-  }
-  if (exif.imgDirectionRef === 'M') {
-    line('  WARNING: GPSImgDirectionRef is "M" — this heading is MAGNETIC and no');
-    line('           declination correction has been applied. Every bearing below is');
-    line('           wrong by the local declination until one is.');
   }
 
   // `cameraPoseFromPhotoExif` prefers the fields of view the extractor already
@@ -365,6 +406,12 @@ async function main(): Promise<void> {
     `${exif.gpsAltitudeM === undefined ? '' : `  GPS altitude ${exif.gpsAltitudeM.toFixed(1)} m`}`);
   line(`  heading   ${deg(camera.headingDeg)} deg ${exif.imgDirectionRef ?? '(no ref tag)'}` +
     `${options.headingDeg === undefined ? '' : '  [--heading override]'}`);
+  for (const note of headingNotes({
+    overridden: options.headingDeg !== undefined,
+    ...(exif.imgDirectionRef === undefined ? {} : { imgDirectionRef: exif.imgDirectionRef }),
+  })) {
+    line(note);
+  }
   line(`  lens      ${exif.focalLength35mmMm} mm-eq -> hFOV ${deg(camera.hFovDeg)}, vFOV ${deg(camera.vFovDeg)}`);
   line(`  pitch     ${deg(camera.pitchDeg)} deg   roll ${deg(camera.rollDeg)} deg` +
     '   (EXIF carries neither; both default to 0)');
@@ -500,10 +547,14 @@ async function main(): Promise<void> {
   }
 }
 
-main()
-  .then(() => process.stdout.write(`${out.join('\n')}\n`))
-  .catch((error: unknown) => {
-    process.stdout.write(`${out.join('\n')}\n`);
-    process.stderr.write(`\n${error instanceof Error ? error.message : String(error)}\n`);
-    process.exitCode = 1;
-  });
+// Run only as a command. Imported — by its unit tests — it just exposes the
+// pure parts above.
+if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main()
+    .then(() => process.stdout.write(`${out.join('\n')}\n`))
+    .catch((error: unknown) => {
+      process.stdout.write(`${out.join('\n')}\n`);
+      process.stderr.write(`\n${error instanceof Error ? error.message : String(error)}\n`);
+      process.exitCode = 1;
+    });
+}

@@ -19,6 +19,7 @@ import {
   overridesFromState,
   parseDraft,
   obscuredPeaksNote,
+  overlayRequestKey,
   reducer,
   type AppState,
   type LoadedPhoto,
@@ -329,8 +330,40 @@ describe('overridesFromState', () => {
   });
 });
 
+describe('overlayRequestKey — the stamp that keeps an export with its pose', () => {
+  const base = stateWith(photoWith(CHAMONIX_EXIF), { useStandardAssumptions: true });
+  const keyFor = (state: AppState): string =>
+    overlayRequestKey(deriveSession(state)?.overlayRequest);
+
+  it('is stable for a state that changes nothing the overlay depends on', () => {
+    // A half-typed declination is not a number, so the resolved pose is
+    // identical and the overlay already on screen still answers.
+    expect(keyFor({ ...base, declinationDraft: '-' })).toBe(keyFor(base));
+  });
+
+  it('changes when the trim moves the pose, however slightly', () => {
+    const nudged = { ...base, trim: { headingDeg: 0.01, pitchDeg: 0, hFovDeg: 0 } };
+    expect(keyFor(nudged)).not.toBe(keyFor(base));
+  });
+
+  it('changes when the obscured-peaks switch changes what may be drawn', () => {
+    expect(keyFor({ ...base, showObscuredPeaks: false })).not.toBe(keyFor(base));
+  });
+
+  it('is empty when there is no request, and never collides with a real one', () => {
+    expect(overlayRequestKey(undefined)).toBe('');
+    expect(keyFor(base)).not.toBe('');
+  });
+});
+
 describe('exportDisabledReason — the button tells the truth', () => {
-  const ready = { hasPhoto: true, missingFieldCount: 0, hasOverlay: true, hasExporter: true };
+  const ready = {
+    hasPhoto: true,
+    missingFieldCount: 0,
+    hasOverlay: true,
+    hasExporter: true,
+    overlayIsCurrent: true,
+  };
 
   it('is enabled only when there is genuinely something to export', () => {
     expect(exportDisabledReason(ready)).toBeUndefined();
@@ -346,6 +379,21 @@ describe('exportDisabledReason — the button tells the truth', () => {
     );
     expect(exportDisabledReason({ ...ready, missingFieldCount: 1 })).toBe(
       '1 pose field still needs manual input.',
+    );
+  });
+
+  it('refuses while the skyline is being recomputed for a pose that just changed', () => {
+    // The overlay on screen was built for the PREVIOUS pose. Exporting it
+    // would write a PNG whose labels sit where the old heading put them, under
+    // a pose readout stating the new one — a picture no run ever produced.
+    const reason = exportDisabledReason({ ...ready, overlayIsCurrent: false });
+    expect(reason).toMatch(/recomputed/i);
+    expect(reason).toMatch(/previous pose/i);
+  });
+
+  it('names the absent overlay before the stale one — there is no picture to be stale', () => {
+    expect(exportDisabledReason({ ...ready, hasOverlay: false, overlayIsCurrent: false })).toMatch(
+      /no overlay to export/,
     );
   });
 

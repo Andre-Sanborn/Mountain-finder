@@ -343,3 +343,28 @@ export function projectToImage(
   const inFrame = depth > 0 && x >= 0 && x <= 1 && y >= 0 && y <= 1;
   return { x, y, inFrame };
 }
+
+/**
+ * Is this direction behind the camera — on the far side of the film plane?
+ *
+ * The same `d·forward ≤ 0` test {@link projectToImage} uses, on its own,
+ * because `ImagePoint.inFrame` cannot answer it: a direction 10° outside the
+ * frame edge and one 170° round the back both report `inFrame: false`. A
+ * caller that wants to say WHY something is not in the picture needs the two
+ * apart.
+ *
+ * It is a 3D test rather than a bearing comparison, so a steeply pitched
+ * camera is handled: with the lens pointing at the ground, a summit at the
+ * heading can still fall behind it.
+ *
+ * A direction exactly 90° off the axis lies in the film plane and has no image
+ * either, so it counts as behind — though at that angle the dot product is
+ * zero only to within floating-point noise, and either answer is defensible.
+ */
+export function isBehindCamera(
+  pose: CameraPose,
+  bearingDeg: number,
+  altitudeDeg: number,
+): boolean {
+  return dot(directionVector(bearingDeg, altitudeDeg), cameraAxes(pose).forward) <= 0;
+}

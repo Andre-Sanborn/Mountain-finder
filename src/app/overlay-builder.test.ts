@@ -19,10 +19,11 @@
 
 import { describe, expect, it } from 'vitest';
 
-import type { Peak } from '../core/types';
+import type { CameraPose, Peak } from '../core/types';
 import { FunctionElevationSource, StaticPeakSource } from '../pipeline/testing/elevation-sources';
 import type { TerrainCoverage } from '../providers/http-terrain-store';
 import {
+  buildNotes,
   createOverlayBuilder,
   noTerrainMessage,
   selectOverlayPeaks,
@@ -234,6 +235,16 @@ describe('createOverlayBuilder', () => {
     expect(result.svgMarkup).toContain('polyline');
   });
 
+  it('refuses a non-finite observer elevation instead of drawing an empty overlay', async () => {
+    // Left unchecked, NaN travels: the horizon comes back empty, the summit is
+    // reported unjudged, and the result is an overlay with nothing on it —
+    // which reads as "no peaks are visible from here". That is a claim, and
+    // nothing measured it.
+    await expect(
+      builder()({ ...REQUEST, observer: { ...REQUEST.observer, groundElevationM: Number.NaN } }),
+    ).rejects.toMatchObject({ code: 'observer-elevation-not-finite' });
+  });
+
   it('honours an abort signal instead of finishing a run nobody wants', async () => {
     const controller = new AbortController();
     controller.abort();
@@ -263,5 +274,78 @@ describe('selectOverlayPeaks — marginal summits (P1.6)', () => {
       'Clear',
       'Coin toss',
     ]);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * buildNotes — what the sparse-overlay notes are allowed to claim
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+describe('buildNotes — a summit behind the camera is not "hidden behind a hill"', () => {
+  /**
+   * A hand-built scene, so the claim is tested rather than the pipeline.
+   *
+   * The camera looks due east through a 120° lens, so the sweep spans 240° and
+   * reaches 120° either side of the axis — past the film plane, which is where
+   * a foreground-occluded verdict on a summit behind the camera comes from.
+   *
+   *   NORTH-EAST  bearing 60°, altitude 1° — 30° off-axis, in front.
+   *               d·forward = cos1° · sin60° = 0.8657 > 0.
+   *   SOUTH-WEST  bearing 200°, altitude 0° — 110° off-axis, behind.
+   *               d·forward = sin200° = −0.3420 ≤ 0.
+   */
+  const POSE: CameraPose = { headingDeg: 90, pitchDeg: 0, rollDeg: 0, hFovDeg: 120, vFovDeg: 90 };
+  const IN_FRONT = { name: 'North-East Summit', bearingDeg: 60, altitudeDeg: 1 };
+  const BEHIND = { name: 'South-West Summit', bearingDeg: 200, altitudeDeg: 0 };
+
+  // Only what the notes read: nothing fell off the edge of this frame.
+  const EMPTY_LAYOUT = { offFramePeaks: [] };
+
+  function notesFor(
+    foregroundOccluded: readonly { name: string; bearingDeg: number; altitudeDeg: number }[],
+    pose: CameraPose = POSE,
+  ): string[] {
+    return buildNotes(
+      pose,
+      {
+        peaks: foregroundOccluded,
+        foregroundOccluded,
+        marginal: [],
+        unmeasured: [],
+        sweep: { raysRequested: 480, raysWithTerrain: 480 },
+        config: { peakRadiusKm: 200, sweep: { maxRangeKm: 30 } },
+      },
+      EMPTY_LAYOUT,
+      { lat: 0, lon: 0 },
+    );
+  }
+
+  it('counts the summit in front of the camera', () => {
+    const note = notesFor([IN_FRONT]).find((text) => text.includes('hidden behind'));
+    expect(note).toContain('1 summit is');
+    expect(note).toContain('North-East Summit');
+  });
+
+  it('leaves out the summit behind the camera', () => {
+    const notes = notesFor([IN_FRONT, BEHIND]);
+    const note = notes.find((text) => text.includes('hidden behind'));
+    expect(note).toContain('1 summit is');
+    expect(note).not.toContain('South-West Summit');
+  });
+
+  it('makes no such claim at all when every occluded summit is behind the camera', () => {
+    expect(notesFor([BEHIND]).some((text) => text.includes('hidden behind'))).toBe(false);
+  });
+
+  it('tests the optical axis, not the compass bearing', () => {
+    // Lens pitched 80° down, summit 30° up on the heading: the angle between
+    // them is 110°, so d·forward = cos110° = −0.342 and the summit is behind
+    // the camera although it shares the heading exactly.
+    const steepDown: CameraPose = { ...POSE, pitchDeg: -80 };
+    const overhead = { name: 'Overhead Summit', bearingDeg: 90, altitudeDeg: 30 };
+    expect(notesFor([overhead], steepDown).some((text) => text.includes('hidden behind'))).toBe(
+      false,
+    );
+    expect(notesFor([overhead]).some((text) => text.includes('hidden behind'))).toBe(true);
   });
 });
