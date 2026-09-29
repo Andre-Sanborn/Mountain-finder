@@ -741,3 +741,48 @@ number on alpha drift.
 (`DeviceHeadingStreamer.swift`), so switching to Expo would not remove the question. But
 `expo-sensors` starts device motion in `.xMagneticNorthZVertical` (`SensorsUtils.swift`), an
 earth-referenced yaw at any pose. If the web compass fails in the field, that is the fallback.
+
+## Field-site packages: `sites/`, `src/sites/`, `scripts/make-site-package.ts`
+
+A site is a committed JSON definition: viewpoint, 360° sweep radius, margin and peak region.
+Its package is built into the gitignored `data/sites/<id>/` by
+`npx tsx scripts/make-site-package.ts <id> [--gzip]`.
+
+**One mosaicked window, not whole tiles.** At Bogus Basin (43.77148 N, 116.08862 W) the
+60 km disc touches four tiles: N43W116, N43W117, N44W116 and N44W117. `selectTerrainGrid` gives
+a viewpoint one grid, so whole tiles (103.74 MB, 25.93 MB per session) would show a quarter
+of the sweep. One mosaic in the existing manifest format needs no runtime change. It is
+3920 × 5427 samples, 42 547 680 bytes raw and 20 782 728 gzipped, with a 60.5 km cut snapped
+outward to arc-second lines. Cost at other radii: 20 km 4.90 MB, 40 km 19.07 MB, 70 km 57.75
+MB raw. The raw figure is also the decoded array held in memory.
+
+**The cut is exact.** North and south come from `destinationPoint`. East and west come from the
+closed form `sin Δλ = sin δ / cos φ`, because sampling bearings only approaches that extreme
+from below. Assembly copies bytes, so a seam is checked as byte identity: 9 347 boundary samples
+are identical to their source tile.
+
+**Finding: adjacent SRTM tiles disagree on their shared edge.** Four of 14 404 shared-edge
+samples around Bogus Basin differ by exactly 1 m. The mosaic takes the northern tile's south
+row and the eastern tile's west column, and refuses a disagreement over 5 m.
+
+**Read back the way the app reads it.** Through `HttpTerrainStore`, all 72 ray ends at 60 km
+read real terrain. A 360° `annotateScene` at 0.5° and 90 m with `nearFieldRadiusM` 150 took
+0.98–1.87 s over four runs on a 4-core Xeon at 2.10 GHz with node v22. It read all 479 520
+samples and labelled 70 summits, none marginal. The DEM reads 2308.3 m at the viewpoint.
+Overture tags Shafer Butte, 32.7 m away, at 2308 m.
+
+**Peaks cover 41.1 km, not 60 km.** `idaho-central` was imported for 43.4 N / 116.6 W. Its
+release, `2026-06-17.0`, has since been deleted from the Overture bucket. The bucket still
+holds `2026-08-19.0`, `2026-09-23.0` and `2026-09-23.1`, and a dry run against `2026-09-23.1`
+planned 1.57 MB of reads. Decided: import the extra coverage as a new region from a current
+release, and leave `idaho-central` unchanged, because the Idaho acceptance cases assert its
+summit ids, coordinates and heights.
+
+The site-package tests number 22, and every expectation is hand arithmetic. Four mutations were
+run: shrinking the tile set, shrinking the radius, a column off by one, and rounding the band
+with ceil. Each is caught. The off-by-one mutation first exposed an infinite loop, which now
+raises instead.
+
+**`testTimeout` is 15 s** in the root vitest config. The CV aligner's real-SRTM cases took
+4.1–4.9 s each against the 5 s default when the suite shares four cores. The acceptance config
+already allows 30 s.

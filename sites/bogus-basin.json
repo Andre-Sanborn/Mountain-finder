@@ -1,0 +1,13 @@
+{
+  "id": "bogus-basin",
+  "name": "Bogus Basin (Shafer Butte)",
+  "observer": {
+    "lat": 43.77148,
+    "lon": -116.08862
+  },
+  "sweepRadiusKm": 60,
+  "terrainMarginKm": 0.5,
+  "peakRegion": "idaho-central",
+  "photo": "fixtures/photos/real/hdr-gainmap-7270.heic",
+  "note": "Viewpoint above Bogus Basin, Idaho, supplied with IMG_7270. The Overture import places Shafer Butte (2308 m) 32.7 m from this coordinate, so the position and the peak data cross-check each other. 60 km is the radius the strategy review chose to measure first, against an iOS Safari cache quota; build the package and read the bytes off the report before moving it. The committed idaho-central peak region covers only 41.1 km of this disc — it was imported for 43.4 N and 116.6 W, and the package reports the shortfall rather than hiding it."
+}
