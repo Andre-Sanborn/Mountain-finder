@@ -41,6 +41,7 @@ import {
   MOVEMENT_STEP_COUNT,
   POSE_CARRIES_GROSS_OFFSET,
   REPEATED_DRAG_COUNT,
+  TURNED_CAPTURE_COUNT,
   STILL_MOVE_DEG,
   anchorOffsetU,
   anchorSide,
@@ -235,7 +236,7 @@ describe('the field session mode', () => {
  * ══════════════════════════════════════════════════════════════════════════ */
 
 describe('the run plan', () => {
-  it('follows § 2.7: stand, check, fix, brace, raw, drag, four movements, then repeat', () => {
+  it('follows § 2.7: stand, check, fix, brace, raw, drag, four movements, repeat, then north-east', () => {
     expect(fieldRunPlan().map((entry) => entry.step.id)).toEqual([
       'stand',
       'fov-check',
@@ -253,6 +254,9 @@ describe('the run plan', () => {
       'capture-drag',
       'drag',
       'capture-drag',
+      'face-north-east',
+      'capture-north-east',
+      'capture-north-east-again',
     ]);
   });
 
@@ -285,7 +289,18 @@ describe('the run plan', () => {
       'moved',
       'after-drag',
       'after-drag',
+      'turned',
+      'turned',
     ]);
+  });
+
+  it('takes the second direction after every drag, and drags nothing in it', () => {
+    const ids = fieldRunPlan().map((entry) => entry.step.id);
+    expect(ids.lastIndexOf('capture-drag')).toBeLessThan(ids.indexOf('face-north-east'));
+    expect(ids.indexOf('face-north-east')).toBeLessThan(ids.indexOf('capture-north-east'));
+    const turned = fieldRunPlan().filter((entry) => entry.step.role === 'turned');
+    expect(turned).toHaveLength(TURNED_CAPTURE_COUNT);
+    expect(turned.every((entry) => entry.step.kind === 'capture')).toBe(true);
   });
 
   it('moves the phone from an after-drag capture, never from the raw one', () => {
@@ -710,6 +725,8 @@ describe('a whole run', () => {
       }),
       captureOf({ captureId: 'c7', role: 'after-drag', dragAnchorSummitId: SHAFER.id }),
       captureOf({ captureId: 'c8', role: 'after-drag', dragAnchorSummitId: SHAFER.id }),
+      captureOf({ captureId: 'c9', role: 'turned' }),
+      captureOf({ captureId: 'c10', role: 'turned' }),
     ];
     expect(captures).toHaveLength(FIELD_CAPTURE_COUNT);
     const result = parseFieldBundle(bundleOf(captures));
@@ -724,6 +741,8 @@ describe('a whole run', () => {
       'c6',
       'c7',
       'c8',
+      'c9',
+      'c10',
     ]);
     expect(result.value.peakRegions).toEqual(['idaho-bogus-basin']);
     // The withheld summit the sweep never reached is what F5c grades.

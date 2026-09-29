@@ -2003,6 +2003,231 @@ describe('landmark truth', () => {
   });
 });
 
+describe('a capture of a second registered direction', () => {
+  /**
+   * The drawn marker sits 12 px right of the apex on a 1920 px frame, so the
+   * error is atan(12/f) with f = 1279.99524 px, and the displayed band below is
+   * wide enough to hold it.
+   */
+  const ERROR_PX = { xPx: 12, yPx: 0 };
+  const errorDeg = degreesAcross(0, ERROR_PX.xPx);
+
+  const turned = (summits: readonly SynthSummit[]): SynthCapture => ({
+    captureId: 'c3',
+    role: 'turned',
+    summits,
+    band: {
+      horizontalDeg: 8.5,
+      verticalDeg: 8.5,
+      hasUnquantifiedHorizontal: false,
+      hasUnquantifiedVertical: false,
+    },
+  });
+
+  it('feeds F2 and leaves F3 and F4 alone', () => {
+    const analysis = run([
+      turned([
+        summit({ summitId: DISTANT, distanceKm: 30, errorPx: ERROR_PX }),
+        summit({
+          summitId: HORIZON,
+          distanceKm: 55,
+          truthPx: { xPx: 500, yPx: 442 },
+          errorPx: ERROR_PX,
+        }),
+      ]),
+    ]);
+    expect(errorDeg).toBeLessThan(8.5);
+    expect(criterion(analysis, 'F2')?.n).toBe(2);
+    expect(criterion(analysis, 'F2')?.outcome).toBe('pass');
+    expect(criterion(analysis, 'F2')?.evidence.join('\n')).toContain(errorDeg.toFixed(3));
+    expect(analysis.graded).toHaveLength(0);
+    expect(criterion(analysis, 'F3.distant')?.n).toBe(0);
+    expect(criterion(analysis, 'F3.horizon')?.n).toBe(0);
+    expect(criterion(analysis, 'F4.distant')?.n).toBe(0);
+    expect(analysis.anchorObservations).toHaveLength(0);
+  });
+
+  it('is read by F2.pose, which subtracts the trim the turn carried', () => {
+    const analysis = run([
+      turned([
+        // 20° apart at the frame's own scale: x = 960 ± f·tan(10°).
+        summit({ summitId: DISTANT, distanceKm: 30, truthPx: { xPx: 960 - 225.7, yPx: 442 } }),
+        summit({ summitId: HORIZON, distanceKm: 55, truthPx: { xPx: 960 + 225.7, yPx: 442 } }),
+      ]),
+    ]);
+    const pose = criterion(analysis, 'F2.pose');
+    expect(pose?.n).toBe(1);
+    expect(pose?.evidence.join('\n')).not.toContain('no sample');
+  });
+
+  it('reports no shortfall of its own', () => {
+    const analysis = run([turned([summit({ summitId: DISTANT, distanceKm: 30 })])]);
+    expect(criterion(analysis, 'F4.envelope')).toBeUndefined();
+    expect(analysis.refusals).toEqual([]);
+  });
+
+  it('refuses a turned capture that claims an anchor or a reference frame', () => {
+    const { bundle } = synthesiseFieldBundle({
+      captures: [turned([summit({ summitId: DISTANT, distanceKm: 30 })])],
+    });
+    expect(parseFieldBundle(JSON.parse(JSON.stringify(bundle))).ok).toBe(true);
+    for (const claim of [
+      { dragAnchorSummitId: FAR },
+      { movedFromCaptureId: 'c2' },
+    ]) {
+      const raw = JSON.parse(JSON.stringify(bundle)) as {
+        captures: Record<string, unknown>[];
+      };
+      Object.assign(raw.captures[0] ?? {}, claim);
+      expect(parseFieldBundle(raw).ok).toBe(false);
+    }
+  });
+});
+
+describe('registered apex rules', () => {
+  const RULE_A = 'the crest under the tallest mast, not its tip';
+  const RULE_B = 'the highest point of the crest between the two saddles';
+
+  /**
+   * The two picks straddle the frame centre, so their separation in degrees is
+   * `2·atan(split / 2f)` — written out here from the pinhole relation, never
+   * read back from the grader.
+   */
+  const splitDeg = (splitPx: number): number => degreesAcross(-splitPx / 2, splitPx / 2);
+
+  it('grades a rule-bound apex exactly as an unbound one', () => {
+    const errorPx = { xPx: 12, yPx: 0 };
+    const plain = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [summit({ summitId: FAR, errorPx })],
+      },
+    ]);
+    const bound = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [summit({ summitId: FAR, errorPx, rule: RULE_A })],
+      },
+    ]);
+    expect(bound.graded[0]?.rule).toBe(RULE_A);
+    expect(bound.graded[0]?.residual).toEqual(plain.graded[0]?.residual);
+  });
+
+  it('counts the rule-bound summits and splits the truth disagreement', () => {
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [
+          summit({
+            summitId: FAR,
+            truthPx: { xPx: 960, yPx: 400 },
+            annotatorSplitPx: { xPx: 2, yPx: 0 },
+            rule: RULE_A,
+          }),
+          summit({
+            summitId: DISTANT,
+            distanceKm: 30,
+            truthPx: { xPx: 960, yPx: 500 },
+            annotatorSplitPx: { xPx: 4, yPx: 0 },
+            rule: RULE_B,
+          }),
+          summit({
+            summitId: MID,
+            distanceKm: 5,
+            truthPx: { xPx: 960, yPx: 300 },
+            annotatorSplitPx: { xPx: 6, yPx: 0 },
+          }),
+        ],
+      },
+    ]);
+
+    expect(analysis.graded).toHaveLength(3);
+    expect(analysis.ruleBound.ruleBound.n).toBe(2);
+    expect(analysis.ruleBound.free.n).toBe(1);
+    expect(analysis.ruleBound.ruleBound.meanDeg).toBeCloseTo(
+      (splitDeg(2) + splitDeg(4)) / 2,
+      9,
+    );
+    expect(analysis.ruleBound.ruleBound.maxDeg).toBeCloseTo(splitDeg(4), 9);
+    expect(analysis.ruleBound.free.meanDeg).toBeCloseTo(splitDeg(6), 9);
+    expect(analysis.ruleBound.free.maxDeg).toBeCloseTo(splitDeg(6), 9);
+
+    const text = renderFieldReport(analysis).join('\n');
+    expect(text).toContain('graded under a registered apex rule: 2 of 3 summit-observation(s)');
+    expect(text).toContain(`rule-bound: n = 2, truth disagreement mean ${((splitDeg(2) + splitDeg(4)) / 2).toFixed(3)}°, max ${splitDeg(4).toFixed(3)}°`);
+    expect(text).toContain(`free:       n = 1, truth disagreement mean ${splitDeg(6).toFixed(3)}°`);
+    expect(text).toContain(`[rule: ${RULE_A}]`);
+  });
+
+  it('leaves a summit free when only one annotator quoted a rule', () => {
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [summit({ summitId: FAR, ruleSecondOnly: RULE_A })],
+      },
+    ]);
+    expect(analysis.graded[0]?.rule).toBeUndefined();
+    expect(analysis.ruleBound.ruleBound.n).toBe(0);
+    expect(analysis.ruleBound.free.n).toBe(1);
+    expect(renderFieldReport(analysis).join('\n')).toContain(
+      'rule-bound: n = 0, no truth disagreement to report',
+    );
+  });
+
+  it('keeps both texts when the two annotators quoted different rules', () => {
+    const { bundle, truth } = synthesiseFieldBundle({
+      captures: [
+        { captureId: 'c1', role: 'after-drag', summits: [summit({ summitId: FAR, rule: RULE_A })] },
+      ],
+    });
+    const raw = JSON.parse(JSON.stringify(truth)) as {
+      captures: { readings: { apexes: Record<string, unknown>[] }[] }[];
+    };
+    const second = raw.captures[0]?.readings[1]?.apexes[0];
+    if (second !== undefined) second.rule = RULE_B;
+    const parsed = parseFieldTruth(raw);
+    if (!parsed.ok) throw new Error('the mutated truth document does not parse');
+    const analysis = analyseFieldRun(bundle, parsed.value, lookup);
+    expect(analysis.graded[0]?.rule).toBe(`${RULE_A} / ${RULE_B}`);
+    expect(analysis.ruleBound.ruleBound.n).toBe(1);
+  });
+
+  it('refuses a rule on an answer that locates nothing', () => {
+    const { truth } = synthesiseFieldBundle({
+      captures: [{ captureId: 'c1', role: 'after-drag', summits: [summit({ summitId: FAR })] }],
+    });
+    const mutate = (change: (apex: Record<string, unknown>) => void): boolean => {
+      const raw = JSON.parse(JSON.stringify(truth)) as {
+        captures: { readings: { apexes: Record<string, unknown>[] }[] }[];
+      };
+      const apex = raw.captures[0]?.readings[0]?.apexes[0];
+      if (apex !== undefined) change(apex);
+      return parseFieldTruth(raw).ok;
+    };
+    expect(
+      mutate((apex) => {
+        delete apex.apexPx;
+        apex.cannotIdentify = true;
+        apex.rule = RULE_A;
+      }),
+    ).toBe(false);
+    expect(mutate((apex) => { apex.rule = 7; })).toBe(false);
+  });
+
+  it('reads a truth document that carries no rule at all', () => {
+    const bundle = parseFieldBundle(alignedBundle);
+    const truth = parseFieldTruth(alignedTruth);
+    if (!bundle.ok || !truth.ok) throw new Error('the aligned fixture does not parse');
+    const analysis = analyseFieldRun(bundle.value, truth.value, lookup);
+    expect(analysis.ruleBound.ruleBound).toEqual({ n: 0 });
+    expect(analysis.ruleBound.free.n).toBe(analysis.graded.length);
+  });
+});
+
 describe('what each annotator was given', () => {
   it('carries the method through to the report', () => {
     const { bundle, truth } = synthesiseFieldBundle({

@@ -47,22 +47,17 @@ One structural consequence, stated before the numbers because it decides how the
 The drag is anchored on one summit — the one the user is most confident of — so the error
 that summit carries is subtracted from every other summit. The residual for summit *i*
 anchored on summit *a* is therefore `(e_i − e_a) + (drag precision)`, and the anchor's own
-error enters every row of the table. **The protocol names the anchor rather than leaving it
-to the person**: the drag is anchored on the summit § 2.7 registers, and the bundle records
-which one (`dragAnchorSummitId`). The table below charges the anchor at the 7–20 km band.
+error enters every row of the table. **The protocol fixes the anchor rule**: the drag is
+anchored on the most prominent summit the user can positively identify, and the bundle
+records which one (`dragAnchorSummitId`). The table below charges the anchor at the 7–20 km
+band.
 
-**The registered anchor at this site is Deer Point, 2.0 km away** (§ 2.7). It is the summit
-the session faces, and the only one in that frame carrying a registered apex rule (§ 2.0).
-A farther anchor would carry a smaller angular error — 25 m of horizontal geodesy is 0.143°
-at 10 km, 0.026° at 55 km, and 0.716° at 2 km — so the 7–20 km charge in the table below is
-**not** conservative for this anchor. Carrying the 2 km figure through § 1.5 instead would
-raise the horizontal 1σ from 0.951° to 1.182° at 2 km and from 0.642° to 0.951° at 10 km.
-**The table is left as written, and the limits with it.** A limit re-derived to fit the
-anchor would be a limit widened before a run, which this document permits only with the
-measurement behind it (§ 1.6), and no such measurement exists. What it means for a run is
-stated rather than hidden: a band that fails by less than that gap is a candidate for the
-anchor's own error rather than for the app's, and the decomposition § 2.3 already requires
-starts there.
+At the proposed site the anchor will in practice be farther out than that. The summits a
+person can positively identify there are the prominent ones, and they are 35–57 km away:
+Trinity Mountain 56.4 km, Freeman Peak 36.5 km, Pilot Peak 38.4 km. **Charging the anchor
+at 7–20 km is therefore conservative**, because a farther anchor carries a smaller angular
+error: 25 m of horizontal geodesy is 0.143° at 10 km and 0.026° at 55 km. The charge stays
+at 7–20 km so that the table holds for a session that anchors on something nearer.
 
 ### 1.2 The viewport the budget is computed on
 
@@ -459,51 +454,6 @@ The protocol:
    because a mast is a sharper target than a rounded skyline and a truth read off one is
    finer than the rest. It is not a licence to claim the app did better.
 
-8. **Where a registered apex rule exists, it decides which point both annotators take.** A
-   rule is written once, before any field data exists, by an agent who sees only a rehearsal
-   frame and the annotator maps — never the app's projection, never the pose, and never an
-   annotator's answers. **A rule names a physical feature and nothing else.** It never names
-   a pixel, a position in the frame, a direction, a neighbouring summit, or an appearance
-   that changes with the light or the season. The one thing the writer may add is that the
-   feature stands on the crest the summit node marks, between the same contours; the maps
-   show no buildings, so that is as far as the terrain can tie a feature to a node. **The
-   distance from the feature to the node is an unquantified truth term** on every rule-bound
-   summit, and this document does not estimate it. Each annotator records the rule they
-   followed in a `rule` field on the apex, and a summit counts as rule-bound only when both
-   quoted one.
-9. **A bearing-and-lens prediction may direct an annotator's attention. It may never place a
-   pixel.** Both map annotators of the rehearsal frame fitted a focal length on one summit
-   and predicted the rest from map bearings. That is a model of the same pinhole camera the
-   app projects with, so an apex placed by it would check the app against itself. A
-   prediction says where to look; the picture says where the apex is.
-10. **The report separates the two kinds of summit.** It states how many graded summits
-    were rule-bound, and it reports the annotator disagreement for the rule-bound summits
-    apart from the free ones. A rule removes the choice of which point on a flat crest to
-    take, so the two spreads measure different things and one pooled figure would hide both.
-
-#### Registered apex rules
-
-Written before any field data existed. Nothing is added to this list once a field frame
-exists.
-
-- **Deer Point** — *the crest under the tallest mast, not its tip.*
-
-**That is the whole list, and it is one rule.** No rule was written for any other summit,
-including Doe Point: on the 10 km annotator map the Doe Point and Deer Point nodes sit about
-250 m apart inside one closed summit contour, so the terrain cannot tie Doe Point's small
-mast to the Doe Point node rather than to its neighbour. A feature that cannot be tied to a
-node gets no rule.
-
-Two consequences, both pre-declared:
-
-- **Deer Point is the drag anchor, and an anchor is never graded (§ 2.3).** So the rule-bound
-  count is expected to be **zero in every graded band**. The machinery still runs and still
-  prints the split; a table of zeroes there is the protocol working.
-- **At the south direction, `F2.pose` rests on free agreement about Doe Point.** The two map
-  annotators of the rehearsal frame placed Doe Point 0.656° apart, over the 0.30° limit, so
-  it was `truth-disputed`. **South `F2.pose` is therefore expected `no-sample`** unless the
-  field frame resolves what the rehearsal frame did not.
-
 This is the same instrument the Railroad Ridge pose was solved with, and its own record
 says what it is: "my reading of the picture — an agent looking at a magnified crop with a
 labelled 50 px grid — and it is a judgement, not an instrument"
@@ -519,44 +469,21 @@ n = 1 in the result, per `AGENTS.md`. **This session can refute the budget. It c
 confirm it.** A pass means "nothing here contradicts the budget at this n", and any
 sentence that upgrades that is wrong.
 
-**The session faces south, and the near band cannot carry a graded sample there.** The site
+**The near band is testable facing south, and one capture is registered for it.** The site
 package holds 5 summits inside 3 km of the viewpoint, 4 more between 3 and 7 km and 15
 between 7 and 20 km. From the viewpoint on Shafer Butte every one of them sits **below**
 horizontal: 2.8 to 7.6° down in the near band, 3.0 to 5.7° in the mid band, 1.7 to 5.0° in
 the far band, computed with a 1.6 m eye height and the k = 0.13 sightline. Below horizontal
-does not mean out of frame: the rehearsal frame puts Deer Point 2 km away at −4.5° with the
+does not mean out of frame. The rehearsal frame puts Deer Point 2 km away at −4.5° with the
 skyline still in shot, and a 38.1° vertical field of view reaches 19° below the optical
-axis. So § 2.7 points the session south, toward Deer Point and Doe Point, and anchors the
-drag on Deer Point.
+axis, so a phone held level facing south holds the near ridge and the sky above it in the
+same picture. **§ 2.7 therefore registers one capture facing south toward Deer Point and Doe
+Point**, and the `near` row of § 2.3 is expected to carry a sample.
 
-**F3.near and F4.near are site-limited, and are expected `no-sample` by construction.**
-Within 3 km of the viewpoint the package holds four summits besides Shafer Butte itself:
-Doe Point 1.9 km at 198°, Deer Point 2.0 km at 204°, Bob's Knob 2.1 km at 123° and Mores
-Mountain 2.2 km at 356°. A 73.74° frame holds no more than two of them at once — Doe Point
-and Deer Point, 6° apart; the next nearest pair is 75° apart — and one of those two is the
-drag anchor, which § 2.3 excludes. The near band's whole possible graded sample is therefore
-Doe Point, one summit against a stop rule that asks for three. **The site limits this, not
-the app**, and it is written here for the same reason the other pre-declared limits are.
-
-**Which bands the south direction can sample.** Beyond the near band, the summits the
-registered direction can reach are:
-
-- `mid` (3 to under 7 km): **Little Deer Point, Lower Point and Gardiner Peak**. All three
-  must be placed by both annotators for the band to clear the stop rule, so one
-  `cannotIdentify` or one disputed pick leaves `mid` at `no-sample`.
-- `far` (7 to under 20 km): **Boise Peak, Eagleson Summit, Aldape Peak, Lucky Peak and
-  Cervidae Peak** are the candidates, of which three must be settled.
-
-**A hazy day is predicted to give `no-sample` in `far` and `distant`.** The rehearsal
-annotation left every valley butte 20 km and beyond `cannotIdentify` in midday haze, and a
-summit the annotators cannot identify is one the truth instrument did not settle. The
-`distant` and `horizon` bands are reached by the north-east direction § 2.7 registers, which
-F3 and F4 do not grade at all (§ 2.2).
-
-**Rule-bound counts are expected to read zero in every graded band.** Deer Point's rule is
-the only one registered below, and Deer Point is the drag anchor, which is never graded. So
-the split the report prints will show every graded summit as free, and that zero is the
-protocol working rather than the machinery failing.
+**The mid band is pre-declared as likely `no-sample`**, because its 4 summits sit 3.0 to
+5.7° down without a comparable near ridge to frame them, and nobody is asked to point the
+phone at the ground to manufacture a sample. That is said here rather than after the run,
+because "the band was never tested" reads very differently when it was predicted.
 
 **The stop rule: a band needs three graded summits before it may pass.** A band whose truth
 yields fewer than three graded summits is reported `no-sample`, and the report says the
@@ -693,44 +620,6 @@ summits**.
 
 A capture with fewer than two located summits reports `no-sample`: one summit fixes a
 heading only against an assumed pitch.
-
-**At the south direction, `F2.pose` rests on exactly two summits, and there is no
-redundancy.** The frame holds Deer Point and Doe Point and no other summit inside 3 km
-(§ 2.0), so the solve has the two it needs and not one more. Deer Point carries the only
-registered apex rule; Doe Point carries none, and the two map annotators of the rehearsal
-frame put it 0.656° apart, which is `truth-disputed`. **A disputed Doe Point therefore takes
-south `F2.pose` to `no-sample`**, and that is the expected outcome rather than a surprise.
-What this session can confirm accordingly rests on `F2.pose` at the north-east direction and
-on F5, not on the south frame alone.
-
-**The north-east direction is registered, and F3 and F4 do not grade it.** § 2.7 adds two
-captures centred about 45° true, toward Hawley Mountain, Charters Mountain, Scott Mountain,
-Jackson Peak, Wilson Peak, Freeman Peak, Pilot Peak, Sunset Mountain, Granite Mountain and
-Grand Mountain — 20 to 60 km out, at apparent altitudes of about −1.3° to +0.4°, which is a
-skyline rather than ground. They are taken after the south drag, under the gross heading
-offset the Deer Point re-anchor set and carried across the turn, with **no new anchor**: the
-Sun is not in a north-east frame at any hour this protocol allows, and a second re-anchor
-would throw away the first direction's compass reading.
-
-- **What they feed**: F2 on the drawn markers, in the `distant` and `horizon` bands;
-  `F2.pose`, which has two located summits more than 20° apart to solve with; and F5b.
-- **What they do not feed**: **F3 and F4**. Those two criteria are about a drag, and these
-  captures carry a trim set on a summit about 100° away. The grader gives them their own
-  capture role so that neither criterion reads them and neither reports them off-protocol
-  (§ 3). Their F2 observations carry that trim as part of the error, which is what F2's claim
-  — the band holds the error the app is making — is about.
-- **Pre-declared, before the drive**: the north-east direction has **n = 0 frames behind
-  it**. No photograph in this repository was taken facing that way from this viewpoint, so
-  clear air there is a bet rather than a measurement. **A hazy north-east gives `no-sample`,
-  as predicted here**, exactly as a hazy south does for `far` and `distant`.
-- **Freeman Peak and Pilot Peak are pre-declared one unresolvable pair.** Computed from the
-  committed peak data at the site coordinate, their bearings differ by **0.10°** (56.68° and
-  56.78°) at 36.5 km and 38.4 km. That is a tenth of one annotator pick at this frame's
-  scale, so an annotator who places one places both: the pair contributes one observation at
-  most, and a swap between the two is not counted as an error.
-- **Names repeat in this region and ids do not.** Inside 60 km it holds two Bald Mountain and
-  two Sheep Mountain. Annotators work from summit ids and published heights, as § 1.3 term 1
-  already requires, and a brief that named a summit by name alone would be ambiguous here.
 
 **Failure.** A raw error outside a band that carried only measured terms, on a marker or at
 the pose. That is the app claiming a bound it does not hold, and it is the most serious failure available here:
@@ -958,22 +847,17 @@ The order the session is run in, because several criteria depend on it.
 4. Let the fix settle, and check the accuracy the screen reports. Above 30 m, wait and
    re-acquire (term 3a).
 5. Brace: two hands, elbows on a rail or a knee (term 7).
-6. **Face south, toward Deer Point and Doe Point**, and frame it so the near ridge and the
-   sky above it are both in the picture: hold the phone level and let the ridge sit in the
-   lower half rather than tilting down onto it. Doe Point is in the picture and is not the
-   anchor.
-7. Capture before the drag (F2), hold still for 2 s first (term 8).
-8. **Drag onto Deer Point**, and capture again (F3). Deer Point is the registered anchor:
-   it is the one summit in this frame that carries an apex rule (§ 2.0), and the anchor is
-   excluded from grading, so anchoring on the one rule-bound summit leaves the graded set
-   free of the feature-to-node term that rule carries.
-9. Without re-dragging: pan until Deer Point sits at the frame edge, left and then right,
-   and tilt ±10°. Hold 2 s and capture each time (F4).
-10. Repeat the drag onto Deer Point three times, so its spread is recorded (§ 1.6).
-11. **Turn to face north-east, about 45° true, and capture twice.** Do not drag anything and
-    do not re-anchor: the trim and the gross heading offset travel round the turn with you.
-    These two captures feed F2, `F2.pose` and F5b, and F3 and F4 do not read them (§ 2.2).
-12. Note the minutes each step took (F6).
+6. Capture before the drag (F2), hold still for 2 s first (term 8).
+7. Drag onto the most prominent summit you can positively identify, and capture again (F3).
+8. Without re-dragging: pan until that anchor summit sits at the frame edge, left and then
+   right, and tilt ±10°. Hold 2 s and capture each time (F4).
+9. **Turn to face south, toward Deer Point and Doe Point, and capture once more.** Frame it
+   so the near ridge and the sky above it are both in the picture: hold the phone level and
+   let the ridge sit in the lower half rather than tilting down onto it. This is the near
+   band's only sample (§ 2.0), and Deer Point's radio masts are the landmark the annotators
+   are told to read its apex from.
+10. Repeat the drag onto the same summit three times, so its spread is recorded (§ 1.6).
+11. Note the minutes each step took (F6).
 
 ---
 
@@ -1025,19 +909,6 @@ identify it"; the two grade in opposite directions under § 2.0, so a document t
 tell them apart is re-annotated rather than reinterpreted. Each annotation is exactly one of
 an apex pixel, `absent` with its reason, or `cannotIdentify`, and each reading names the
 method it was made under.
-
-**An apex may carry a `rule`**, the registered apex rule the annotator followed, quoted. It
-is optional, so a truth document written without one is read unchanged, and a summit counts
-as rule-bound only when both annotators quoted a rule. The report prints how many graded
-summits were rule-bound and the truth disagreement of the rule-bound and the free summits
-apart (§ 2.0). A rule on an answer that locates nothing is refused, as a landmark already is.
-
-**A capture of the north-east direction carries the role `turned`.** F3 and F4 read only the
-`after-drag` and `moved` roles, so a turned capture reaches neither, and the movement
-envelope check reads only `moved`, so neither is it reported off-protocol. F2 and `F2.pose`
-read `before-drag` and `turned` together. A turned capture names no `dragAnchorSummitId` and
-no `movedFromCaptureId`, and the parser refuses one that does: nothing was dragged in that
-direction and nothing was moved from a reference frame.
 
 `fixtures/field/` holds synthetic bundles with known injected errors, and nothing recorded
 from a phone.
@@ -1254,45 +1125,3 @@ which measures the drag against itself.
 
 Nothing about the thresholds, the bands or the error budget moved. What moved is which
 observations reach them.
-
-### 2026-09-29 — the site's own limits, the apex rules, and a second direction
-
-Still before any field number exists. The criteria were registered against a site that
-cannot supply some of them, and the truth instrument had no written rule for the one
-ambiguity it had already hit.
-
-- **F3.near and F4.near are pre-declared `no-sample` by construction (§ 2.0).** Four summits
-  sit within 3 km of the viewpoint besides Shafer Butte, no 73.74° frame holds more than two
-  of them, and one of those two is the drag anchor. One possible graded summit is under a
-  stop rule that asks for three.
-- **The south direction's reachable bands are named (§ 2.0).** `mid` needs Little Deer Point,
-  Lower Point and Gardiner Peak all placed; `far` has five candidates of which three must be
-  settled; a hazy day is predicted to give `no-sample` in `far` and `distant`.
-- **Apex rules are registered, and there is one (§ 2.0).** A rule is written before any field
-  data by an agent who sees only a rehearsal frame and the annotator maps, names a physical
-  feature and nothing else, and carries an unquantified feature-to-node term. Deer Point's
-  rule is "the crest under the tallest mast". Doe Point got none: the 10 km map puts the Doe
-  and Deer Point nodes about 250 m apart inside one closed contour, so terrain cannot tie
-  Doe Point's small mast to its node. Deer Point is the anchor, so the rule-bound count is
-  expected to read zero in every graded band.
-- **A prediction may direct attention and never place a pixel (§ 2.0).** Both map annotators
-  of the rehearsal frame fitted a focal length and predicted bearings, which is the app's own
-  pinhole model.
-- **`F2.pose` at the south direction rests on two summits with no redundancy (§ 2.2)**, and a
-  disputed Doe Point — 0.656° on the rehearsal frame — takes it to `no-sample`. What the
-  session can confirm rests on `F2.pose` at the north-east direction and on F5.
-- **Two north-east captures are registered (§ 2.2, § 2.7)**, about 45° true, taken after the
-  south drag under the carried gross offset with no new anchor. They feed F2, `F2.pose` and
-  F5b, and F3 and F4 do not read them. The direction has n = 0 frames behind it; Freeman and
-  Pilot Peak are one unresolvable pair at 0.10° of bearing; the region repeats two summit
-  names inside 60 km, and annotators work from ids.
-- **The anchor is Deer Point at 2.0 km (§ 1.1, § 2.7).** The § 1.5 table charges the anchor at
-  7–20 km, which is not conservative for a 2 km anchor: carrying 2 km through would raise
-  the horizontal 1σ to 1.182° at 2 km and 0.951° at 10 km. The table and the limits are left
-  as written, and the gap is stated so a marginal failure is decomposed against it first.
-- **The grader carries both (§ 3).** An apex may quote the rule it followed, and the report
-  splits the graded summits and their disagreement by it. A north-east capture carries the
-  role `turned`, which F2 and `F2.pose` read and F3, F4 and the movement-envelope check do
-  not.
-
-Nothing about the thresholds, the bands or the error budget moved.

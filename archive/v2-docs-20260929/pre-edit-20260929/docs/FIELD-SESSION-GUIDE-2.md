@@ -1,6 +1,6 @@
-# The field session: half an hour at Bogus Basin
+# The field session: 25 minutes at Bogus Basin
 
-One trip, one viewpoint, about half an hour of work once you are standing there. The
+One trip, one viewpoint, about twenty-five minutes of work once you are standing there. The
 app has never been held up to real mountains. This session is the first time, and it is
 graded against criteria fixed in advance in
 [docs/FIELD-TEST-PREREGISTRATION.md](FIELD-TEST-PREREGISTRATION.md).
@@ -59,10 +59,6 @@ The sun measures the camera's width, and it is also how you put the direction ri
 compass is a quarter turn out. Stack fists at arm's length from the horizon: one and a half
 fists to five. Mid-morning or mid-afternoon, not noon and not near sunset.
 
-**Go on a clear, low-haze day.** The pictures are the test. Haze, smoke or a grey sky takes
-the far ridges out of them, and a summit nobody can make out on the picture is a summit the
-test cannot use.
-
 ### Check the forecast for visibility, not just for weather
 
 The summits that matter are far away. Ten of the tallest-looking ones are 34 to 58 km out.
@@ -83,8 +79,8 @@ graded summits at all.
 
 ### Time budget
 
-**About half an hour on site, once you are standing at the spot.** That is the whole
-session: three cold starts, the nineteen guided steps, and the minutes you note at the end.
+**Twenty-five minutes on site, once you are standing at the spot.** That is the whole
+session: three cold starts, the sixteen guided steps, and the minutes you note at the end.
 
 Add the drive and a walk from the car on top of that. Plan the visit with daylight to spare,
 and do not let the budget push you into hurrying the step where you wait for the location to
@@ -174,7 +170,7 @@ once, because this is the session that stores photographs:
 
 Under them:
 
-> 19 steps and 10 captures, about half an hour. You can stop at any time by closing the
+> 16 steps and 8 captures, about twenty-five minutes. You can stop at any time by closing the
 > page; nothing is kept if you do.
 
 Tap **Start the field session**. If that button is grey, a line under it says
@@ -182,18 +178,14 @@ Tap **Start the field session**. If that button is grey, a line under it says
 
 ---
 
-## The nineteen steps on screen
+## The sixteen steps on screen
 
-The panel shows one step at a time, as **Step 4 of 19 — Wait for the location**, with the
+The panel shows one step at a time, as **Step 4 of 16 — Wait for the location**, with the
 instruction under it. Each step ends with either **Done — next step** or a capture button.
 The order is part of the test: several of the criteria depend on nothing having been dragged
 or re-calibrated in between.
 
-A line at the bottom counts what you have saved: "3 of 10 captures saved on this phone."
-
-**Nobody in the picture, on any capture.** If someone is with you, ask them to stand behind
-you or off to the side before each capture. A person on the skyline hides a mountain, and
-the pictures are what the test is read from.
+A line at the bottom counts what you have saved: "3 of 8 captures saved on this phone."
 
 ### Step 1 — Where to stand
 
@@ -273,19 +265,6 @@ Every capture from here is taken braced, with that line reading "that is enough"
 hand-held wobble is one of the error terms this session is measuring, and the braced number
 is the one that was budgeted for.
 
-### Which way to point, for steps 6 to 16
-
-**Face south, toward Deer Point.** Deer Point is the near ridge with the radio masts on top,
-about 2 km away. Hold the phone level and let that ridge sit in the lower half of the
-picture, with sky above it — do not tip the phone down onto the ridge.
-
-**Frame it so Doe Point is in the picture too.** Doe Point is the next bump along the same
-ridge, a little to the left of Deer Point as you look at it, about the width of three
-fingers held at arm's length. It needs to be in shot, and it is *not* the one you line the
-label up on.
-
-Everything from here to step 16 is taken facing that way.
-
 ### Step 6 — Capture as it is
 
 > Without touching the labels, tap Capture raw. This is the picture of what the app got right
@@ -302,10 +281,8 @@ help.
 The screen says "Tap the name of the summit you lined up:" and lists the summits it has
 drawn, as buttons. Tap the one you dragged. It then reads "Lined up on:" with that name.
 
-**Line up Deer Point, and tap "Deer Point" in the list.** It is the anchor for the rest of
-the session, and it is the one the test expects. Do not use Doe Point, even though it is in
-the picture: its top is flat and two people reading the same photograph do not agree on
-where its highest point is.
+Pick a summit you are sure of, not one you think is probably right. It is the anchor for the
+rest of the session.
 
 ### Step 8 — Capture after the drag (1 of 3)
 
@@ -349,7 +326,7 @@ A line reads "About 10° up is what is wanted."
 
 "About 10° down is what is wanted."
 
-### Steps 13 to 16 — The drag, twice more
+### Steps 12 to 15 — The drag, twice more
 
 The same two steps as 6 and 7, run again as **(2 of 3)** and then **(3 of 3)**. This time a
 button appears reading **Put the labels back and drag again**. Tap it, then drag onto the
@@ -358,30 +335,13 @@ same anchor summit and capture.
 Three drags onto one summit is how the session measures how much your own aim varies. It is
 the largest single term in the error budget.
 
-### Steps 17 to 19 — The far mountains to the north-east
-
-> Turn to your left until you face north-east, toward the far high mountains. Do not touch
-> the labels on the way round.
-
-Then two more captures, one after the other:
-
-> Keep the phone braced and level, hold still, then capture. Make sure nobody is in the
-> picture.
-
-> Without dragging anything, hold still and capture the same view a second time.
-
-These two are the far mountains, 20 to 60 km out. **Do not drag a label and do not tap Fix
-direction** on this side. The labels keep the correction they already have, and carrying it
-round the turn is part of what is being tested. Three or four minutes, and the session is
-done.
-
 ---
 
 ## When the run finishes
 
 The panel reports what it has:
 
-> 10 captures, each with its photograph. Every one of them follows the protocol.
+> 8 captures, each with its photograph. Every one of them follows the protocol.
 
 If something fell short it says so instead, and lists each one: a picture under 1920 pixels
 across, a hold shorter than two seconds, a pan that did not reach 80 %, a tilt outside 5° to
@@ -412,7 +372,7 @@ The readings file and the photographs travel together, in one send.
 3. Type your own email address in the **To:** field.
 4. Tap the blue arrow.
 
-The screen then says what happened. "Sent 11 files — the readings and the photographs —
+The screen then says what happened. "Sent 9 files — the readings and the photographs —
 wherever you chose" means it worked.
 
 If the phone will not hand the files to another app, it saves them to **Files** instead and
@@ -447,9 +407,6 @@ asks you to put it somewhere else, the answer is no.
   across the screen", and whether it was accepted at the first try.
 - The **location accuracy** the screen showed when you started capturing.
 - Which summit you used as the **anchor**, and how sure you were of it.
-- Whether **Doe Point** was in the picture, and whether you could make out its top.
-- What the **north-east** view looked like: whether the far mountains were sharp, soft or
-  lost in haze.
 - Whether you had to **fix the direction**: which way you fixed it, what the sun or the
   summit was, and how far the labels turned.
 - The closing line: how many captures, and whether every one follows the protocol.

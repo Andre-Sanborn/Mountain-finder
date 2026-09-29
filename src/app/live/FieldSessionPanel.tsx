@@ -325,7 +325,9 @@ export function FieldSessionPanel(props: FieldSessionPanelProps): JSX.Element {
         framePx: { widthPx: frame.widthPx, heightPx: frame.heightPx },
         trace,
         context: snapshot,
-        ...(role === 'before-drag' || anchorSummitId === undefined
+        // A turned capture faces a direction nothing was dragged in, so it
+        // names no anchor even though one is set for the first direction.
+        ...((role !== 'after-drag' && role !== 'moved') || anchorSummitId === undefined
           ? {}
           : { dragAnchorSummitId: anchorSummitId }),
         ...(role === 'moved' && referenceCapture !== undefined
@@ -473,7 +475,7 @@ export function FieldSessionPanel(props: FieldSessionPanelProps): JSX.Element {
               ))}
             </div>
             <p data-testid="field-session-length">
-              {plan.length} steps and {FIELD_CAPTURE_COUNT} captures, about twenty-five minutes. You
+              {plan.length} steps and {FIELD_CAPTURE_COUNT} captures, about half an hour. You
               can stop at any time by closing the page; nothing is kept if you do.
             </p>
             <button

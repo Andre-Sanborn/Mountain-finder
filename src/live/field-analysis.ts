@@ -65,6 +65,13 @@
  * other apex and reports the landmark observations apart, because a mast is a
  * finer target than a rounded skyline.
  *
+ * An apex may also carry `rule`, the registered apex rule the annotator
+ * followed, written before any field data existed (pre-registration § 2.0
+ * "Registered apex rules"). A rule-bound pick is graded like any other, and the
+ * report counts the rule-bound summits and reports their truth disagreement
+ * apart from the free ones: a rule removes the choice of which point on a flat
+ * crest to take, so the two groups' agreement measures different things.
+ *
  * Each reading records what its annotator was given: the bare frame and the
  * names, or those plus the viewpoint and a topographic map. Neither method ever
  * includes the app's projection or the pose.
@@ -518,9 +525,27 @@ export const SUPERSEDED_TRUTH_FORMAT = 'mountain-finder/field-apex-truth@1';
 /** The only timestamp basis either format permits. */
 export const TIMESTAMP_BASIS = 'ms-since-session-start';
 
-/** What a capture is for, which decides which criteria grade it. */
-export const CAPTURE_ROLES = ['before-drag', 'after-drag', 'moved'] as const;
+/**
+ * What a capture is for, which decides which criteria grade it.
+ *
+ * `turned` is a capture of a second registered direction, taken after the drag
+ * and without a drag of its own (pre-registration § 2.7). It carries the trim
+ * and the gross heading offset the first direction set, so F2 and `F2.pose` read
+ * it and F3 and F4 do not: a trim aligned on a summit 100° away is not the drag
+ * those two criteria are about.
+ */
+export const CAPTURE_ROLES = ['before-drag', 'after-drag', 'moved', 'turned'] as const;
 export type CaptureRole = (typeof CAPTURE_ROLES)[number];
+
+/**
+ * The roles F2 reads: those with no drag of their own between the compass and
+ * the marker. A `turned` capture carries an earlier direction's trim, which the
+ * pose check subtracts out and the marker check reports as part of the error.
+ */
+const UNDRAGGED_ROLES: readonly CaptureRole[] = ['before-drag', 'turned'];
+
+/** The roles F3 and F4 grade positions on. */
+const DRAGGED_ROLES: readonly CaptureRole[] = ['after-drag', 'moved'];
 
 /** A pixel in the stored camera frame. Origin top-left, x right, y down. */
 export interface PixelPoint {
@@ -671,7 +696,7 @@ export interface Capture {
   readonly sweepRadiusKm: number;
   readonly band: DisplayedBand;
   readonly overlay: DrawnOverlay;
-  /** The summit the drag was anchored on. Absent on a before-drag capture. */
+  /** The summit the drag was anchored on. Absent on a before-drag or turned capture. */
   readonly dragAnchorSummitId?: string;
   /** For a `moved` capture: which after-drag capture it moved from. */
   readonly movedFromCaptureId?: string;
@@ -757,6 +782,15 @@ export type ApexAnnotation =
        * a mast, a lookout, a notch. Present only when the annotator marked it.
        */
       readonly landmark?: string;
+      /**
+       * The registered apex rule this pick followed, quoted.
+       *
+       * A string rather than a flag, so the report says which rule was in force
+       * and a rule the annotator paraphrased is visible as a different text. The
+       * rules are written before any field data exists and are listed in
+       * § 2.0 "Registered apex rules" of the pre-registration.
+       */
+      readonly rule?: string;
       readonly note?: string;
     }
   | {
@@ -1444,6 +1478,22 @@ function parseCapture(p: Problems, path: string, value: unknown): Capture | unde
       p.add(`${path}.panFromReferenceDeg`, 'a moved capture must record its pan or its tilt');
     }
   }
+  if (role === 'turned') {
+    // Nothing was dragged in this direction and nothing was moved from a
+    // reference frame, so either key would claim a drag the session never made.
+    if (dragAnchorSummitId !== undefined) {
+      p.add(
+        `${path}.dragAnchorSummitId`,
+        'a turned capture faces a second registered direction and nothing was dragged in it, so it names no anchor',
+      );
+    }
+    if (movedFromCaptureId !== undefined) {
+      p.add(
+        `${path}.movedFromCaptureId`,
+        'a turned capture is a new direction, not a movement from an after-drag capture',
+      );
+    }
+  }
 
   if (
     captureId === undefined ||
@@ -1571,7 +1621,7 @@ export function parseFieldBundle(raw: unknown): ParseResult<FieldBundle> {
   };
 }
 
-const APEX_KEYS = ['summitId', 'apexPx', 'landmark', 'absent', 'reason', 'cannotIdentify', 'note'] as const;
+const APEX_KEYS = ['summitId', 'apexPx', 'landmark', 'rule', 'absent', 'reason', 'cannotIdentify', 'note'] as const;
 const READING_KEYS = ['annotatorId', 'method', 'apexes'] as const;
 const CAPTURE_TRUTH_KEYS = ['captureId', 'readings'] as const;
 const TRUTH_KEYS = ['format', 'procedure', 'captures'] as const;
@@ -1629,13 +1679,23 @@ function parseApex(p: Problems, path: string, value: unknown): ApexAnnotation | 
     const apexPx = asPixelPoint(p, `${path}.apexPx`, obj.apexPx);
     const landmark =
       'landmark' in obj ? asString(p, `${path}.landmark`, obj.landmark) : undefined;
+    const rule = 'rule' in obj ? asString(p, `${path}.rule`, obj.rule) : undefined;
     if ('reason' in obj) p.add(`${path}.reason`, 'a reason belongs to an absent answer');
     if (summitId === undefined || apexPx === undefined) return undefined;
-    return { summitId, apexPx, ...(landmark !== undefined ? { landmark } : {}), ...extras };
+    return {
+      summitId,
+      apexPx,
+      ...(landmark !== undefined ? { landmark } : {}),
+      ...(rule !== undefined ? { rule } : {}),
+      ...extras,
+    };
   }
 
   if ('landmark' in obj) {
     p.add(`${path}.landmark`, 'a landmark belongs to an apex answer');
+  }
+  if ('rule' in obj) {
+    p.add(`${path}.rule`, 'an apex rule belongs to an apex answer');
   }
 
   if (obj.absent === true) {
@@ -2046,6 +2106,15 @@ export type SummitTruth =
        * because its precision comes from a mast rather than from a skyline.
        */
       readonly landmark?: string;
+      /**
+       * The registered apex rule both annotators followed, when both quoted one.
+       *
+       * Both must quote a rule for the summit to count as rule-bound: a rule one
+       * annotator applied and the other did not is not a shared instruction, and
+       * the disagreement it produces belongs with the free summits. Two different
+       * texts are both kept, joined, because the difference is the finding.
+       */
+      readonly rule?: string;
     }
   | {
       /** Both annotators say the summit is not in this frame, and why. */
@@ -2113,6 +2182,10 @@ export function reduceTruth(
   const landmark = landmarks.every((entry): entry is string => entry !== undefined)
     ? [...new Set(landmarks)].join(' / ')
     : undefined;
+  const rules = [first.rule, second.rule];
+  const rule = rules.every((entry): entry is string => entry !== undefined)
+    ? [...new Set(rules)].join(' / ')
+    : undefined;
   const dxPx = first.apexPx.xPx - second.apexPx.xPx;
   const dyPx = first.apexPx.yPx - second.apexPx.yPx;
   const disagreementPx = Math.hypot(dxPx, dyPx);
@@ -2147,6 +2220,7 @@ export function reduceTruth(
     disagreementDeg,
     disagreementPx,
     ...(landmark !== undefined ? { landmark } : {}),
+    ...(rule !== undefined ? { rule } : {}),
   };
 }
 
@@ -2190,6 +2264,20 @@ export interface Criterion {
   readonly evidence: readonly string[];
 }
 
+/** How far the two annotators sat apart, over one group of graded summits. */
+export interface TruthDisagreement {
+  readonly n: number;
+  /** Undefined when the group is empty; there is no mean of nothing. */
+  readonly meanDeg?: number;
+  readonly maxDeg?: number;
+}
+
+/** The graded summits split by whether a registered apex rule bound the pick. */
+export interface RuleBoundSplit {
+  readonly ruleBound: TruthDisagreement;
+  readonly free: TruthDisagreement;
+}
+
 /** One graded summit-observation. Carries a band label, never a distance. */
 export interface GradedSummit {
   readonly captureId: string;
@@ -2202,6 +2290,8 @@ export interface GradedSummit {
   readonly truthDisagreementDeg: number;
   /** The point feature both annotators took the apex from, when both named one. */
   readonly landmark?: string;
+  /** The registered apex rule both annotators followed, when both quoted one. */
+  readonly rule?: string;
   /** Inside the 2σ band on both axes. */
   readonly withinThreshold: boolean;
   readonly exceedances: readonly AxisExceedance[];
@@ -2231,6 +2321,16 @@ export interface FieldAnalysis {
    * which they are keeps that from being read as the app doing better.
    */
   readonly landmarkObservations: readonly string[];
+  /**
+   * The graded summits split by whether a registered apex rule bound the pick,
+   * with each group's truth disagreement.
+   *
+   * § 2.0 of the pre-registration requires both counts and both disagreements.
+   * A rule removes the choice of which point on a flat crest to call the apex,
+   * so the two groups' agreement is evidence about two different things, and one
+   * pooled figure would hide the rules doing their job or failing to.
+   */
+  readonly ruleBound: RuleBoundSplit;
   /**
    * The drag anchor of each after-drag and moved capture, with its residual.
    *
@@ -2380,7 +2480,7 @@ function gradedSummitOf(
   summit: DrawnSummit,
   truth: Extract<SummitTruth, { kind: 'located' }>,
 ): GradedSummit | undefined {
-  const { apexPx, disagreementDeg: truthDisagreementDeg, landmark } = truth;
+  const { apexPx, disagreementDeg: truthDisagreementDeg, landmark, rule } = truth;
   const threshold = bandFor(summit.distanceKm);
   if (threshold === undefined) return undefined;
   const limits = bandLimitsFor(threshold, capture.horizontalAccuracyM);
@@ -2396,6 +2496,7 @@ function gradedSummitOf(
     frameOffset: frameOffsetFraction(apexPx.xPx, capture.framePx.widthPx),
     truthDisagreementDeg,
     ...(landmark !== undefined ? { landmark } : {}),
+    ...(rule !== undefined ? { rule } : {}),
     withinThreshold: withinThreshold(residual, limits),
     exceedances,
     axesOverTwoSigma: exceedances.filter((axis) => axis.overTwoSigma).length,
@@ -2435,7 +2536,7 @@ function gradeF2(observations: readonly Observation[]): Criterion {
   let notGated = 0;
 
   for (const { capture, summit, truth } of observations) {
-    if (capture.role !== 'before-drag') continue;
+    if (!UNDRAGGED_ROLES.includes(capture.role)) continue;
     if (truth.kind !== 'located') continue;
     const residual = residualOf(capture, summit.summitPx, truth.apexPx);
     if (residual === undefined) continue;
@@ -2540,7 +2641,7 @@ function gradeF2Pose(observations: readonly Observation[]): Criterion {
     'the band the app displays contains the error in the heading the compass alone reported';
   const located = new Map<string, { capture: Capture; pairs: { drawnPx: PixelPoint; truthPx: PixelPoint }[] }>();
   for (const { capture, summit, truth } of observations) {
-    if (capture.role !== 'before-drag') continue;
+    if (!UNDRAGGED_ROLES.includes(capture.role)) continue;
     if (truth.kind !== 'located') continue;
     const entry = located.get(capture.captureId) ?? { capture, pairs: [] };
     entry.pairs.push({ drawnPx: summit.summitPx, truthPx: truth.apexPx });
@@ -2726,7 +2827,9 @@ function gradePositional(
           : row.axesOverTwoSigma > 0
             ? ' — over 2σ'
             : '';
-      const mark = row.landmark === undefined ? '' : ` [landmark: ${row.landmark}]`;
+      const mark =
+        (row.landmark === undefined ? '' : ` [landmark: ${row.landmark}]`) +
+        (row.rule === undefined ? '' : ` [rule: ${row.rule}]`);
       return `${row.captureId} ${row.name}: ${Math.abs(row.residual.horizontalDeg).toFixed(3)}° across (2σ ${across?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${across?.threeSigmaDeg.toFixed(2) ?? '?'}°), ${Math.abs(row.residual.verticalDeg).toFixed(3)}° up/down (2σ ${upDown?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${upDown?.threeSigmaDeg.toFixed(2) ?? '?'}°), at ${(row.frameOffset * 100).toFixed(0)}% of the half-frame, truth ±${row.truthDisagreementDeg.toFixed(3)}°${mark}${flag}`;
     });
     const anchorCount = anchorsPerBand.get(threshold.band) ?? 0;
@@ -3030,7 +3133,7 @@ export function analyseFieldRun(
   const graded: GradedSummit[] = [];
   const anchorObservations: string[] = [];
   for (const { capture, summit, truth: reduced } of observations) {
-    if (capture.role === 'before-drag') continue;
+    if (!DRAGGED_ROLES.includes(capture.role)) continue;
     if (summit.summitId === anchorOf(capture)) {
       anchorObservations.push(anchorLineOf(capture, summit, reduced));
       continue;
@@ -3053,9 +3156,25 @@ export function analyseFieldRun(
     graded,
     annotatorMethods: annotatorMethodLines(truth),
     landmarkObservations,
+    ruleBound: ruleBoundSplitOf(graded),
     anchorObservations,
     refusals,
     notes,
+  };
+}
+
+function truthDisagreementOf(rows: readonly GradedSummit[]): TruthDisagreement {
+  if (rows.length === 0) return { n: 0 };
+  const degrees = rows.map((row) => row.truthDisagreementDeg);
+  const total = degrees.reduce((sum, value) => sum + value, 0);
+  return { n: rows.length, meanDeg: total / rows.length, maxDeg: Math.max(...degrees) };
+}
+
+/** Split the graded summits by whether a registered apex rule bound the pick. */
+function ruleBoundSplitOf(graded: readonly GradedSummit[]): RuleBoundSplit {
+  return {
+    ruleBound: truthDisagreementOf(graded.filter((row) => row.rule !== undefined)),
+    free: truthDisagreementOf(graded.filter((row) => row.rule === undefined)),
   };
 }
 
@@ -3093,6 +3212,14 @@ function annotatorMethodLines(truth: FieldTruth): readonly string[] {
  * pasted somewhere. Bands are named, not measured, and a test asserts the
  * rendered lines hold no distance.
  */
+/** One group's truth disagreement, or that it holds nothing to report. */
+function truthDisagreementLine(group: TruthDisagreement): string {
+  if (group.meanDeg === undefined || group.maxDeg === undefined) {
+    return `n = 0, no truth disagreement to report`;
+  }
+  return `n = ${group.n}, truth disagreement mean ${group.meanDeg.toFixed(3)}°, max ${group.maxDeg.toFixed(3)}°`;
+}
+
 export function renderFieldReport(analysis: FieldAnalysis, options: { brief?: boolean } = {}): readonly string[] {
   const lines: string[] = [];
   lines.push(`device:   ${analysis.device}`);
@@ -3107,6 +3234,15 @@ export function renderFieldReport(analysis: FieldAnalysis, options: { brief?: bo
     lines.push('');
     lines.push('located from a named point feature, reported apart:');
     for (const line of analysis.landmarkObservations) lines.push(`  △ ${line}`);
+  }
+  if (analysis.graded.length > 0) {
+    const { ruleBound, free } = analysis.ruleBound;
+    lines.push('');
+    lines.push(
+      `graded under a registered apex rule: ${ruleBound.n} of ${analysis.graded.length} summit-observation(s)`,
+    );
+    lines.push(`  ⊢ rule-bound: ${truthDisagreementLine(ruleBound)}`);
+    lines.push(`  ⊢ free:       ${truthDisagreementLine(free)}`);
   }
   if (analysis.anchorObservations.length > 0) {
     lines.push('');
@@ -3186,6 +3322,10 @@ export interface SynthSummit {
   readonly truthCannotIdentify?: 'both' | 'second';
   /** Both annotators name this point feature as what they took the apex from. */
   readonly landmark?: string;
+  /** Both annotators quote this registered apex rule as what bound their pick. */
+  readonly rule?: string;
+  /** Only the second annotator quotes this rule, which leaves the summit free. */
+  readonly ruleSecondOnly?: string;
 }
 
 export interface SynthCapture {
@@ -3313,6 +3453,8 @@ export function synthesiseFieldBundle(spec: SynthSpec): {
       }
       const split = summit.annotatorSplitPx ?? { xPx: 0, yPx: 0 };
       const landmark = summit.landmark !== undefined ? { landmark: summit.landmark } : {};
+      const rule = summit.rule !== undefined ? { rule: summit.rule } : {};
+      const secondRule = summit.ruleSecondOnly !== undefined ? { rule: summit.ruleSecondOnly } : rule;
       // The two picks straddle the truth, so their midpoint is the truth exactly.
       first.push({
         summitId,
@@ -3321,6 +3463,7 @@ export function synthesiseFieldBundle(spec: SynthSpec): {
           yPx: summit.truthPx.yPx - split.yPx / 2,
         },
         ...landmark,
+        ...rule,
       });
       if (summit.truthCannotIdentify === 'second') {
         second.push({ summitId, cannotIdentify: true });
@@ -3334,6 +3477,7 @@ export function synthesiseFieldBundle(spec: SynthSpec): {
             yPx: summit.truthPx.yPx + split.yPx / 2,
           },
           ...landmark,
+          ...secondRule,
         });
       }
     }
@@ -3381,9 +3525,9 @@ export function synthesiseFieldBundle(spec: SynthSpec): {
         hasUnquantifiedVertical: false,
       },
       overlay: { drawn, withheld: synth.withheld ?? [] },
-      ...(synth.role === 'before-drag'
-        ? {}
-        : { dragAnchorSummitId: synth.dragAnchorSummitId ?? SYNTH_ANCHOR_NOT_DRAWN }),
+      ...(synth.role === 'after-drag' || synth.role === 'moved'
+        ? { dragAnchorSummitId: synth.dragAnchorSummitId ?? SYNTH_ANCHOR_NOT_DRAWN }
+        : {}),
       ...(synth.role === 'moved' ? { movedFromCaptureId: 'c2' } : {}),
       ...(synth.panFromReferenceDeg !== undefined
         ? { panFromReferenceDeg: synth.panFromReferenceDeg }

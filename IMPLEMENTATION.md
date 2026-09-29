@@ -1626,3 +1626,61 @@ covered only 1.33 s of the 1.5 s fusion window at 30 Hz each. Its memory cost is
 The e2e pump dispatches the relative event before the absolute one. Code that read whichever
 event arrived last would then take the magnetometer's answer and fail the compass-jump test.
 
+## Registered apex rules, and why the count will read zero
+
+An apex annotation may carry `rule`, the registered rule the annotator followed, quoted. It is a
+string rather than a boolean, so the report names which rule was in force and a paraphrase
+shows as different text. A summit counts as rule-bound only when both annotators quote a rule.
+The field is optional, so existing truth files parse, and a rule on an `absent` or
+`cannotIdentify` answer is refused as a landmark is.
+
+The report counts the rule-bound graded summits and prints the truth disagreement of rule-bound
+and free summits apart, because a rule removes the choice of point on a flat crest.
+
+One rule is registered: Deer Point, "the crest under the tallest mast". It was written by an
+agent that saw only the rehearsal frame and the annotator maps. Doe Point got none: the 10 km
+map puts the Doe and Deer Point nodes about 250 m apart inside one closed summit contour, so
+terrain cannot tie Doe Point's small mast to the Doe Point node. Deer Point is the drag anchor
+and is never graded, so the rule-bound count is expected to read zero in every graded band.
+
+## The site decides which bands the field test can reach
+
+Within 3 km of the viewpoint the package holds four summits besides Shafer Butte: Doe Point
+1.94 km at 197.7°, Deer Point 2.02 km at 204.3°, Bob's Knob 2.13 km at 122.8°, Mores Mountain
+2.21 km at 355.7°. A 73.74° frame holds at most two, Doe and Deer, and one is the anchor. So
+F3.near and F4.near are pre-declared `no-sample`. Facing south, `mid` needs Little Deer Point,
+Lower Point and Gardiner Peak all placed. A hazy day is predicted to give `no-sample` in `far`
+and `distant`.
+
+South `F2.pose` rests on Deer Point plus Doe Point only, and the map annotators put Doe Point
+0.656° apart on the rehearsal frame, over the 0.30° limit. So it is expected `no-sample` too,
+and what the session can confirm rests on north-east `F2.pose` and on F5.
+
+## A capture of a second direction has its own role
+
+Two captures centred about 45° true follow the south drag. They run under the gross heading
+offset the Deer Point re-anchor set, carried across the turn, with no new anchor: the Sun is not
+in a north-east frame at any hour the protocol allows, and the summits there stand 0.1° to 0.4°
+above a near-level skyline, too alike for a beginner to name. They feed F2, `F2.pose` (two
+located summits more than 20° apart) and F5b, and never F3 or F4.
+
+They carry the role `turned`. Calling them `before-drag` would claim a zero trim they do not
+have. The parser refuses a turned capture that names a drag anchor or a reference capture.
+
+No photograph faces north-east from this viewpoint, so clear air there is a bet (n = 0). Freeman
+Peak and Pilot Peak sit 0.10° apart in bearing at 36.5 and 38.4 km and are pre-declared one
+unresolvable pair. The region repeats two names inside 60 km, Bald Mountain and Sheep Mountain,
+so annotators work from summit ids and heights.
+
+The e2e waits for the turn to reach the pose before the capture step. Without that, the turn
+landed inside the still window. On site the guide tells the person to hold still after turning.
+
+## The anchor moved to 2 km and the budget did not
+
+§ 1.5 charges the anchor at 7 to 20 km. The registered anchor is Deer Point at 2.0 km, whose own
+term is 0.716° horizontally against the 0.143° charged. Carried through, it would raise the
+horizontal 1σ from 0.642° to 0.951° at 10 km. The table and limits stand as written, because a
+limit widened to fit the anchor has no measurement behind it (§ 1.6). § 1.1 says instead that a
+band failing by less than that gap is decomposed against the anchor's error before the app is
+blamed. The field session is now 19 steps and 10 captures, about half an hour.
+

@@ -481,6 +481,29 @@ test.describe('the field session', () => {
       await capture(page, repeat + 5);
     }
 
+    /* ── 12. the second registered direction, with nothing dragged in it ──── */
+    // On site this turn is about 100°, to the north-east. The injected scene is
+    // one photograph, so the test turns only as far as keeps the summit in the
+    // picture: what it exercises is a capture taken in a new direction, under
+    // the trim the first direction set and with no anchor of its own.
+    const turnedHeading = TRUE_HEADING_DEG + 20;
+    await expect(session).toHaveAttribute('data-step-id', 'face-north-east');
+    await aim(turnedHeading, 0);
+    // The turn has to arrive before the capture step, or the heading lands
+    // inside the still window and the capture is taken mid-turn.
+    await expect
+      .poll(async () => poseNumber(page, 'data-heading-deg'), { timeout: 20_000 })
+      .toBeCloseTo(turnedHeading, 0);
+    await page.getByTestId('field-session-next').click();
+
+    for (const [index, stepId] of ['capture-north-east', 'capture-north-east-again'].entries()) {
+      await expect(session).toHaveAttribute('data-step-id', stepId);
+      await holdStill(page);
+      const captureId = `c${index + 9}`;
+      injected.push({ captureId, headingDeg: turnedHeading, pitchDeg: 0 });
+      await capture(page, index + 9);
+    }
+
     /* ── the finished bundle, on the device ───────────────────────────────── */
     await expect(session).toHaveAttribute('data-phase', 'finished', { timeout: 20_000 });
     const parse = page.getByTestId('field-session-parse');
@@ -514,8 +537,10 @@ test.describe('the field session', () => {
       'c6.jpg',
       'c7.jpg',
       'c8.jpg',
+      'c9.jpg',
+      'c10.jpg',
     ]);
-    expect(shared.filter((file) => file.type === 'image/jpeg')).toHaveLength(8);
+    expect(shared.filter((file) => file.type === 'image/jpeg')).toHaveLength(10);
     const bundleFile = shared[0];
     expect(bundleFile).toBeDefined();
     if (bundleFile === undefined) return;
@@ -535,7 +560,15 @@ test.describe('the field session', () => {
       'moved',
       'after-drag',
       'after-drag',
+      'turned',
+      'turned',
     ]);
+    // A turned capture faces a second direction and nothing was dragged in it,
+    // so it names no anchor and no capture it moved from.
+    for (const capture of parsed.value.captures.filter((entry) => entry.role === 'turned')) {
+      expect(capture.dragAnchorSummitId).toBeUndefined();
+      expect(capture.movedFromCaptureId).toBeUndefined();
+    }
     // The frames are referenced by bare file name, and the file names match the
     // images that travelled with the bundle.
     expect(parsed.value.captures.map((capture) => capture.framePath)).toEqual(
@@ -633,7 +666,7 @@ test.describe('the field session', () => {
 
     /* ── the frames are the camera's, not the overlay's ───────────────────── */
     const readings = await sharedFrameReadings(page);
-    expect(readings).toHaveLength(8);
+    expect(readings).toHaveLength(10);
     for (const reading of readings) {
       expect(reading.widthPx, reading.name).toBeGreaterThanOrEqual(1920);
       expect(reading.heightPx, reading.name).toBe(FIELD_FRAME.heightPx);

@@ -45,6 +45,11 @@
  * could not identify is excluded from F3, F4 and F5a, and the count is printed.
  * Each reading says what its annotator was given, and the report repeats it.
  *
+ * An apex both annotators took under a registered apex rule carries that rule's
+ * text. The report counts how many graded summits were rule-bound and prints the
+ * two groups' truth disagreement apart, because a rule decides which point on a
+ * flat crest to take and the free summits carry that choice in their spread.
+ *
  * A band whose truth yields fewer than three graded summits is reported
  * `no-sample` with the stop rule named, so a thin row cannot read as a pass. A
  * band that fails the exceedance gate still fails, whatever its n.

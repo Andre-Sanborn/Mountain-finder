@@ -109,7 +109,7 @@ export const FIELD_SESSION_PRIVACY_STATEMENT: readonly string[] = [
 /** How long a braced hold runs before a capture, milliseconds (term 8). */
 export const BRACE_HOLD_MS = 2000;
 
-/** How many times the drag onto the same summit is repeated (§ 2.7 step 9). */
+/** How many times the drag onto the same summit is repeated (§ 2.7 step 10). */
 export const REPEATED_DRAG_COUNT = 3;
 
 /** Smallest stored frame width the pre-registration accepts, pixels (§ 2.0). */
@@ -240,6 +240,29 @@ export const FIELD_SESSION_STEPS: readonly FieldStep[] = [
     role: 'moved',
     tilt: 'down',
   },
+  {
+    id: 'face-north-east',
+    title: 'Turn to the north-east',
+    instruction:
+      'Turn to your left until you face north-east, toward the far high mountains. Do not touch the labels on the way round.',
+    kind: 'read',
+  },
+  {
+    id: 'capture-north-east',
+    title: 'Capture the far mountains',
+    instruction:
+      'Keep the phone braced and level, hold still, then capture. Make sure nobody is in the picture.',
+    kind: 'capture',
+    role: 'turned',
+  },
+  {
+    id: 'capture-north-east-again',
+    title: 'And once more',
+    instruction:
+      'Without dragging anything, hold still and capture the same view a second time.',
+    kind: 'capture',
+    role: 'turned',
+  },
 ];
 
 /** The step ids, so a caller can name one without indexing the array. */
@@ -286,14 +309,24 @@ export function fieldRunPlan(): readonly FieldRunStep[] {
     plain('tilt-down'),
     ...dragPair(2),
     ...dragPair(3),
+    plain('face-north-east'),
+    plain('capture-north-east'),
+    plain('capture-north-east-again'),
   ];
 }
 
 /** The four movements § 2.4 asks for from one after-drag capture. */
 export const MOVEMENT_STEP_COUNT = 4;
 
-/** Captures a complete run produces: the raw one, three drags, four movements. */
-export const FIELD_CAPTURE_COUNT = 1 + REPEATED_DRAG_COUNT + MOVEMENT_STEP_COUNT;
+/** Captures of the second registered direction, which nothing is dragged in. */
+export const TURNED_CAPTURE_COUNT = 2;
+
+/**
+ * Captures a complete run produces: the raw one, three drags, four movements,
+ * and two of the north-east direction.
+ */
+export const FIELD_CAPTURE_COUNT =
+  1 + REPEATED_DRAG_COUNT + MOVEMENT_STEP_COUNT + TURNED_CAPTURE_COUNT;
 
 /* ══════════════════════════════════════════════════════════════════════════
  * SECTION 3 — The pan target, read off the overlay
