@@ -1082,7 +1082,7 @@ describe('preconditions', () => {
     expect(analysis.refusals.join('\n')).toContain('spec-sheet guess');
   });
 
-  it('reports a frame geometry the budget was not computed on', () => {
+  it('reports an overlay viewport the budget was not computed on', () => {
     const analysis = run([
       {
         captureId: 'c1',
@@ -1091,7 +1091,77 @@ describe('preconditions', () => {
         summits: [summit({ summitId: FAR })],
       },
     ]);
-    expect(analysis.refusals.join('\n')).toContain('frame geometry');
+    expect(analysis.refusals.join('\n')).toContain('viewport');
+  });
+
+  it('reads the viewport terms off the overlay, not off the stored frame', () => {
+    // The stored frame is 16:9 and the drawn viewport is the registered
+    // 956 x 440. The roll and scale terms were budgeted on the viewport, so a
+    // stored frame of any shape is not a deviation from them.
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        framePx: { widthPx: 1920, heightPx: 1080 },
+        overlayPx: { widthPx: 956, heightPx: 440 },
+        summits: [summit({ summitId: FAR })],
+      },
+    ]);
+    expect(analysis.refusals.join('\n')).not.toContain('viewport');
+  });
+
+  it('reports a stored frame narrower than the registered 1920 px', () => {
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        framePx: { widthPx: 1280, heightPx: 720 },
+        summits: [summit({ summitId: FAR })],
+      },
+    ]);
+    expect(analysis.refusals.join('\n')).toContain('1280 px across');
+  });
+
+  it('reports a stored frame whose aspect is not the camera track’s', () => {
+    // 1920 x 1440 stored from a 1920 x 1080 track is 4:3 against 16:9: the
+    // frame aspect is 1.3333 where the track's is 1.7778, 25.0 % below it.
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        framePx: { widthPx: 1920, heightPx: 1440 },
+        track: { width: 1920, height: 1080 },
+        summits: [summit({ summitId: FAR })],
+      },
+    ]);
+    expect(analysis.refusals.join('\n')).toContain('25.0% off the camera track');
+  });
+
+  it('accepts a stored frame whose aspect is the track’s to within a rounded pixel', () => {
+    // A 956/440 track stored at 1920 px wide rounds its height to 884 px:
+    // 1920/884 = 2.17195 against 956/440 = 2.17273, 0.036 % apart.
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        framePx: { widthPx: 1920, heightPx: 884 },
+        track: { width: 956, height: 440 },
+        summits: [summit({ summitId: FAR })],
+      },
+    ]);
+    expect(analysis.refusals.join('\n')).not.toContain('camera track');
+  });
+
+  it('says so when a capture records no camera track size to check against', () => {
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        track: { width: 0, height: 0 },
+        summits: [summit({ summitId: FAR })],
+      },
+    ]);
+    expect(analysis.refusals.join('\n')).toContain('records no camera track size');
   });
 
   it('reports a summit the committed peak data does not hold', () => {
@@ -1318,11 +1388,17 @@ describe('the committed synthetic fixtures', () => {
     expect(failed).toEqual(['F3.far', 'F5a', 'F5c']);
   });
 
-  it('carries the same frame geometry the pre-registration budgeted on', () => {
+  it('carries both registered geometries: the § 1.2 viewport and the § 2.0 stored frame', () => {
     const bundle = parseFieldBundle(alignedBundle) as { ok: true; value: FieldBundle };
     for (const capture of bundle.value.captures) {
       expect(capture.pose.hFovDeg).toBe(73.74);
+      expect(capture.overlayPx).toEqual({ widthPx: 956, heightPx: 440 });
       expect(capture.framePx.widthPx).toBeGreaterThanOrEqual(1920);
+      // Stored whole, so its aspect is the track's.
+      expect(capture.framePx.widthPx / capture.framePx.heightPx).toBeCloseTo(
+        capture.track.width / capture.track.height,
+        6,
+      );
       expect(capture.fovSource).toBe('calibrated');
     }
   });

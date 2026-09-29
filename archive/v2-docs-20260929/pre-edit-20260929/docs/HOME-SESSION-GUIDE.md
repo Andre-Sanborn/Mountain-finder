@@ -285,28 +285,22 @@ Two switches matter, and both must be on.
 
 ### Motion and orientation were refused
 
-There is no switch for this one. Motion and orientation has no setting in Settings and no
-entry in Safari's own per-website list, which offers Camera, Microphone and Location only.
-The page asks once, Safari remembers the answer for the site, and the answer survives a
-reload.
+**This one could not be verified for iOS 26, and the guide says so rather than guessing.**
+Older iPhones had a switch at Settings → Safari → **Motion & Orientation Access**. Reports
+from iOS 13 onwards say that switch is gone, and that the only route is the pop-up question
+the page asks. Searches found no Apple page confirming a setting under iOS 26 either way.
 
-So the answer has to be cleared with what else Safari stores about the site:
+What to try, in order:
 
-1. Open **Settings**, tap **Apps**, then **Safari**, then **Advanced**, then **Website
-   Data**. Find the row for `andre-sanborn.github.io`, swipe it left and tap **Delete**.
-2. Open the address again and tap **Allow** when the question comes back.
-3. If it does not come back, close the Safari tab completely (tap the tabs button, then the X
-   on that tab) and open the address again.
-
-**Which of those two clears it is not confirmed for iOS 26**, and the app says the same
-thing on its own screen. No Apple page documents clearing this particular answer. If neither
-works, tell Claude, and say which of the three permission boxes did appear.
-
-(The removal of the old Settings → Safari → **Motion & Orientation Access** switch is
-reported from iOS 13 onwards, and the per-website list's contents come from
-[MacRumors on Safari's Website Settings](https://www.macrumors.com/how-to/access-website-settings-in-safari/).
-Clearing the stored answer through Website Data is the remedy reported in
-[this Defold forum thread](https://forum.defold.com/t/orientation-and-motion-sensors-on-ios-web-browser-safari-solved/77392).)
+1. Close the Safari tab completely (tap the tabs button, then the X on that tab), then open
+   the address again. The question is asked once per tab, so a fresh tab asks again.
+2. If it still does not ask, clear what Safari remembers about the site: **Settings** →
+   **Apps** → **Safari** → **Advanced** → **Website Data**, find the row for
+   `andre-sanborn.github.io`, swipe it left and tap **Delete**. Then open the address again.
+   (This path is also unverified for iOS 26.)
+3. If neither works, tell Claude, and say which of the three permission boxes did appear.
+   The app's own on-screen advice currently sends you to "Settings, then Safari, then Motion
+   & Orientation Access", and that advice may be out of date.
 
 ### Nothing loads at all
 

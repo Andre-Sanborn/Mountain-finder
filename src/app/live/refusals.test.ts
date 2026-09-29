@@ -138,6 +138,48 @@ describe('the three messages the field session depends on', () => {
   });
 });
 
+describe('the iOS settings paths the denial messages name', () => {
+  /** Do these words appear in this order? */
+  function inOrder(text: string, words: readonly string[]): boolean {
+    let at = 0;
+    for (const word of words) {
+      const found = text.indexOf(word, at);
+      if (found < 0) return false;
+      at = found + word.length;
+    }
+    return true;
+  }
+
+  it('sends a refused camera to Settings → Apps → Safari → Camera', () => {
+    // Safari's own permissions moved under Settings → Apps in iOS 18.2, so the
+    // pre-18.2 "Settings, then Safari" walks a person into a list that has no
+    // Safari row in it.
+    const text = liveRefusal('camera-denied').whatToDo.toLowerCase();
+    expect(inOrder(text, ['settings', 'apps', 'safari', 'camera'])).toBe(true);
+  });
+
+  it('sends a refused location to both switches that gate it', () => {
+    const text = liveRefusal('location-denied').whatToDo.toLowerCase();
+    // The system switch, which is not under Safari at all.
+    expect(inOrder(text, ['privacy & security', 'location services', 'safari websites'])).toBe(
+      true,
+    );
+    // Safari's own, which is.
+    expect(inOrder(text, ['apps', 'safari', 'location'])).toBe(true);
+  });
+
+  it('clears a refused motion answer with the site data, and admits what is unconfirmed', () => {
+    const text = liveRefusal('motion-denied').whatToDo.toLowerCase();
+    // There is no Motion & Orientation Access setting on current iOS and no
+    // per-site switch for it, so the stored answer goes with the site data.
+    expect(inOrder(text, ['settings', 'apps', 'safari', 'advanced', 'website data'])).toBe(true);
+    expect(text).not.toContain('motion & orientation access');
+    // Said on screen, because the project could not confirm which remedy works.
+    expect(text).toContain('close this tab');
+    expect(text).toContain('not been confirmed');
+  });
+});
+
 describe('mapping the modules’ own refusals', () => {
   it('maps every web-sensors refusal to a state with a remedy', () => {
     const all: readonly WebSampleRefusal[] = [

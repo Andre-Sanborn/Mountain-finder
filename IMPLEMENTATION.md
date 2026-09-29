@@ -1243,10 +1243,32 @@ The e2e runs the whole sequence against a 1920 × 1080 fake camera, and checks t
 with the residual 0.134° from the test's own 4 px drag. The other bands are `no-sample`, as
 pre-declared. Four mutations are caught, two of them on privacy.
 
-**Found:**
-- The grader flags the 16:9 stored frame as 18.2 % off the registered 956 × 440 viewport. The
-  registration should name the stored-frame geometry.
-- The bundle is 2.4 MB for 8 captures, because `overlay.withheld` repeats about 940 unmeasured
-  summits per capture.
+**Found:** the bundle is 2.4 MB for 8 captures, because `overlay.withheld` repeats about 940
+unmeasured summits per capture.
 
 The Playwright harness moved to `tests/e2e/support/gornergrat.ts`.
+
+## The viewport and the stored frame are registered apart
+
+The budget's roll, FOV-scale and drag terms belong to the viewport the overlay is drawn in:
+956 × 440 at hFOV 73.74°, checked against `overlayPx` within 10 %. The stored frame carries no
+budget term. It sets annotation precision only, so it is registered as at least 1920 px wide,
+with its aspect within 2 % of the camera track's, not the viewport's. A capture with no track
+size is reported as unchecked. Before this change every 16:9 capture was flagged as 18.2 % off.
+`analyze:field` output on both fixture pairs is byte-identical. Five mutations are caught, and
+the change is in the prereg's revision history.
+
+## iOS settings paths in the refusals
+
+These are for iOS 26:
+- **Camera:** Settings → Apps → Safari → Camera.
+- **Location:** both Privacy & Security → Location Services → Safari Websites, and Apps → Safari
+  → Location.
+- **Motion:** there is no setting of its own. The remedy is clearing the site's Website Data
+  (Apps → Safari → Advanced), and the screen says plainly that this, or closing the tab, has not
+  been confirmed on this iOS.
+
+`support.apple.com` is blocked here, so the sources are search summaries: two independent ones
+each for camera and location, and forum and how-to sources for motion. The home session will
+settle motion. `docs/FIELD-SESSION-GUIDE.md` now quotes `field-session.ts` verbatim, checked by
+a script.

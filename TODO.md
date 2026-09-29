@@ -40,7 +40,8 @@ after its self-check has run and passed here. The checks are in
 - [ ] Prove the automatic advance on the three-minute stillness step on a real device
 - [x] Build the capture bundle schema and `analyze:field`; bundles never enter the repository
 - [x] Have the live screen emit a field bundle in the field-bundle@1 shape (no bearings, no wall clock)
-- [ ] Register the stored frame's geometry: the grader compares 16:9 frames against the 956x440 viewport
+- [x] Register the stored frame's geometry: the grader compares 16:9 frames against the 956x440 viewport
+- [ ] Have field-session.ts import the stored-frame width from field-analysis.ts's registration
 - [ ] Decide from the home session's drag scatter whether the field session drags in fine mode
 - [ ] Trim the field bundle: overlay.withheld repeats ~940 unmeasured summits per capture (2.4 MB for 8)
 - [x] Write the error budget and pre-register the field pass criteria
@@ -61,9 +62,10 @@ after its self-check has run and passed here. The checks are in
 - [ ] Re-derive the drag and roll terms from the home-session measurements; record in the prereg revision history
 - [x] Make the privacy gate's position-fix message say which key set tripped it; prose 'accuracy' trips it now
 
-- [ ] Fix refusals.ts iOS settings paths: Safari moved to Settings → Apps → Safari in iOS 18.2
-- [ ] Decide the motion-permission remedy: no Motion & Orientation Access setting found on current iOS
-- [ ] Replace the field guide's provisional steps with the real screen wording once field mode lands
+- [x] Fix refusals.ts iOS settings paths: Safari moved to Settings → Apps → Safari in iOS 18.2
+- [x] Decide the motion-permission remedy: clear Website Data, then close the tab; hedged on screen
+- [ ] Confirm the iOS 26 motion-permission remedy on the phone at the home session
+- [x] Replace the field guide's provisional steps with the real screen wording once field mode lands
 
 ## Other open work
 

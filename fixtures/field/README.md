@@ -34,9 +34,11 @@ never taken from a run of the grader.
 the conversion: it places two known bearings in the frame, and the grader must
 recover the angle between them.
 
-The frame is 1920 × 884 px at hFOV 73.74°, the geometry
-`docs/FIELD-TEST-PREREGISTRATION.md` § 1.2 computed the error budget on, so the
-committed thresholds apply to these fixtures unchanged.
+Both registered geometries are carried, because the grader checks each against its
+own registration. The overlay is drawn in the 956 × 440 viewport at hFOV 73.74°
+that `docs/FIELD-TEST-PREREGISTRATION.md` § 1.2 computed the error budget on, so
+the committed thresholds apply to these fixtures unchanged. The frame is stored at
+1920 × 884 px, over § 2.0's 1920 px floor and at the camera track's own aspect.
 
 The errors injected into `stray-bundle.json`, and the criterion each one breaks:
 

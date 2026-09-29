@@ -27,6 +27,23 @@
  * lives in `detail`, which is where a developer reading a bug report looks, and
  * is printed in small type. A test enforces the split.
  *
+ * ── THE iOS SETTINGS PATHS THESE MESSAGES NAME ─────────────────────────────
+ * Safari's own permissions moved in iOS 18.2 and sit under Settings → Apps →
+ * Safari on iOS 26, where Camera, Microphone and Location each offer Ask, Deny
+ * or Allow. Location needs the system switch as well, at Settings → Privacy &
+ * Security → Location Services → Safari Websites. Both paths were read from
+ * Apple's iPhone User Guide, "Browse the web privately in Safari on iPhone"
+ * (support.apple.com/guide/iphone/iphb01fc3c85/ios) and "Control access to
+ * hardware features on iPhone" (.../iph168c4bbd5/ios), checked 2026-09-29.
+ *
+ * Motion and orientation has no setting of its own and no per-site switch in
+ * the page menu's Website Settings, which carries Camera, Microphone and
+ * Location only. `requestPermission()` asks once per site and Safari stores the
+ * answer, so a denial is cleared with the site's stored data, at Settings →
+ * Apps → Safari → Advanced → Website Data. Apple publishes no page on clearing
+ * that particular answer, so the message says on screen that the second remedy
+ * is unconfirmed rather than implying either one is certain.
+ *
  * Pure: a state in, three sentences out.
  */
 
@@ -114,8 +131,8 @@ const REFUSALS: Readonly<Record<LiveRefusalCode, Omit<LiveRefusal, 'code'>>> = {
     headline: 'The camera was not allowed',
     why: 'You or the phone said no when this page asked for the camera.',
     whatToDo:
-      'Open Settings, then Safari, then Camera, and set it to Ask or Allow. Then reload this page.',
-    detail: 'getUserMedia rejected with NotAllowedError',
+      'Open Settings, tap Apps, then Safari, then Camera, and choose Ask or Allow. Then reload this page.',
+    detail: 'getUserMedia rejected with NotAllowedError; iOS 18.2 moved Safari under Settings → Apps',
     transient: false,
   },
   'waiting-for-camera': {
@@ -136,8 +153,9 @@ const REFUSALS: Readonly<Record<LiveRefusalCode, Omit<LiveRefusal, 'code'>>> = {
     headline: 'Motion and orientation were not allowed',
     why: 'Without them the app cannot tell which way the phone is pointing.',
     whatToDo:
-      'Open Settings, then Safari, then Motion & Orientation Access, and turn it on. Then reload this page.',
-    detail: 'DeviceOrientationEvent.requestPermission() returned denied',
+      'Open Settings, tap Apps, then Safari, then Advanced, then Website Data. Find this site, swipe it left and delete it. Then open the link again and tap Allow. If that does not work, close this tab and open the link again — which of the two clears it has not been confirmed on this version of iOS.',
+    detail:
+      'DeviceOrientationEvent.requestPermission() returned denied; iOS carries no Motion & Orientation Access setting and offers no per-site switch for it, so the stored answer is cleared with the site data',
     transient: false,
   },
   'motion-unavailable': {
@@ -151,8 +169,8 @@ const REFUSALS: Readonly<Record<LiveRefusalCode, Omit<LiveRefusal, 'code'>>> = {
     headline: 'Your location was not allowed',
     why: 'Without a position the app cannot tell which mountains are in front of you.',
     whatToDo:
-      'Open Settings, then Privacy & Security, then Location Services, and allow it for Safari. Then reload this page.',
-    detail: 'the Geolocation API returned PERMISSION_DENIED',
+      'Open Settings, tap Privacy & Security, then Location Services, then Safari Websites, and choose While Using the App. Then go to Settings, tap Apps, then Safari, then Location, and choose Ask or Allow. Then reload this page.',
+    detail: 'the Geolocation API returned PERMISSION_DENIED; two switches gate it, the system one and Safari’s own',
     transient: false,
   },
   'location-unavailable': {

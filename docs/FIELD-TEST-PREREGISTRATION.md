@@ -59,7 +59,17 @@ at 7–20 km is therefore conservative**, because a farther anchor carries a sma
 error: 25 m of horizontal geodesy is 0.143° at 10 km and 0.026° at 55 km. The charge stays
 at 7–20 km so that the table holds for a session that anchors on something nearer.
 
-### 1.2 The frame the budget is computed on
+### 1.2 The viewport the budget is computed on
+
+A session works in two frames of different sizes, and this section registers the first of
+them. The **viewport** is where the overlay is drawn and where a finger drags a label. The
+**stored frame** is the recording the camera track delivers, and truth is read off it; it is
+registered in § 2.0.
+
+Every term below belongs to the viewport. The roll and field-of-view scale terms (terms 6
+and 7) grow with a marker's drawn offset from the optical axis, and the drag term (term 9) is
+a finger against this frame's px-per-degree. The stored frame carries none of them, because
+nothing is aimed or dragged in it.
 
 | Quantity | Value | Where it comes from |
 |---|---|---|
@@ -396,6 +406,16 @@ The protocol:
    1920 px. At 1920 px the scale is 22.35 px/degree, so a 5 px annotation disagreement is
    0.22°; at the 956 px CSS viewport it would be 0.45°, a third of the tolerance. **The
    frame resolution is a registered parameter because the truth's precision depends on it.**
+
+   **The stored frame is registered on two counts, and neither is the § 1.2 viewport.** Its
+   width is at least 1920 px, and its aspect ratio equals the camera track's own, to within
+   2 %. The aspect is checked against the track because that is what says the frame was
+   stored whole: a crop or a stretch moves every apex pixel away from where the camera put
+   it, and a phone letterboxes its 16:9 stream into whatever viewport Safari leaves, so a
+   stored frame that matched the viewport's shape would be the broken one. The 2 % allows a
+   stored height rounded to whole pixels, which at 1920 px wide is under 0.05 %, and refuses
+   any real crop: 4:3 against 16:9 is 25 %. A capture that reports no track size is reported
+   as unchecked rather than passed.
 2. Two annotators work from the **bare frame**. Neither sees the overlay as drawn, the
    other's picks, the pose, or the predicted positions. Each is given the frame, the list of
    candidate summits by id, name and published height, and a labelled pixel grid.
@@ -613,10 +633,16 @@ calibration, which is distance-independent and grows with frame offset)? The bud
 corrected with evidence and the criterion is re-graded against the corrected figure in a
 later session. The limit is not moved.
 
-**Preconditions, both refusals rather than adjustments.** A capture whose field of view is
-the spec-sheet guess is not graded (term 6). A capture whose frame geometry differs from
-§1.2 by more than 10 % in hFOV or aspect is reported as a geometry deviation, because the
-roll and field-of-view terms were computed on §1.2's frame.
+**Preconditions.** A capture whose field of view is the spec-sheet guess is not graded
+(term 6). Two geometry checks are reported beside the verdicts rather than refusing the
+capture, and each is made against the frame it belongs to:
+
+- **The overlay's viewport**, read from `overlayPx` and the pose. More than 10 % off § 1.2's
+  hFOV or aspect is reported as a deviation, because the roll and field-of-view terms were
+  computed on that viewport.
+- **The stored frame**, read from `framePx` and the camera track. Under 1920 px wide, or
+  more than 2 % off the track's aspect, is reported as a deviation, because truth's
+  precision and its placement depend on § 2.0's frame.
 
 ### 2.4 F4 — The same, after a pan and a tilt
 
@@ -801,3 +827,22 @@ the site package and the app as built.
   calibration, as F3 and F4 already were (§ 2.2). The steps on site are written down, starting
   with standing within a few hundred metres of the site coordinate (§ 2.7). Three cells of
   § 1.5 were rounded the wrong way and now read 0.286°, 0.689° and 0.627°.
+
+### 2026-09-29 — the viewport and the stored frame registered apart
+
+Still before any field number exists. The registration named one frame where the session
+works in two, and the grader checked the wrong one against it.
+
+- **§ 1.2 registers the overlay's viewport**, and says which terms belong to it: the roll and
+  field-of-view scale terms, which grow with the drawn offset from the optical axis, and the
+  drag term, which is a finger against the viewport's px-per-degree.
+- **§ 2.0 registers the stored frame separately**: at least 1920 px wide, with an aspect ratio
+  equal to the camera track's to within 2 %. Truth's precision depends on the width and
+  truth's placement on the frame being stored whole. The 2 % passes a stored height rounded
+  to whole pixels, under 0.05 % at 1920 px wide, and refuses a crop, which is 25 % for 4:3
+  against 16:9.
+- **§ 2.3 grades each frame against its own registration.** Before this, a 1920 × 1080 stored
+  frame was reported as 18.2 % off the 956 × 440 viewport on every capture the app produced,
+  which is the two frames being different sizes rather than anything wrong with either.
+
+Nothing about the thresholds, the bands or the criteria moved.

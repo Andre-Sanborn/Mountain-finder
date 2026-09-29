@@ -60,6 +60,16 @@
  * with the committed value by more than a metre is a provenance failure
  * reported before any geometry is graded.
  *
+ * ── TWO FRAMES, REGISTERED AND CHECKED SEPARATELY ──────────────────────────
+ * A capture carries both. `overlayPx` is the viewport the overlay was drawn in,
+ * and it is what the roll, field-of-view scale and drag terms were budgeted on
+ * ({@link REGISTERED_VIEWPORT}, § 1.2). `framePx` is the stored camera frame,
+ * and it decides only how finely two annotators can place an apex on it
+ * ({@link REGISTERED_STORED_FRAME}, § 2.0), so it is checked for width and for
+ * an aspect equal to the camera track's rather than against the viewport. The
+ * two are different sizes on every real capture, because a phone letterboxes a
+ * 16:9 stream into whatever viewport Safari leaves.
+ *
  * ── THE SYNTHESISER IS AN INDEPENDENT INSTRUMENT ───────────────────────────
  * `synthesiseFieldBundle` builds bundles by placing a truth apex at a pixel and
  * displacing the drawn marker from it by a stated pixel offset. It never calls
@@ -318,11 +328,34 @@ export const PAN_ANCHOR_EDGE_OFFSET = 0.8;
 /** How far a tilt may stray from the registered ±10° and still be graded. */
 export const TILT_ENVELOPE_DEG = { min: 5, max: 15 } as const;
 
-/** The frame the budget was computed on, § 1.2 of the pre-registration. */
-export const REGISTERED_FRAME = { hFovDeg: 73.74, aspectRatio: 956 / 440 } as const;
+/**
+ * The viewport the budget was computed on, § 1.2 of the pre-registration.
+ *
+ * Two frames matter and they are different sizes. This is the one the overlay is
+ * DRAWN in, and it is what the roll and field-of-view terms were budgeted on:
+ * both scale with the drawn offset from the optical axis, and the drag's own
+ * precision is a finger against this frame's px-per-degree.
+ * {@link REGISTERED_STORED_FRAME} is the other one.
+ */
+export const REGISTERED_VIEWPORT = { hFovDeg: 73.74, aspectRatio: 956 / 440 } as const;
 
-/** Fractional deviation from {@link REGISTERED_FRAME} that is worth reporting. */
+/** Fractional deviation from {@link REGISTERED_VIEWPORT} that is worth reporting. */
 export const FRAME_DEVIATION_TOLERANCE = 0.1;
+
+/**
+ * The stored camera frame, § 2.0 of the pre-registration.
+ *
+ * The stored frame carries no budget term. It decides one thing: how finely two
+ * annotators can place an apex on it. So it is registered as a floor on width
+ * and as an aspect that must match the camera track's, which is what says the
+ * frame was stored whole rather than cropped or stretched.
+ *
+ * The aspect tolerance is 2 % because a stored height is a whole number of
+ * pixels: at 1920 px wide the rounding is at most 0.5/1080, under 0.05 %. Any
+ * real crop is far larger — 4:3 against 16:9 is 33 % — so 2 % separates rounding
+ * from a changed frame without pretending to a precision the rounding denies.
+ */
+export const REGISTERED_STORED_FRAME = { minWidthPx: 1920, aspectTolerance: 0.02 } as const;
 
 /** How many of the most prominent predicted summits F5b requires a name on. */
 export const PROMINENT_LABEL_COUNT = 3;
@@ -1722,14 +1755,57 @@ function isGradable(capture: Capture): string | undefined {
   return undefined;
 }
 
-function frameDeviation(capture: Capture): string | undefined {
-  const hFovOff = Math.abs(capture.pose.hFovDeg - REGISTERED_FRAME.hFovDeg) / REGISTERED_FRAME.hFovDeg;
+/**
+ * Whether the overlay was drawn in the viewport the budget was computed on.
+ *
+ * Read from `overlayPx` and the pose, never from the stored frame: the stored
+ * frame is a recording of the same scene at another size and carries none of
+ * these terms.
+ */
+function viewportDeviation(capture: Capture): string | undefined {
+  const hFovOff =
+    Math.abs(capture.pose.hFovDeg - REGISTERED_VIEWPORT.hFovDeg) / REGISTERED_VIEWPORT.hFovDeg;
   const aspect = capture.overlayPx.widthPx / capture.overlayPx.heightPx;
-  const aspectOff = Math.abs(aspect - REGISTERED_FRAME.aspectRatio) / REGISTERED_FRAME.aspectRatio;
+  const aspectOff =
+    Math.abs(aspect - REGISTERED_VIEWPORT.aspectRatio) / REGISTERED_VIEWPORT.aspectRatio;
   if (hFovOff <= FRAME_DEVIATION_TOLERANCE && aspectOff <= FRAME_DEVIATION_TOLERANCE) {
     return undefined;
   }
-  return `${capture.captureId}: frame geometry is ${(hFovOff * 100).toFixed(1)}% off the registered hFOV and ${(aspectOff * 100).toFixed(1)}% off its aspect, so the roll and scale terms were budgeted on a different frame`;
+  return `${capture.captureId}: the overlay was drawn in a viewport ${(hFovOff * 100).toFixed(1)}% off the registered hFOV and ${(aspectOff * 100).toFixed(1)}% off its aspect, so the roll and scale terms were budgeted on a different viewport`;
+}
+
+/**
+ * Whether the stored frame is one truth can be read off, § 2.0.
+ *
+ * Its aspect is checked against the camera track rather than against the
+ * viewport, because the two are independent: a phone letterboxes a 16:9 stream
+ * into whatever viewport Safari leaves, and the recording is still the whole
+ * frame the track delivered.
+ */
+function storedFrameDeviations(capture: Capture): readonly string[] {
+  const out: string[] = [];
+  const { widthPx, heightPx } = capture.framePx;
+  if (widthPx < REGISTERED_STORED_FRAME.minWidthPx) {
+    out.push(
+      `${capture.captureId}: the stored frame is ${widthPx} px across, under the registered ${REGISTERED_STORED_FRAME.minWidthPx} px, so an apex is placed more coarsely than the protocol registers`,
+    );
+  }
+  const { width, height } = capture.track;
+  if (width <= 0 || height <= 0) {
+    out.push(
+      `${capture.captureId}: the capture records no camera track size, so the stored frame's aspect could not be checked against the frames the camera delivered`,
+    );
+    return out;
+  }
+  const trackAspect = width / height;
+  const frameAspect = widthPx / heightPx;
+  const off = Math.abs(frameAspect - trackAspect) / trackAspect;
+  if (off > REGISTERED_STORED_FRAME.aspectTolerance) {
+    out.push(
+      `${capture.captureId}: the stored frame's aspect is ${(off * 100).toFixed(1)}% off the camera track's, so the frame was cropped or stretched on its way to the file and a truth pixel does not sit where the camera put it`,
+    );
+  }
+  return out;
 }
 
 interface Observation {
@@ -2115,8 +2191,9 @@ export function analyseFieldRun(
       refusals.push(refusal);
       continue;
     }
-    const deviation = frameDeviation(capture);
+    const deviation = viewportDeviation(capture);
     if (deviation !== undefined) refusals.push(deviation);
+    refusals.push(...storedFrameDeviations(capture));
     refusals.push(...provenanceProblems(capture, peaks));
     gradable.push(capture);
   }
@@ -2264,6 +2341,8 @@ export interface SynthCapture {
   readonly tiltFromReferenceDeg?: number;
   readonly framePx?: { readonly widthPx: number; readonly heightPx: number };
   readonly overlayPx?: { readonly widthPx: number; readonly heightPx: number };
+  /** Defaults to the stored frame's own size, which is what a whole frame is. */
+  readonly track?: TrackGeometry;
   readonly hFovDeg?: number;
   readonly vFovDeg?: number;
   readonly horizontalAccuracyM?: number;
@@ -2276,7 +2355,7 @@ export interface SynthSpec {
   readonly accuracyConvention?: typeof ACCURACY_CONFIDENCE;
 }
 
-/** The registered frame geometry, as a synthesiser default. */
+/** The § 2.0 stored frame and the § 1.2 viewport, as synthesiser defaults. */
 const SYNTH_FRAME = { widthPx: 1920, heightPx: 884 } as const;
 const SYNTH_OVERLAY = { widthPx: 956, heightPx: 440 } as const;
 const SYNTH_HFOV = 73.74;
@@ -2373,7 +2452,12 @@ export function synthesiseFieldBundle(spec: SynthSpec): {
         tickCount: 22,
         longestTickGapMs: 90,
       },
-      track: { width: framePx.widthPx, height: framePx.heightPx, frameRate: 30, facingMode: 'environment' },
+      track: synth.track ?? {
+        width: framePx.widthPx,
+        height: framePx.heightPx,
+        frameRate: 30,
+        facingMode: 'environment',
+      },
       fovSource: synth.fovSource ?? 'calibrated',
       sweepRadiusKm: synth.sweepRadiusKm ?? 60,
       band: synth.band ?? {
