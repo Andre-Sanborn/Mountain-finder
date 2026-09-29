@@ -7,7 +7,8 @@ after its self-check has run and passed here. The checks are in
 ## Route to the field test
 
 - [ ] Fix the portrait FOV axis in core, the phone shell and annotate-photo; re-derive the drag-trim test
-- [ ] Build WMM2025 declination in src/core; reproduce NOAA's test values to 0.05°; cross-check a second source
+- [x] Build WMM2025 declination in src/core; reproduce NOAA's test values to 0.05°; cross-check a second source
+- [ ] Wire src/core/declination into the live heading policy, labelled "true (model)"
 - [ ] Build sun and moon position in src/core against Meeus worked examples
 - [ ] Deploy the web app to GitHub Pages from Actions, gated on test:deploy and a no-GPS privacy check
 - [ ] Build the repository privacy check: no EXIF GPS or coordinate pairs in new files; wire into check

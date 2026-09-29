@@ -458,3 +458,45 @@ Declination at Bogus Basin (43.77 N, 116.09 W) on 2026-09-29 is +12.8° E. That 
 from IGRF-14 coefficients, checked against three published anchors to 0.3°, and is pending the
 WMM2025 module. `heading-policy.ts` said declination is "under 5° across most of the contiguous
 US", which is false for the Mountain West.
+
+## WMM2025 magnetic declination, `src/core/declination.ts`
+
+The module computes declination, inclination and field intensity from the World Magnetic
+Model 2025. It is a pure function of position and date, and the date is an argument. It follows
+NOAA's `geomag70` reference implementation:
+- the Gauss coefficients advance linearly from epoch 2025.0
+- geodetic position converts to geocentric spherical
+- Schmidt semi-normalised Legendre functions come from the factorial-free Gauss recursion and
+  are then rescaled
+- the result rotates back through ψ = φ′ − φ into the local geodetic frame
+- at the geographic poles, where Y′ carries a singular 1/cos φ′, the eastward component is
+  evaluated as its limit
+
+**The coefficients are generated, not typed.** `npm run fixtures:wmm` writes
+`src/core/wmm2025-coefficients.ts` from the committed `fixtures/wmm2025/WMM.COF` (SHA-256
+`dfa85978…582f`). The parser throws on a short or mis-ordered table, and regenerating the
+module leaves it byte-identical.
+
+**Two sources, because NOAA's host is blocked here.** Both files came from the GitHub mirror
+`AbdeldjalilChougui/qibla_math`. They were confirmed against npm `geomagnetism@0.2.0`, an
+independent conversion of NOAA's file:
+- all 360 coefficients match to the last printed digit
+- 1 440 computed points agree with that package's own implementation to 7.2 × 10⁻⁹ ° in
+  declination, both poles included
+
+**Accuracy.** All 100 of NOAA's published test values reproduce within 0.005° in declination
+and inclination, which is the rounding floor of NOAA's printing, and within 4.3 × 10⁻⁴ nT in
+total field. The test gate is 0.01°. Six single mutations each fail between 1 and 104 of the
+126 tests. The polar branch is held by one continuity test, because NOAA's file stops at 89°.
+The model itself is good to about 0.5° RMS in declination. It does not see local crustal
+anomalies, which can reach several degrees, so a user-facing label says "about a degree".
+
+At Bogus Basin (43.7715 N, 116.0886 W, 2000 m, 2026-10-15) the module gives +12.605° E. That
+agrees with the IGRF-14 cross-check of +12.8° for 2026-09-29.
+
+**Limitations.**
+- Secular-variation rates are not computed.
+- A date outside 2025.0–2030.0 returns a field flagged `withinModelValidity: false`.
+- `heightM` is treated as ellipsoidal height. Using an SRTM orthometric height instead changes
+  declination far less than the model's own error.
+- The module is not yet wired into the heading policy.

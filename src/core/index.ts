@@ -9,6 +9,7 @@
 
 export * from './types';
 export * from './geodesy';
+export * from './declination';
 export * from './sightline';
 export * from './horizon';
 export * from './projection';

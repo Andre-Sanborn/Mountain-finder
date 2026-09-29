@@ -23,6 +23,7 @@
     "record:fixtures": "tsx scripts/record-fixtures.ts",
     "fetch:tiles": "tsx scripts/fetch-tiles.ts",
     "fixtures:tiles": "tsx scripts/make-tile-fixtures.ts",
+    "fixtures:wmm": "tsx scripts/make-wmm-coefficients.ts",
     "fixtures:case-tiles": "tsx scripts/make-case-tile-fixtures.ts",
     "fetch:peaks": "tsx scripts/fetch-peaks.ts",
     "fixtures:peak-parquet": "tsx scripts/make-peak-parquet-fixture.ts",
