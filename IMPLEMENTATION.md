@@ -1319,3 +1319,40 @@ The rehearsal never saw it, because its camera and viewport were both 16:9.
 The fixtures were re-placed through the mapping. `analyze:field` output is unchanged except for
 one 0.849° → 0.850° line, which is a real 0.03 % FOV effect. Ten mutations are caught. The
 report now prints "not graded" separately from "graded, with a caveat".
+
+## Recovering from a gross compass error, decided 2026-09-29
+
+IMG_7270's EXIF heading is 92° off (X-10). The live screen clamps the heading trim to ±30°,
+applied to the absolute trim. So a quarter-turn error is unrecoverable, and even an unclamped
+re-anchor would snap back on the first drag. The strategy review's recommendations, adopted:
+
+1. **Split the trim.** A gross heading offset is set only by a re-anchor and is unclamped. The
+   fine trim stays clamped at ±30°. `applyTrim` adds both. A test: re-anchor 92°, then drag
+   1 px, and the heading moves about 0.09°, not −62°.
+2. **The sun is the one-tap re-anchor:** heading = sun azimuth − atan((x−c)/f), with the
+   calibrated f. A summit re-anchor is a fallback: pick it by name, tap it, and confirm a
+   sentence stating the size of the move. Both are live only after 10 s of stillness. After a
+   re-anchor, the screen shows the live gap between sensed heading and anchor, and warns when it
+   drifts beyond the band, which catches a transient error baked in. `pickReference`'s 160 px
+   rule cannot serve here, because nothing drawn is near the truth. So `reanchorFromTap` is a
+   separate function.
+3. **The home session gains a walking-aim segment:** aim at the sun in landscape while walking
+   20 steps, then hold still for 10 s. It is scored against the still landscape pose. It is the
+   only segment that can show an error present only while moving. A static 90° error in the
+   landscape poses is read as the other reference hypothesis, which is the correct handling.
+4. **F2 gains a pose-level raw heading check:** sensed heading minus the heading solved from
+   truth, gated on the compass band. It is graded whenever two or more summits are identified.
+   F2 on drawn markers alone reports `no-sample` for a 92° error, or passes after a re-anchor.
+   Every capture records `grossHeadingOffsetDeg` and what set it.
+5. **The 188° derivation is written down** before the rehearsal re-runs on it. The re-run uses
+   Deer Point as the drag anchor and grades other summits (Doe Point, Little Deer Point), which
+   puts samples in the near band.
+
+**Inputs corrected:**
+- IMG_7270's GPSSpeed is 1.59 km/h (ref K), a slow walk, not 1.59 m/s.
+- Motion and iOS 26.5 are confounded at n = 1.
+- The +92° also fits a top-edge-referenced heading with the phone's top edge to the right:
+  188 + 90 = 278 ≈ 280.3.
+
+**For the human:** the field visit needs the sun up, 15–50° high, because the sun is now the
+re-anchor as well as the FOV reference.
