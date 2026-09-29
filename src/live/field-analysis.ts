@@ -69,6 +69,15 @@
  * names, or those plus the viewpoint and a topographic map. Neither method ever
  * includes the app's projection or the pose.
  *
+ * ── THE COMPASS IS GRADED AT THE POSE AS WELL AS AT THE MARKERS ───────────
+ * F2 on the drawn markers cannot see a gross compass error: a quarter-turn error
+ * puts every summit where the annotators find nothing, and a re-anchor moves the
+ * markers back onto the summits. So `F2.pose` compares the heading the compass
+ * alone reported — the pose's heading less the fine trim and the gross re-anchor
+ * offset, both of which every capture records — with the heading the located
+ * summits solve for. It is graded whenever a before-drag capture holds two of
+ * them, on the same displayed band the marker check is gated on.
+ *
  * ── WHERE SUMMIT TRUTH COMES FROM ──────────────────────────────────────────
  * Not from the bundle. The bundle is written by the device under test, so
  * letting it supply the identity and height of a summit would let a wrong
@@ -114,7 +123,8 @@
  * the grader and the fixtures that grade it.
  */
 
-import type { Peak } from '../core/types';
+import { cameraAxes, projectToImage } from '../core/projection';
+import type { CameraPose, Peak } from '../core/types';
 
 /* ══════════════════════════════════════════════════════════════════════════
  * SECTION 1 — The pre-registered thresholds
@@ -573,7 +583,27 @@ export interface DisplayedBand {
   readonly hasUnquantifiedVertical: boolean;
 }
 
-/** The pose the overlay was drawn at, plus the trim the user had dragged in. */
+/**
+ * What set a capture's gross heading offset.
+ *
+ * `'sensors'` means nobody re-anchored and the offset is zero. The other two
+ * name the reference the person tapped, which is what tells a reader whether a
+ * quarter-turn correction came from the Sun's computed azimuth or from a summit
+ * they picked by name.
+ */
+export const GROSS_HEADING_SOURCES = ['sensors', 'sun', 'summit'] as const;
+export type GrossHeadingSource = (typeof GROSS_HEADING_SOURCES)[number];
+
+/**
+ * The pose the overlay was drawn at, plus the trim the user had dragged in.
+ *
+ * `headingDeg` is what the overlay was drawn with: the compass reading plus
+ * `trimHeadingDeg` plus `grossHeadingOffsetDeg`. Subtracting the last two gives
+ * the raw sensed heading back, which is what {@link gradeF2Pose} grades. Both
+ * gross fields are required rather than optional, because a capture that omits
+ * them is one where a 92° re-anchor cannot be told from a compass that was
+ * right, and that is the difference the pose-level check exists to measure.
+ */
 export interface CapturePose {
   readonly headingDeg: number;
   readonly pitchDeg: number;
@@ -583,6 +613,9 @@ export interface CapturePose {
   readonly headingBasis: 'true' | 'true-model' | 'magnetic';
   readonly trimHeadingDeg: number;
   readonly trimPitchDeg: number;
+  /** The re-anchor's heading correction, degrees. Zero when none was made. */
+  readonly grossHeadingOffsetDeg: number;
+  readonly grossHeadingSource: GrossHeadingSource;
 }
 
 /**
@@ -1165,6 +1198,8 @@ const POSE_KEYS = [
   'headingBasis',
   'trimHeadingDeg',
   'trimPitchDeg',
+  'grossHeadingOffsetDeg',
+  'grossHeadingSource',
 ] as const;
 
 const HEADING_BASES = ['true', 'true-model', 'magnetic'] as const;
@@ -1184,6 +1219,18 @@ function parsePose(p: Problems, path: string, value: unknown): CapturePose | und
     max: 180,
   });
   const trimPitchDeg = asNumber(p, `${path}.trimPitchDeg`, obj.trimPitchDeg, { min: -90, max: 90 });
+  const grossHeadingOffsetDeg = asNumber(
+    p,
+    `${path}.grossHeadingOffsetDeg`,
+    obj.grossHeadingOffsetDeg,
+    { min: -180, max: 180 },
+  );
+  const grossHeadingSource = asMember(
+    p,
+    `${path}.grossHeadingSource`,
+    obj.grossHeadingSource,
+    GROSS_HEADING_SOURCES,
+  );
   if (
     headingDeg === undefined ||
     pitchDeg === undefined ||
@@ -1192,7 +1239,9 @@ function parsePose(p: Problems, path: string, value: unknown): CapturePose | und
     vFovDeg === undefined ||
     headingBasis === undefined ||
     trimHeadingDeg === undefined ||
-    trimPitchDeg === undefined
+    trimPitchDeg === undefined ||
+    grossHeadingOffsetDeg === undefined ||
+    grossHeadingSource === undefined
   ) {
     return undefined;
   }
@@ -1205,6 +1254,8 @@ function parsePose(p: Problems, path: string, value: unknown): CapturePose | und
     headingBasis,
     trimHeadingDeg,
     trimPitchDeg,
+    grossHeadingOffsetDeg,
+    grossHeadingSource,
   };
 }
 
@@ -1840,6 +1891,137 @@ export function residualOf(
   };
 }
 
+/**
+ * The direction a stored-frame pixel points, under a camera pose.
+ *
+ * The inverse of `projectToImage`, which this file does not otherwise have. The
+ * fields of view passed in are the WHOLE frame's ({@link uncroppedFovDeg}),
+ * because a stored-frame pixel is a pixel of the whole frame.
+ */
+function directionAtFramePx(
+  pose: CameraPose,
+  framePx: { readonly widthPx: number; readonly heightPx: number },
+  point: PixelPoint,
+): { readonly bearingDeg: number; readonly altitudeDeg: number } {
+  const axes = cameraAxes(pose);
+  const ndcX =
+    (point.xPx / framePx.widthPx - 0.5) * 2 * Math.tan((pose.hFovDeg / 2) * RAD_PER_DEG);
+  const ndcY =
+    (0.5 - point.yPx / framePx.heightPx) * 2 * Math.tan((pose.vFovDeg / 2) * RAD_PER_DEG);
+  const e = axes.forward.e + ndcX * axes.right.e + ndcY * axes.up.e;
+  const n = axes.forward.n + ndcX * axes.right.n + ndcY * axes.up.n;
+  const u = axes.forward.u + ndcX * axes.right.u + ndcY * axes.up.u;
+  const length = Math.hypot(e, n, u);
+  return {
+    bearingDeg: ((Math.atan2(e, n) / RAD_PER_DEG) % 360 + 360) % 360,
+    altitudeDeg: Math.asin(length > 0 ? u / length : 0) / RAD_PER_DEG,
+  };
+}
+
+/** The camera heading and pitch a set of located summits puts the camera at. */
+export interface SolvedPose {
+  readonly headingDeg: number;
+  readonly pitchDeg: number;
+  /** How many located summits the solve used. */
+  readonly summitCount: number;
+}
+
+/** How many summits it takes to solve a pose. Two fix a heading against a pitch. */
+export const MIN_SUMMITS_FOR_POSE_SOLVE = 2;
+
+/**
+ * The camera heading and pitch that best place the located summits on the frame.
+ *
+ * Each summit's direction is read off the marker the app DREW, at the pose the
+ * app drew it with. That direction is not a compass reading: the drawn pixel is
+ * the summit's bearing minus the pose's heading, so putting the pose's heading
+ * back in cancels the compass out and leaves the geometry the peak data and the
+ * observer's fix give. The solve then moves the camera until those directions
+ * land on the truth apexes, which is the heading the picture itself implies.
+ *
+ * Gauss-Newton on heading and pitch together, minimising the squared distance in
+ * stored-frame pixels. Roll comes from the pose and is not solved: one capture's
+ * summits sit within a few degrees of the horizon, so roll and pitch are nearly
+ * degenerate there and a three-parameter solve would trade one for the other.
+ *
+ * `undefined` when the crop cannot be recovered, when fewer than
+ * {@link MIN_SUMMITS_FOR_POSE_SOLVE} summits are located, or when the summits
+ * are too close together to separate the two parameters.
+ */
+export function solvePoseFromTruth(
+  capture: Capture,
+  located: readonly { readonly drawnPx: PixelPoint; readonly truthPx: PixelPoint }[],
+): SolvedPose | undefined {
+  if (located.length < MIN_SUMMITS_FOR_POSE_SOLVE) return undefined;
+  const fraction = coverVisibleFraction(capture.overlayPx, capture.track);
+  if (fraction === undefined) return undefined;
+  const framePx = capture.framePx;
+  const wholeFrame = {
+    headingDeg: capture.pose.headingDeg,
+    pitchDeg: capture.pose.pitchDeg,
+    rollDeg: capture.pose.rollDeg,
+    hFovDeg: uncroppedFovDeg(capture.pose.hFovDeg, fraction.x),
+    vFovDeg: uncroppedFovDeg(capture.pose.vFovDeg, fraction.y),
+  };
+  const targets = located.map((pair) => ({
+    direction: directionAtFramePx(
+      wholeFrame,
+      framePx,
+      overlayToFramePx(capture, pair.drawnPx, fraction),
+    ),
+    truthPx: pair.truthPx,
+  }));
+
+  /** Signed pixel misfits, x then y per summit, at one candidate pose. */
+  const residualsAt = (headingDeg: number, pitchDeg: number): number[] => {
+    const pose = { ...wholeFrame, headingDeg, pitchDeg };
+    const out: number[] = [];
+    for (const target of targets) {
+      const image = projectToImage(pose, target.direction.bearingDeg, target.direction.altitudeDeg);
+      out.push(image.x * framePx.widthPx - target.truthPx.xPx);
+      out.push(image.y * framePx.heightPx - target.truthPx.yPx);
+    }
+    return out;
+  };
+
+  const STEP_DEG = 1e-3;
+  let headingDeg = capture.pose.headingDeg;
+  let pitchDeg = capture.pose.pitchDeg;
+  for (let iteration = 0; iteration < 24; iteration += 1) {
+    const base = residualsAt(headingDeg, pitchDeg);
+    const byHeading = residualsAt(headingDeg + STEP_DEG, pitchDeg);
+    const byPitch = residualsAt(headingDeg, pitchDeg + STEP_DEG);
+    let a11 = 0;
+    let a12 = 0;
+    let a22 = 0;
+    let b1 = 0;
+    let b2 = 0;
+    for (let i = 0; i < base.length; i += 1) {
+      const r = base[i] ?? 0;
+      const jh = ((byHeading[i] ?? 0) - r) / STEP_DEG;
+      const jp = ((byPitch[i] ?? 0) - r) / STEP_DEG;
+      a11 += jh * jh;
+      a12 += jh * jp;
+      a22 += jp * jp;
+      b1 += jh * r;
+      b2 += jp * r;
+    }
+    const determinant = a11 * a22 - a12 * a12;
+    if (!(Math.abs(determinant) > 1e-9)) return undefined;
+    const dHeading = (-b1 * a22 + b2 * a12) / determinant;
+    const dPitch = (-a11 * b2 + a12 * b1) / determinant;
+    headingDeg += dHeading;
+    pitchDeg += dPitch;
+    if (Math.abs(dHeading) < 1e-10 && Math.abs(dPitch) < 1e-10) break;
+  }
+  if (!Number.isFinite(headingDeg) || !Number.isFinite(pitchDeg)) return undefined;
+  return {
+    headingDeg: ((headingDeg % 360) + 360) % 360,
+    pitchDeg,
+    summitCount: located.length,
+  };
+}
+
 /** How far into the frame a point sits: 0 at the centre, 1 at the edge. */
 export function frameOffsetFraction(xPx: number, widthPx: number): number {
   if (!(widthPx > 0)) return 0;
@@ -2308,6 +2490,121 @@ function gradeF2(observations: readonly Observation[]): Criterion {
   };
 }
 
+/** The smaller of the two ways round a circle, signed, in (−180, 180]. */
+function signedHeadingDeltaDeg(fromDeg: number, toDeg: number): number {
+  const delta = ((toDeg - fromDeg) % 360 + 540) % 360 - 180;
+  return delta === -180 ? 180 : delta;
+}
+
+/**
+ * What the compass alone said, before the person corrected it.
+ *
+ * The pose's heading is the compass reading plus the fine trim plus the gross
+ * re-anchor offset, so subtracting the last two leaves the reading.
+ */
+export function sensedHeadingDeg(pose: CapturePose): number {
+  const raw = pose.headingDeg - pose.trimHeadingDeg - pose.grossHeadingOffsetDeg;
+  return ((raw % 360) + 360) % 360;
+}
+
+/**
+ * F2 at the pose — the raw compass reading against the heading truth solves for.
+ *
+ * F2 on the drawn markers cannot see a gross compass error. A quarter-turn error
+ * puts every summit somewhere the annotators find nothing, so the criterion has
+ * no located summit to grade and reports `no-sample`; and once the person
+ * re-anchors, the markers land on the summits and it passes, with the 92° the
+ * compass was out of nowhere in the verdict. That error is the one the app most
+ * needs to report honestly, so it is graded here instead, on the pose:
+ *
+ *   sensed  — the heading the compass alone gave ({@link sensedHeadingDeg}).
+ *   solved  — the heading the located summits put the camera at
+ *             ({@link solvePoseFromTruth}), which no compass reading enters.
+ *
+ * The gate is § 2.2's, on the horizontal axis alone: the displayed band's
+ * horizontal half-width, and `recorded-not-gated` when that axis carries an
+ * unquantified term, because a floor cannot be exceeded. The vertical axis is
+ * not graded here — the solve reports the pitch it found, and the pitch zero
+ * point is what the home session measures.
+ */
+function gradeF2Pose(observations: readonly Observation[]): Criterion {
+  const claim =
+    'the band the app displays contains the error in the heading the compass alone reported';
+  const located = new Map<string, { capture: Capture; pairs: { drawnPx: PixelPoint; truthPx: PixelPoint }[] }>();
+  for (const { capture, summit, truth } of observations) {
+    if (capture.role !== 'before-drag') continue;
+    if (truth.kind !== 'located') continue;
+    const entry = located.get(capture.captureId) ?? { capture, pairs: [] };
+    entry.pairs.push({ drawnPx: summit.summitPx, truthPx: truth.apexPx });
+    located.set(capture.captureId, entry);
+  }
+
+  const evidence: string[] = [];
+  let graded = 0;
+  let outside = 0;
+  let notGated = 0;
+  let thin = 0;
+  for (const [captureId, { capture, pairs }] of located) {
+    if (pairs.length < MIN_SUMMITS_FOR_POSE_SOLVE) {
+      thin += 1;
+      evidence.push(
+        `${captureId}: ${pairs.length} located summit(s), and it takes ${MIN_SUMMITS_FOR_POSE_SOLVE} to solve a heading — no sample`,
+      );
+      continue;
+    }
+    const solved = solvePoseFromTruth(capture, pairs);
+    if (solved === undefined) {
+      thin += 1;
+      evidence.push(`${captureId}: the located summits do not separate a heading from a pitch`);
+      continue;
+    }
+    const sensed = sensedHeadingDeg(capture.pose);
+    const differenceDeg = Math.abs(signedHeadingDeltaDeg(solved.headingDeg, sensed));
+    const bandDeg = capture.band.horizontalDeg;
+    const offset = capture.pose.grossHeadingOffsetDeg;
+    const shared =
+      `${captureId}: compass alone ${sensed.toFixed(3)}°, solved from ${solved.summitCount} located summit(s) ` +
+      `${solved.headingDeg.toFixed(3)}° (pitch ${solved.pitchDeg.toFixed(3)}°), apart by ${differenceDeg.toFixed(3)}°, ` +
+      `with a gross offset of ${offset.toFixed(3)}° from ${capture.pose.grossHeadingSource}`;
+    graded += 1;
+    if (capture.band.hasUnquantifiedHorizontal) {
+      notGated += 1;
+      evidence.push(
+        `${shared}, against a band of ${bandDeg.toFixed(3)}° that carries an unquantified term — recorded, not gated`,
+      );
+      continue;
+    }
+    const inside = differenceDeg <= bandDeg;
+    if (!inside) outside += 1;
+    evidence.push(
+      `${shared}, against a band of ${bandDeg.toFixed(3)}° — ${inside ? 'inside' : 'OUTSIDE'}`,
+    );
+  }
+
+  if (graded === 0) {
+    return {
+      id: 'F2.pose',
+      claim,
+      outcome: 'no-sample',
+      n: 0,
+      evidence:
+        thin === 0
+          ? ['no before-drag capture carried a located summit']
+          : evidence,
+    };
+  }
+  return {
+    id: 'F2.pose',
+    claim,
+    outcome: outside === 0 ? 'pass' : 'fail',
+    n: graded,
+    evidence: [
+      `${graded} capture(s); ${outside} whose compass sat outside a band that carried only measured terms; ${notGated} recorded but not gated`,
+      ...evidence,
+    ],
+  };
+}
+
 /**
  * Grade the after-drag residuals of whichever captures `select` picks.
  *
@@ -2617,6 +2914,7 @@ export function analyseFieldRun(
   const observations = observationsOf(gradable, truth);
   const criteria: Criterion[] = [
     gradeF2(observations),
+    gradeF2Pose(observations),
     ...gradePositional(
       'F3',
       'after one drag, every labelled summit sits within the budget',
@@ -2812,6 +3110,12 @@ export interface SynthCapture {
   readonly hFovDeg?: number;
   readonly vFovDeg?: number;
   readonly horizontalAccuracyM?: number;
+  /** The pose's pitch. Defaults to {@link SYNTH_PITCH_DEG}. */
+  readonly pitchDeg?: number;
+  /** The re-anchor correction already inside the pose's heading. Defaults to 0. */
+  readonly grossHeadingOffsetDeg?: number;
+  /** Defaults to `'sensors'`, and to `'sun'` when an offset is given. */
+  readonly grossHeadingSource?: GrossHeadingSource;
 }
 
 export interface SynthSpec {
@@ -2828,6 +3132,7 @@ const SYNTH_FRAME = { widthPx: 1920, heightPx: 884 } as const;
 const SYNTH_OVERLAY = { widthPx: 956, heightPx: 440 } as const;
 const SYNTH_HFOV = 73.74;
 const SYNTH_VFOV = 38.088;
+const SYNTH_PITCH_DEG = 0.5;
 
 /**
  * Build a bundle and its truth document from injected pixel errors.
@@ -2930,13 +3235,19 @@ export function synthesiseFieldBundle(spec: SynthSpec): {
       overlayPx,
       pose: {
         headingDeg: 280,
-        pitchDeg: 0.5,
+        pitchDeg: synth.pitchDeg ?? SYNTH_PITCH_DEG,
         rollDeg: 0,
         hFovDeg: synth.hFovDeg ?? SYNTH_HFOV,
         vFovDeg: synth.vFovDeg ?? SYNTH_VFOV,
         headingBasis: 'true-model',
         trimHeadingDeg: synth.role === 'before-drag' ? 0 : -1.25,
         trimPitchDeg: synth.role === 'before-drag' ? 0 : 0.4,
+        grossHeadingOffsetDeg: synth.grossHeadingOffsetDeg ?? 0,
+        grossHeadingSource:
+          synth.grossHeadingSource ??
+          (synth.grossHeadingOffsetDeg === undefined || synth.grossHeadingOffsetDeg === 0
+            ? 'sensors'
+            : 'sun'),
       },
       trace: {
         headingSpreadDeg: 0.2,

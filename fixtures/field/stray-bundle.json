@@ -27,7 +27,9 @@
         "vFovDeg": 38.088,
         "headingBasis": "true-model",
         "trimHeadingDeg": -1.25,
-        "trimPitchDeg": 0.4
+        "trimPitchDeg": 0.4,
+        "grossHeadingOffsetDeg": 0,
+        "grossHeadingSource": "sensors"
       },
       "trace": {
         "headingSpreadDeg": 0.2,

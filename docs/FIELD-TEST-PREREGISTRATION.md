@@ -593,8 +593,36 @@ steps: the Sun centred in the frame puts the camera axis at the Sun's altitude, 
 against it. The band then charges the bias and the re-aim spread together, and the vertical
 axis is gated like the horizontal one.
 
-**Failure.** A raw error outside a band that carried only measured terms. That is the app
-claiming a bound it does not hold, and it is the most serious failure available here:
+**The same claim at the pose, where a gross compass error is visible.** F2 on the drawn
+markers cannot see one. A quarter-turn error puts every summit somewhere the annotators
+find nothing, so the criterion has no located summit and reports `no-sample`; and once the
+person re-anchors on the Sun or on a summit, the markers land where they belong and it
+passes with the 92° nowhere in the verdict. `F2.pose` grades the same claim on the pose
+itself, and it is graded whenever a before-drag capture holds **two or more located
+summits**.
+
+- **Sensed.** The heading the compass alone gave: the pose's heading minus the fine trim
+  minus the gross re-anchor offset. Every capture records the offset and what set it,
+  `sensors`, `sun` or `summit`, so the reading is recoverable from the bundle.
+- **Solved.** The heading the picture implies. Each located summit's direction is read off
+  the marker the app drew, at the pose it drew with, which cancels the compass out and
+  leaves the geometry the peak data and the observer's fix give. Heading and pitch are then
+  solved together by least squares, in stored-frame pixels through the same `object-fit:
+  cover` mapping the marker residuals use, until those directions sit on the truth apexes.
+  Roll comes from the pose: one capture's summits sit within a few degrees of the horizon,
+  where roll and pitch are nearly degenerate.
+- **The gate.** `|sensed − solved| ≤ the displayed band's horizontal half-width`, under the
+  per-axis rule above: `recorded-not-gated` when the horizontal axis carries an unquantified
+  term. The vertical axis is not gated here. The solve reports the pitch it found, and the
+  tilt zero point is what the home session measures.
+- **Reported.** Sensed, solved, the difference, how many summits the solve used, and the
+  gross offset in force with its source.
+
+A capture with fewer than two located summits reports `no-sample`: one summit fixes a
+heading only against an assumed pitch.
+
+**Failure.** A raw error outside a band that carried only measured terms, on a marker or at
+the pose. That is the app claiming a bound it does not hold, and it is the most serious failure available here:
 **it is fixed before the field data is used for anything else**, because every other
 criterion is read through a band the app would then be known to understate.
 
@@ -848,6 +876,12 @@ the number means. A radius is not a position: it says how well the phone knew wh
 not where that was. A bare `accuracy` key, which is the shape a whole fix arrives in, is
 refused.
 
+**Each capture's pose says what was done to its heading**: the fine trim, the gross
+re-anchor offset in [−180°, 180°], and what set that offset — `sensors` when nobody
+re-anchored, otherwise `sun` or `summit`. Subtracting the two leaves the reading the
+compass alone gave, which is what § 2.2's pose-level check grades. The parser requires
+both keys.
+
 **The truth document is `mountain-finder/field-apex-truth@2`**, and the parser refuses the
 `@1` format outright rather than reading it. `@1` wrote `apexPx: null` for everything an
 annotator did not locate, which conflated "the summit is not in this frame" with "I cannot
@@ -1019,3 +1053,28 @@ as a mountain the app fabricated.
 
 Nothing about the thresholds, the bands or the error budget moved. What moved is which
 observations reach them.
+
+### 2026-09-29 — the bundle carries the gross heading offset, and F2 is graded at the pose
+
+Still before any field number exists. F2 would have reported `no-sample` on the one error
+the field session was arranged around, a 92° compass reading, and `pass` on the same error
+once the person corrected it on site.
+
+- **A capture's pose carries `grossHeadingOffsetDeg` and `grossHeadingSource` (§ 2.2, § 3).**
+  The re-anchor correction is unclamped and can be a quarter turn, so a pose that omits it
+  is one where a corrected compass cannot be told from a compass that was right. Both keys
+  are required by the parser rather than optional, and the offset is bounded to ±180°.
+- **§ 2.2 registers `F2.pose`.** The heading the compass alone reported is compared with the
+  heading the located summits solve for, gated on the displayed band's horizontal
+  half-width under the per-axis rule § 2.2 already had. It is graded whenever a before-drag
+  capture holds two or more located summits, and reports `no-sample` below that.
+- **The solve takes the summits' directions from the markers the app drew, at the pose it
+  drew with.** That cancels the compass out: what is left is the geometry the peak data and
+  the observer's fix give, which is what the truth apexes are then fitted against. Heading
+  and pitch are solved together and roll is taken from the pose.
+
+Nothing about the thresholds, the bands or the error budget moved. `analyze:field` on the
+two committed fixture pairs is unchanged except for the new criterion line: the aligned
+pair's compass sits 4.077° from the heading its four located summits solve for, inside the
+8.700° band that capture displayed, and the stray pair's single capture is `after-drag`, so
+the criterion has nothing to read.

@@ -83,9 +83,9 @@ after its self-check has run and passed here. The checks are in
 - [ ] Renumber the duplicate X-7 and X-8 ids in docs/FINDINGS.md
 
 - [x] Split the gross heading offset from the fine trim; sun one-tap and named-summit re-anchor, stillness-gated
-- [ ] Widen field-analysis POSE_KEYS for grossHeadingOffsetDeg and its source, then flip POSE_CARRIES_GROSS_OFFSET
+- [x] Widen field-analysis POSE_KEYS for grossHeadingOffsetDeg and its source, then flip POSE_CARRIES_GROSS_OFFSET
 - [x] Add the walking-aim-at-the-sun segment to the home session and its analyzer verdict
-- [ ] Add the pose-level raw-heading check to F2 in the prereg and the grader, before field data (after the re-anchor schema lands)
+- [x] Add the pose-level raw-heading check to F2 in the prereg and the grader, before field data
 - [x] Write the IMG_7270 188° derivation as a cited doc with runnable probes (187.9° ± 0.9°, −4.94° ± 0.26°)
 - [ ] Record both annotator pixels, not one agreed pixel, on the next apex read
 

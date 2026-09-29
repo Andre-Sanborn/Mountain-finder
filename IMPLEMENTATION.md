@@ -1478,3 +1478,29 @@ The field session gains a "Fix direction" step. The bundle cannot carry the offs
 The e2e injects a 92° error and taps the sun, and the disc lands within 20 px of centre. The
 summit path runs on the Matterhorn. Fifteen mutations are caught. The sun e2e tests skip when
 the sun is below 5° at Gornergrat.
+
+## The gross offset rides in the bundle, and F2 is graded at the pose
+
+The capture pose now requires `grossHeadingOffsetDeg`, bounded to ±180°, and
+`grossHeadingSource`: `sensors`, `sun` or `summit`. Both are required, so a 92° re-anchor can
+always be told from a compass that was right.
+
+**The `F2.pose` check** compares two headings:
+- **Sensed:** the pose heading, less the fine trim and the gross offset.
+- **Solved:** from each located summit's direction, read off the marker drawn at the drawing
+  pose, which cancels the compass. Heading and pitch are then fitted to the truth apexes by
+  Gauss-Newton in stored-frame pixels, through the cover-crop mapping. Roll comes from the pose.
+
+The check is gated on the band's horizontal half-width, per axis. It reports `no-sample` below
+two located summits.
+
+**Tests:**
+- A 92° error with a re-anchor passes marker F2 and fails F2.pose by 92.000° against an
+  8.500° band.
+- A 3° error in a 10° band passes.
+- A 5° rotation solves to exactly 285.000000°.
+- Thirteen mutations are caught.
+
+On the aligned fixture the compass sits 4.077° from the solved heading, inside an 8.700° band.
+The limit: errors in the peak data or the observer fix move sensed and solved together, so F3
+and F4 catch those instead.

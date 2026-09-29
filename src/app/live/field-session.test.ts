@@ -493,6 +493,8 @@ describe('a built capture', () => {
       headingBasis: 'true-model',
       trimHeadingDeg: 0.62,
       trimPitchDeg: -0.18,
+      grossHeadingOffsetDeg: 0,
+      grossHeadingSource: 'sensors',
     });
     expect(capture.band.horizontalDeg).toBe(8.7);
     expect(capture.sweepRadiusKm).toBe(60);
@@ -744,7 +746,7 @@ describe('a whole run', () => {
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
- * The gross heading offset, and the schema that cannot hold it yet
+ * The gross heading offset the bundle carries
  * ══════════════════════════════════════════════════════════════════════════ */
 
 describe('the gross heading offset in a capture', () => {
@@ -758,9 +760,12 @@ describe('the gross heading offset in a capture', () => {
     context: contextOf(),
   });
 
-  it('is left out of the pose while the bundle schema whitelists the old keys', () => {
-    expect(POSE_CARRIES_GROSS_OFFSET).toBe(false);
-    const pose = captureOf({ context }).pose as unknown as Record<string, unknown>;
+  it('is left out of the pose when a caller builds one without it', () => {
+    expect(POSE_CARRIES_GROSS_OFFSET).toBe(true);
+    const pose = buildFieldCapture({ ...input(), context }, false).pose as unknown as Record<
+      string,
+      unknown
+    >;
     expect(pose.grossHeadingOffsetDeg).toBeUndefined();
     expect(pose.grossHeadingSource).toBeUndefined();
   });
@@ -770,7 +775,7 @@ describe('the gross heading offset in a capture', () => {
     expect(parsed.ok, JSON.stringify(parsed.ok ? [] : parsed.problems)).toBe(true);
   });
 
-  it('carries both fields the moment the schema is widened to take them', () => {
+  it('carries both fields, which the bundle schema takes', () => {
     const pose = buildFieldCapture({ ...input(), context }, true).pose as unknown as Record<
       string,
       unknown

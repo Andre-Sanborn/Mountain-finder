@@ -56,6 +56,7 @@ import {
   type DrawnOverlay,
   type DrawnSummit,
   type FieldBundle,
+  type GrossHeadingSource,
   type TrackGeometry,
   type WithheldSummit,
 } from '../../live/field-analysis';
@@ -579,22 +580,18 @@ export function frameFileNameFor(captureId: string): string {
 /** The bundle's own file name. No date in it — a date is a wall clock. */
 export const FIELD_BUNDLE_FILE_NAME = 'mountain-finder-field-bundle.json';
 
-/** What set the capture's gross heading offset. */
-export type GrossHeadingSource = 'sensors' | 'sun' | 'summit';
+/** What set the capture's gross heading offset. The bundle schema owns the list. */
+export type { GrossHeadingSource };
 
 /**
  * Whether a capture's pose carries the gross heading offset and its source.
  *
- * `parseFieldBundle` whitelists pose keys exactly, and `POSE_KEYS` in
- * `src/live/field-analysis.ts` does not list these two, so writing them would
- * make every bundle fail its own parser on the phone after the drive. The
- * screen therefore records the offset and shows it, and the bundle carries only
- * the heading it already produced. Flip this to true in the same change that
- * adds `'grossHeadingOffsetDeg'` and `'grossHeadingSource'` to `POSE_KEYS`,
- * parses them as a number in [−180, 180] and a member of
- * {@link GrossHeadingSource}, and adds them to `CapturePose`.
+ * True: `parseFieldBundle` takes both keys and requires them, and the grader's
+ * pose-level F2 reads the raw compass heading back out of the pose by
+ * subtracting them. `buildFieldCapture` still takes this as an argument so a
+ * test can build the pose without the two fields and watch the parser refuse it.
  */
-export const POSE_CARRIES_GROSS_OFFSET = false;
+export const POSE_CARRIES_GROSS_OFFSET = true;
 
 /** Everything the live screen knows at the instant a capture is taken. */
 export interface FieldCaptureContext {
@@ -650,6 +647,21 @@ export function buildFieldCapture(
 ): Capture {
   const { context } = input;
   const track = trackGeometryFrom(context.track);
+  const pose: CapturePose = {
+    headingDeg: fold360(context.pose.headingDeg),
+    pitchDeg: context.pose.pitchDeg,
+    rollDeg: context.pose.rollDeg,
+    hFovDeg: context.pose.hFovDeg,
+    vFovDeg: context.pose.vFovDeg,
+    headingBasis: context.headingBasis,
+    trimHeadingDeg: context.trim.headingDeg,
+    trimPitchDeg: context.trim.pitchDeg,
+    grossHeadingOffsetDeg: context.grossHeadingOffsetDeg,
+    grossHeadingSource: context.grossHeadingSource,
+  };
+  // Dropping the two gross fields makes a pose the parser refuses, so the cast
+  // states what the caller asked for. Only a test asks for it.
+  const { grossHeadingOffsetDeg: _offset, grossHeadingSource: _source, ...withoutGross } = pose;
   return {
     captureId: input.captureId,
     role: input.role,
@@ -657,22 +669,7 @@ export function buildFieldCapture(
     framePath: frameFileNameFor(input.captureId),
     framePx: input.framePx,
     overlayPx: context.overlayPx,
-    pose: {
-      headingDeg: fold360(context.pose.headingDeg),
-      pitchDeg: context.pose.pitchDeg,
-      rollDeg: context.pose.rollDeg,
-      hFovDeg: context.pose.hFovDeg,
-      vFovDeg: context.pose.vFovDeg,
-      headingBasis: context.headingBasis,
-      trimHeadingDeg: context.trim.headingDeg,
-      trimPitchDeg: context.trim.pitchDeg,
-      ...(carryGrossOffset
-        ? {
-            grossHeadingOffsetDeg: context.grossHeadingOffsetDeg,
-            grossHeadingSource: context.grossHeadingSource,
-          }
-        : {}),
-    },
+    pose: carryGrossOffset ? pose : (withoutGross as CapturePose),
     trace: input.trace,
     track: track ?? { width: 0, height: 0 },
     fovSource: context.fovSource,

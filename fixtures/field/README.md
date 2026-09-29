@@ -26,6 +26,7 @@ The verdict tables the two produce:
 criterion   outcome    n            criterion                outcome    n
 ──────────  ─────────  ─            ───────────────────────  ─────────  ─
 F2          pass       4            F2                       no-sample  0
+F2.pose     pass       1            F2.pose                  no-sample  0
 F3.near     no-sample  1            F3.near                  no-sample  1
 F3.mid      no-sample  0            F3.mid                   no-sample  0
 F3.far      pass       3            F3.far                   fail       1
@@ -40,8 +41,9 @@ F5a         pass       16           F4.horizon               no-sample  0
 F5b         pass       4            F5a                      fail       4
 F5c         pass       4            F5b                      pass       1
                                     F5c                      fail       1
-aligned: 6 passed, 0 failed,        stray: 1 passed, 3 failed,
-8 without a sample                  11 without a sample; failing:
+
+aligned: 7 passed, 0 failed,        stray: 1 passed, 3 failed,
+8 without a sample                  12 without a sample; failing:
                                     F3.far, F5a, F5c
 ```
 
@@ -103,6 +105,14 @@ verdict; the `near` and `horizon` bands hold one graded summit each and are repo
 `no-sample` with the stop rule named. Deer Point is annotated from a landmark — the crest
 under the tallest mast — and the report lists it apart from the rest. Its two annotators
 worked under different methods, `bare-frame` and `frame-and-map`, and the report says which.
+
+Every pose in both files carries `grossHeadingOffsetDeg: 0` from `sensors`: nobody
+re-anchored, so the heading the compass alone gave is the heading the overlay was drawn
+with. `F2.pose` therefore grades that reading against the heading the located summits
+solve for. On the aligned pair the two sit 4.077° apart, inside the 8.700° band the
+capture displayed, which is the marker errors injected into `c1` read as a pose. The
+stray pair's one capture is `after-drag`, so the criterion has no before-drag capture to
+read and returns `no-sample`.
 
 To regenerate either pair, build a `SynthSpec` and write
 `synthesiseFieldBundle(spec).bundle` and `.truth` as JSON. The synthesiser is

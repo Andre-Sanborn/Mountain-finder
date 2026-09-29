@@ -27,6 +27,7 @@ import {
   bandLimitsFor,
   bandSigmaFor,
   coverVisibleFraction,
+  GROSS_HEADING_SOURCES,
   MAX_OBSERVER_ACCURACY_M,
   MAX_TRUTH_DISAGREEMENT_DEG,
   MAX_TWO_SIGMA_EXCEEDANCES,
@@ -40,6 +41,9 @@ import {
   reduceTruth,
   renderFieldReport,
   residualOf,
+  sensedHeadingDeg,
+  solvePoseFromTruth,
+  MIN_SUMMITS_FOR_POSE_SOLVE,
   SUPERSEDED_TRUTH_FORMAT,
   synthesiseFieldBundle,
   TRUTH_FORMAT,
@@ -1283,6 +1287,190 @@ describe('F2', () => {
   });
 });
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * F2 at the pose — the raw compass reading against the heading truth solves
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+describe('F2 at the pose', () => {
+  const wideBand = {
+    horizontalDeg: 8.5,
+    verticalDeg: 1.5,
+    hasUnquantifiedHorizontal: false,
+    hasUnquantifiedVertical: false,
+  };
+
+  /** Where a frame angle from the optical axis lands, in pixels from the centre. */
+  function pixelsAtAngle(deg: number): number {
+    return FOCAL_PX * Math.tan((deg * Math.PI) / 180);
+  }
+
+  /** The synthesiser's own pose heading, which the captures below are built at. */
+  const POSE_HEADING_DEG = 280;
+
+  it('reads the compass reading back out of the pose', () => {
+    // The pose's heading is the reading plus the fine trim plus the re-anchor:
+    // 188 + 0.62 + 92 = 280.62, so the reading is 188 again.
+    expect(
+      sensedHeadingDeg({
+        headingDeg: 280.62,
+        pitchDeg: 0,
+        rollDeg: 0,
+        hFovDeg: HFOV_DEG,
+        vFovDeg: VFOV_DEG,
+        headingBasis: 'true-model',
+        trimHeadingDeg: 0.62,
+        trimPitchDeg: 0,
+        grossHeadingOffsetDeg: 92,
+        grossHeadingSource: 'sun',
+      }),
+    ).toBeCloseTo(188, 12);
+  });
+
+  it('solves the heading a pair of markers drawn 5° off implies', () => {
+    // Two summits on the frame's horizontal centreline, 200 px either side of
+    // the centre, on a capture with no pitch. There the camera's own up axis is
+    // the world's, so a change of heading slides a point along the centreline
+    // and the pixel offset of each is f·tan θ with the same θ change.
+    //
+    //   truth:  ∓200 px  →  θ = ∓atan(200/1279.99524) = ∓8.88069°
+    //   drawn:  the same summits at θ + 5°, i.e. −3.88069° and +13.88069°
+    //
+    // So the camera that puts those directions on the truth apexes sits 5° to
+    // the right of the pose, at 285°, and level.
+    const truthOffsets = [-200, 200];
+    const summits = [FAR, MID].map((summitId, index) => {
+      const truthOffsetPx = truthOffsets[index] ?? 0;
+      const truthAngleDeg = (Math.atan(truthOffsetPx / FOCAL_PX) * 180) / Math.PI;
+      return summit({
+        summitId,
+        truthPx: { xPx: FRAME_WIDTH_PX / 2 + truthOffsetPx, yPx: FRAME_HEIGHT_PX / 2 },
+        errorPx: {
+          xPx: pixelsAtAngle(truthAngleDeg + 5) - truthOffsetPx,
+          yPx: 0,
+        },
+      });
+    });
+    expect(truthOffsets.map((px) => (Math.atan(px / FOCAL_PX) * 180) / Math.PI)).toEqual([
+      expect.closeTo(-8.88069, 5),
+      expect.closeTo(8.88069, 5),
+    ]);
+
+    const { bundle } = synthesiseFieldBundle({
+      captures: [{ captureId: 'c1', role: 'before-drag', pitchDeg: 0, summits }],
+    });
+    const capture = bundle.captures[0];
+    if (capture === undefined) throw new Error('the synthesiser produced no capture');
+    const solved = solvePoseFromTruth(
+      capture,
+      capture.overlay.drawn.map((drawn, index) => ({
+        drawnPx: drawn.summitPx,
+        truthPx: summits[index]?.truthPx ?? { xPx: 0, yPx: 0 },
+      })),
+    );
+    expect(solved?.summitCount).toBe(2);
+    expect(solved?.headingDeg).toBeCloseTo(POSE_HEADING_DEG + 5, 6);
+    expect(solved?.pitchDeg).toBeCloseTo(0, 6);
+  });
+
+  /** Two summits drawn exactly on their apexes, so the solve returns the pose. */
+  function onTheirApexes(): readonly SynthSummit[] {
+    return [
+      summit({ summitId: FAR, truthPx: { xPx: 660, yPx: 400 }, errorPx: { xPx: 0, yPx: 0 } }),
+      summit({ summitId: MID, truthPx: { xPx: 1260, yPx: 470 }, errorPx: { xPx: 0, yPx: 0 } }),
+    ];
+  }
+
+  it('fails a 92° compass error that a re-anchor has already hidden from the markers', () => {
+    // The person re-anchored on the Sun, so the pose heading is right and every
+    // marker sits on its summit: F2 on the markers has nothing to report. The
+    // compass alone said 280 − 92 = 188°, which is 92° from the 280° the two
+    // located summits solve for, against a band of 8.5°.
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'before-drag',
+        band: wideBand,
+        grossHeadingOffsetDeg: 92,
+        grossHeadingSource: 'sun',
+        summits: onTheirApexes(),
+      },
+    ]);
+    expect(criterion(analysis, 'F2')?.outcome).toBe('pass');
+    expect(criterion(analysis, 'F2.pose')?.outcome).toBe('fail');
+    const evidence = criterion(analysis, 'F2.pose')?.evidence.join('\n') ?? '';
+    expect(evidence).toContain('compass alone 188.000°');
+    expect(evidence).toContain('solved from 2 located summit(s) 280.000°');
+    expect(evidence).toContain('apart by 92.000°');
+    expect(evidence).toContain('gross offset of 92.000° from sun');
+    expect(evidence).toContain('against a band of 8.500° — OUTSIDE');
+  });
+
+  it('passes a 3° compass error inside a 10° band', () => {
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'before-drag',
+        band: { ...wideBand, horizontalDeg: 10 },
+        grossHeadingOffsetDeg: 3,
+        grossHeadingSource: 'summit',
+        summits: onTheirApexes(),
+      },
+    ]);
+    expect(criterion(analysis, 'F2.pose')?.outcome).toBe('pass');
+    const evidence = criterion(analysis, 'F2.pose')?.evidence.join('\n') ?? '';
+    expect(evidence).toContain('compass alone 277.000°');
+    expect(evidence).toContain('apart by 3.000°');
+    expect(evidence).toContain('against a band of 10.000° — inside');
+  });
+
+  it('reports no sample when one summit is located, whatever the compass did', () => {
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'before-drag',
+        band: wideBand,
+        grossHeadingOffsetDeg: 92,
+        summits: [summit({ summitId: FAR, truthPx: { xPx: 660, yPx: 400 } })],
+      },
+    ]);
+    expect(criterion(analysis, 'F2.pose')?.outcome).toBe('no-sample');
+    expect(criterion(analysis, 'F2.pose')?.n).toBe(0);
+    expect(criterion(analysis, 'F2.pose')?.evidence.join('\n')).toContain(
+      `it takes ${MIN_SUMMITS_FOR_POSE_SOLVE} to solve a heading`,
+    );
+  });
+
+  it('records but does not gate a horizontal band that carries an unquantified term', () => {
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'before-drag',
+        band: { ...wideBand, hasUnquantifiedHorizontal: true },
+        grossHeadingOffsetDeg: 92,
+        summits: onTheirApexes(),
+      },
+    ]);
+    expect(criterion(analysis, 'F2.pose')?.outcome).toBe('pass');
+    expect(criterion(analysis, 'F2.pose')?.evidence.join('\n')).toContain('recorded, not gated');
+  });
+
+  it('ignores after-drag captures', () => {
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        band: wideBand,
+        grossHeadingOffsetDeg: 92,
+        summits: onTheirApexes(),
+      },
+    ]);
+    expect(criterion(analysis, 'F2.pose')?.outcome).toBe('no-sample');
+    expect(criterion(analysis, 'F2.pose')?.evidence.join('\n')).toContain(
+      'no before-drag capture carried a located summit',
+    );
+  });
+});
+
 describe('F5', () => {
   it('fails a summit drawn visible that both annotators say is absent', () => {
     const analysis = run([
@@ -1877,6 +2065,40 @@ describe('the strict parser', () => {
   it('accepts what the synthesiser produces', () => {
     const parsed = parseFieldBundle(bundleWith({}));
     expect(parsed.ok).toBe(true);
+  });
+
+  /** The parsed pose of the first capture, as a plain record to spoil. */
+  function poseOf(raw: unknown): Record<string, unknown> {
+    const document = raw as { captures: { pose: Record<string, unknown> }[] };
+    const pose = document.captures[0]?.pose;
+    if (pose === undefined) throw new Error('the synthesiser produced no capture');
+    return pose;
+  }
+
+  it('refuses a pose that does not say what its gross heading offset was', () => {
+    const raw = JSON.parse(JSON.stringify(bundleWith({})));
+    delete poseOf(raw)['grossHeadingOffsetDeg'];
+    const parsed = parseFieldBundle(raw);
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) return;
+    expect(parsed.problems.map((problem) => problem.path)).toContain(
+      'captures[0].pose.grossHeadingOffsetDeg',
+    );
+  });
+
+  it('refuses a gross heading offset outside half a turn either way', () => {
+    const raw = JSON.parse(JSON.stringify(bundleWith({})));
+    poseOf(raw)['grossHeadingOffsetDeg'] = 268;
+    expect(parseFieldBundle(raw).ok).toBe(false);
+  });
+
+  it('refuses a gross heading source it does not know', () => {
+    const raw = JSON.parse(JSON.stringify(bundleWith({})));
+    poseOf(raw)['grossHeadingSource'] = 'guess';
+    const parsed = parseFieldBundle(raw);
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) return;
+    expect(parsed.problems.some((problem) => problem.message.includes(GROSS_HEADING_SOURCES.join(', ')))).toBe(true);
   });
 
   it('refuses a geolocation field wherever it hides', () => {

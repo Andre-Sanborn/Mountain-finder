@@ -16,6 +16,12 @@
  * 3σ. A capture that reports its own fix accuracy is graded against the limits
  * that accuracy implies, which can only be tighter than the registered ones.
  *
+ * F2 is graded twice: on the drawn markers, and on the pose. The pose-level check
+ * takes the heading the compass alone reported, which the capture's gross
+ * re-anchor offset and fine trim make recoverable, and compares it with the
+ * heading the located summits solve for. A gross compass error the person
+ * corrected on site is invisible in the markers and shows up there.
+ *
  * F1 (offline start and frame rate) and F6 (human time on site) are stopwatch
  * numbers recorded by the person on site. They are not computed from a bundle
  * and this script says nothing about them.
