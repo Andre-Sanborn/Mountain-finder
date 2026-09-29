@@ -105,7 +105,9 @@ after its self-check has run and passed here. The checks are in
 - [x] Charge the field budget's drag anchor at the registered 2 km anchor, and regenerate §2.3's limits
 - [x] Enforce the registered apex rule texts in the truth parser, keyed by summit
 - [x] Qualify the north-east direction's Sun claim by season, in the pre-registration and the field guide
-- [ ] Fix F3's exceedance gate: a correct app passes n = 30 only 58% of the time
+- [x] Make F3's unit a summit-axis medianed over its captures, with per-k drag factors and an allowance schedule
+- [x] Make F4 grade the paired change over each movement, on its own distance-independent budget
+- [ ] Regenerate `fixtures/field/aligned-*` so a summit's error is carried into both frames of a pair
 
 ## Other open work
 

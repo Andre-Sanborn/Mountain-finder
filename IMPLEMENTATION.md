@@ -1719,3 +1719,51 @@ so it stays a 3σ excursion under the new limits.
 The guided run ends with the turn to the north-east and two captures there, about half an hour
 in all against F6's 40 minute threshold.
 
+## F3 grades a summit, F4 grades the change
+
+The old F3/F4 gate counted one summit-axis in one capture as one draw and tolerated one 2σ
+exceedance whatever the sample size. A correct app passed 0.96 at n = 6 and 0.58 at n = 30. The
+three after-drag captures grade the same summits, so one bad summit made three exceedances.
+
+**F3's unit is one summit-axis per band, valued at the median signed residual** over the
+after-drag captures that settled the summit (k of them). Common terms stay at full size: peak,
+observer, anchor, field-of-view scale, and roll, since step 10 re-drags without re-bracing. Only
+the drag re-draws per capture, so it is charged at 1, 1/√2 and √(1 − √3/π) = 0.669829 for k = 1,
+2, 3. The k = 3 factor is the standard deviation of the median of three standard normals, from
+its density 6·Φ(1−Φ)·φ, checked by numerical integration in a test.
+
+| band | 2σ H / V, k = 1 | k = 2 | k = 3 |
+|---|---|---|---|
+| near | 2.35° / 1.55° | 2.25° / 1.35° | 2.20° / 1.35° |
+| mid | 1.95° / 1.45° | 1.80° / 1.25° | 1.80° / 1.20° |
+| far, distant, horizon | 1.90° / 1.45° | 1.75° / 1.20° | 1.70° / 1.20° |
+
+The allowance grows with the unit count: one 2σ exceedance up to 12 units, two from 13 to 24,
+one more per further 12. A correct app passes 0.960 at 6 units, 0.909 at 10 and 0.880 at 12.
+No limit widened: every k = 2 and k = 3 row is tighter than k = 1.
+
+F3 charges no truth-read term. The 0.3° disagreement limit refuses a grade rather than budgeting
+one, and at about 0.1° the read is under 1% of F3's variance.
+
+An after-drag capture whose anchor residual exceeds three drag terms, 1.63° on either axis, is
+reported as a slipped drag with the count of units whose medians include it. It is never gated
+or dropped, so the grader cannot choose its own sample.
+
+**F4's unit is one summit-axis per movement, valued at the paired change**: the moved capture's
+residual minus its reference after-drag capture's, for a summit settled in both. Summit,
+observer, anchor and drag errors cancel. What remains is the field-of-view scale (0.275° H /
+0.039° V, one calibration charged at the frame edge), a second braced hold's roll (0.048° /
+0.455°), the sensors' settle over the move (0.054°), and a second frame's truth read (0.106°).
+RSS is 0.304° / 0.472°, so the limits are 0.60° / 0.95° at 2σ for every band. Each movement is
+gated alone with F3's rule and needs three paired summits. A moved capture whose trim differs
+from its reference was re-dragged; it is reported unpaired and graded by nothing.
+
+The 0.106° truth read treats the 0.3° disagreement limit as a 2σ bound on two independent
+annotators. If 0.3° is one annotator's 1σ, the term is 0.212° and the limits would be 0.70° /
+1.00°. The tighter figure is registered, before any field number exists.
+
+**Known limitation.** `fixtures/field/aligned-*` now fails `F4.c3` and was left unchanged. It
+draws each summit's error independently in every capture, about ±10 px, which a real summit does
+not do; the paired change turns two such draws into 0.73° and 0.81° against 0.60°. The fixture's
+noise model failed, not the criterion.
+

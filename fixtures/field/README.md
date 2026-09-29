@@ -10,7 +10,7 @@ Two pairs, each a bundle and the truth document that grades it:
 
 | pair | what it exercises |
 |---|---|
-| `aligned-bundle.json` + `aligned-truth.json` | a run where every criterion the data reaches either passes or reports `no-sample` |
+| `aligned-bundle.json` + `aligned-truth.json` | a run where every criterion the data reaches passes or reports `no-sample`, except the one paired movement, which the fixture's own noise model fails |
 | `stray-bundle.json` + `stray-truth.json` | a run with three errors injected, failing exactly `F3.far`, `F5a` and `F5c` |
 
 Both are read by `src/live/field-analysis.test.ts`, and either can be run through
@@ -27,28 +27,30 @@ criterion   outcome    n            criterion                outcome    n
 ──────────  ─────────  ─            ───────────────────────  ─────────  ─
 F2          pass       4            F2                       no-sample  0
 F2.pose     pass       1            F2.pose                  no-sample  0
-F3.near     no-sample  1            F3.near                  no-sample  1
+F3.near     no-sample  2            F3.near                  no-sample  2
 F3.mid      no-sample  0            F3.mid                   no-sample  0
-F3.far      pass       3            F3.far                   fail       1
+F3.far      pass       6            F3.far                   fail       2
 F3.distant  no-sample  0            F3.distant               no-sample  0
 F3.horizon  no-sample  0            F3.horizon               no-sample  0
 F3.anchor   no-sample  1            F3.anchor                no-sample  1
-F4.near     no-sample  0            F3.truth-unidentifiable  no-sample  1
-F4.mid      no-sample  0            F4.near                  no-sample  0
-F4.far      pass       5            F4.mid                   no-sample  0
-F4.distant  no-sample  0            F4.far                   no-sample  0
-F4.horizon  no-sample  0            F4.distant               no-sample  0
-F4.anchor   no-sample  2            F4.horizon               no-sample  0
-F5a         pass       16           F5a                      fail       4
-F5b         pass       4            F5b                      pass       1
-F5c         pass       4            F5c                      fail       1
+F4.c3       fail       6            F3.truth-unidentifiable  no-sample  1
+F4.c4       no-sample  4            F5a                      fail       4
+F4.anchor   no-sample  2            F5b                      pass       1
+F5a         pass       16           F5c                      fail       1
+F5b         pass       4
+F5c         pass       4
 
-aligned: 7 passed, 0 failed,        stray: 1 passed, 3 failed,
-10 without a sample                 13 without a sample; failing:
-                                    F3.far, F5a, F5c
+aligned: 6 passed, 1 failed,        stray: 1 passed, 3 failed,
+7 without a sample; failing:        8 without a sample; failing:
+F4.c3                               F3.far, F5a, F5c
 ```
 
-`analyze:field` exits 0 on the aligned pair and 1 on the stray one.
+An `F3` band's `n` is its summit-axis units, which is twice the summits it graded:
+the unit is one summit per axis, and its value is the median of that summit's
+residuals over the after-drag captures that settled it. `F4` names one criterion
+per movement, after the moved capture.
+
+`analyze:field` exits 1 on both pairs, because both hold a failing criterion.
 
 ## How the numbers were made
 
@@ -97,7 +99,7 @@ single 2σ exceedance would pass and the fixture would assert nothing. The two-e
 of the gate is exercised in `src/live/field-analysis.test.ts`, where a capture can hold two
 summits in one band.
 
-`aligned-bundle.json` exercises the rest of the protocol. Every summit is inside 2σ; its pan
+`aligned-bundle.json` exercises the rest of the protocol. Every summit is inside F3's 2σ; its pan
 capture carries the drag anchor to 0.84 of the half-frame (the registered pan target is 0.8);
 every capture reports a fix accuracy of 8.4 m under the bundle's declared convention, so the
 bands are graded against the limits that accuracy derives rather than the registered ones.
@@ -106,6 +108,28 @@ verdict; the `near` band holds one graded summit and is reported `no-sample` wit
 rule named. Deer Point is annotated from a landmark — the crest
 under the tallest mast — and the report lists it apart from the rest. Its two annotators
 worked under different methods, `bare-frame` and `frame-and-map`, and the report says which.
+
+## Why the aligned pair fails `F4.c3`
+
+`aligned-bundle.json` draws every summit with an error of its own in every capture, about
+±10 px, drawn independently for the reference capture `c2` and the moved capture `c3`. Every
+one of them is inside `F3`'s 1.90° `far` band, so `F3` passes.
+
+`F4` grades the **paired change**: the moved capture's residual minus the reference
+capture's, per axis. A real summit carries one position error into both frames of a pair, so
+that error cancels and what is left is what the movement did. An independently redrawn error
+does not cancel: Shafer Butte moves from −7 px to +10 px and Mores Mountain from +11 px to
+−8 px, which are changes of 0.73° and 0.81° against the movement budget's 0.60° 2σ. Two
+units past 2σ where one is tolerated fails the movement.
+
+What that measures is the fixture's noise model, not the criterion. The fixture was written
+against a per-capture gate, where independent draws were the right thing to inject, and it
+is left as it is: adjusting it to pass would be moving the fixture to fit the verdict. A
+later regeneration should give each summit one error carried into both frames of a pair,
+plus whatever the movement is meant to add.
+
+`c4` pairs only Mores Mountain and Jackson Peak, because it anchors on Shafer Butte, so it
+falls under the stop rule's floor of three summits and reports `no-sample`.
 
 Every pose in both files carries `grossHeadingOffsetDeg: 0` from `sensors`: nobody
 re-anchored, so the heading the compass alone gave is the heading the overlay was drawn
@@ -130,8 +154,8 @@ Both fixtures carry the anchor rule:
 
 - `aligned-bundle.json` anchors `c2` and `c3` on Trinity Mountain, the one `horizon` summit
   either capture draws, so the `horizon` band reports that the only observations drawn in it
-  were the anchor. `c4` anchors on Shafer Butte, which drops `F4.far` from six graded
-  observations to five.
+  were the anchor. `c4` anchors on Shafer Butte, which leaves its movement two paired
+  summits, under the stop rule's floor.
 - `stray-bundle.json` anchors its single capture on Trinity Mountain and draws that marker
   exactly on its apex. Its anchor line reads 0.000° on both axes, which is what grading an
   anchor against itself measures.

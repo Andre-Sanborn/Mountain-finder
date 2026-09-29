@@ -35,9 +35,7 @@ see, and the drag applies one global heading trim and one global pitch trim
   as a measurement and gated only on falling inside the band the app displays (F2).
 - **Residual after one drag** — how far the labels still sit from the summits once the
   user has aligned the overlay on one summit. This is what the budget below computes, and
-  it is what F3 and F4 gate on. F3 gates on one number per summit per axis, the median over
-  the captures that settled it, and F4 on how that number changed when the phone moved;
-  § 1.5 says what the median does to each term.
+  it is what F3 and F4 gate on.
 
 The distinction is the whole reason a drag is worth having. A drag removes every
 **common-mode** term exactly: a compass bias, a declination error, an assumed pitch, a
@@ -383,60 +381,6 @@ registered 2 km it contributes 0.716° horizontally and the flat floor is 0.94°
 0.31° tighter. The sensitivity is worth carrying into any later site: a near anchor is the
 easiest summit to drag onto and the most expensive one to inherit.
 
-#### The unit the table is a budget for, and what k does to it
-
-**The graded unit is one summit-axis, not one capture-axis.** The session takes three
-after-drag captures (§ 2.7 step 10) and they grade the same summits, so a summit whose
-position is 40 m out appears in all three at the same size. The unit's value is the
-**median signed residual** over the captures that settled it, and `k` is how many those
-are: after-drag captures where both annotators located the summit. § 2.3 gates on the
-units.
-
-**The median moves exactly one term.** Terms 1, 2, 3a, 3b, the anchor's own error and the
-field-of-view scale are single errors carried unchanged into every capture: the median of
-k copies of one number is that number. Roll is the same here, because step 10 re-drags
-without re-bracing, so the three captures share one hold. The **drag** is re-made per
-capture, so the median of k drags carries a fraction of one drag's spread:
-
-| k | factor | where it comes from | drag term |
-|---|---|---|---|
-| 1 | 1 | one drag | 0.543° |
-| 2 | 0.70711 | the median of two is their mean, so 1/√2 | 0.384° |
-| 3 | 0.66983 | the standard deviation of the median of three | 0.364° |
-
-The k = 3 figure is derived rather than looked up. The median of three iid standard
-normals has density `6·Φ(x)(1−Φ(x))·φ(x)`, so
-
-```
-Var = 6∫x²φΦ dx − 6∫x²φΦ² dx
-    = 6·(1/2) − 6·(1/3 + √3/6π)        [∫x²φΦ = 1/2 by symmetry; ∫x²φΦ² = 1/3 + √3/6π]
-    = 1 − √3/π
-    = 0.448671
-```
-
-and the standard deviation is `√0.448671 = 0.669829`. A test integrates the density
-numerically and gets the same figure, which is a second instrument on the closed form.
-
-**The truth read is not in this table, at any k.** § 1.3 charges no term for how precisely
-an annotator locates an apex; the instrument is controlled by the § 2.0 disagreement limit
-of 0.3°, which refuses a grade rather than budgeting one. That is a deliberate omission,
-and it is defensible here because a truth read of about 0.1° is under 1 % of a 0.95°
-budget's variance. It re-draws per capture — each capture is a separately annotated frame
-— so if it were charged it would shrink with the median exactly as the drag does, and the
-table would not widen. § 2.4 is where the omission stops being safe, and that section
-charges it.
-
-**Per k, beyond 7 km**, where the budget is flat and the session's summits mostly sit:
-
-| k | 1σ H | 1σ V | drag as a share of the horizontal variance |
-|---|---|---|---|
-| 1 | 0.951° | 0.715° | 33 % |
-| 2 | 0.870° | 0.603° | 19 % |
-| 3 | 0.862° | 0.590° | 18 % |
-
-Most of what a repeated drag buys arrives with the second capture. Beyond that the anchor's
-own 0.716° dominates and nothing the session can do at the viewpoint moves it.
-
 ### 1.6 The two terms that are measured before the session
 
 Two of the terms above are judgements rather than measurements, and beyond 3 km they are the
@@ -450,8 +394,6 @@ those measurements before the field session** — not from a second judgement.
   degrees. Two figures come out of it: the spread in normal mode, which replaces the 1 mm
   finger-placement assumption, and the spread in fine mode, which says what the fine mode is
   worth. Whether the field session drags in fine mode is decided by that second figure.
-  **This one measurement moves all three rows of the per-k table**, because the k = 2 and
-  k = 3 rows are that same term times a factor that is arithmetic rather than assumption.
 - **Roll (term 7), assumed 0.5°.** The home session records the gravity-vector roll spread
   over a braced still hold, which is the assumption term 7 makes. The field captures record
   their own roll spread too, so the assumption is checked twice: once before the session at
@@ -598,8 +540,7 @@ skyline still in shot, and a 38.1° vertical field of view reaches 19° below th
 axis. So § 2.7 points the session south, toward Deer Point and Doe Point, and anchors the
 drag on Deer Point.
 
-**F3.near is site-limited, and is expected `no-sample` by construction; so is every near
-summit F4 could pair.**
+**F3.near and F4.near are site-limited, and are expected `no-sample` by construction.**
 Within 3 km of the viewpoint the package holds four summits besides Shafer Butte itself:
 Doe Point 1.9 km at 198°, Deer Point 2.0 km at 204°, Bob's Knob 2.1 km at 123° and Mores
 Mountain 2.2 km at 356°. At the registered 73.74° hFOV a frame holds no more than two of
@@ -833,45 +774,24 @@ criterion is read through a band the app would then be known to understate.
 **Claim.** After one drag anchored on one summit, every other labelled summit sits within
 the budget.
 
-**The exact measurement.** For each graded summit, the **median signed frame-angle residual
-per axis** across the after-drag captures that settled it — the marker as drawn against the
-truth apex, per capture, medianed. Frame angles are the tangent-plane angles about the
-optical axis, which is exactly what the drag trims.
-
-**The unit is one summit-axis, not one capture-axis.** The three after-drag captures grade
-the same summits, so a summit whose peak position is 40 m out contributes the same error
-three times. Counting each capture separately counts that one error three times, and it
-also lets three captures of a single summit clear a stop rule written for three summits.
-The median leaves every common term at its own size (§ 1.5) and shrinks only the drag,
-which is the one term step 10 re-makes.
-
-`k` is how many after-drag captures settled the summit: both annotators located it, and the
-capture was graded. A unit's limits come from its own k.
+**The exact measurement.** For each graded summit in each after-drag capture, the absolute
+frame-angle residual between the marker as drawn and the truth apex, per axis. Frame angles
+are the tangent-plane angles about the optical axis, which is exactly what the drag trims.
 
 **The anchor is excluded from the graded set.** The capture names the summit the drag was
 anchored on (`dragAnchorSummitId`), and that summit is not graded in the capture it anchored.
 The drag aligned the overlay onto it, so its residual is the drag's own precision and the
 annotators' reading of one apex: `(e_a − e_a) + (drag precision)` by § 1.1, near zero by
-construction. Grading it would report the anchor against itself. The anchor is
+construction. Grading it would report the anchor against itself, and three captures anchored
+on the same summit would clear the stop rule on three copies of that one number. The anchor is
 **reported, with its residual, as "anchor, not graded", and counted** — the count is what says
 how many observations the rule removed, and the residual is the field measurement of the drag
 that § 1.6 asks for. It is not part of any band's verdict.
 
-**A slipped drag is reported, and gated by nothing.** An after-drag capture whose anchor
-residual exceeds **three drag terms — 3 × 0.543° = 1.63°** — on either axis is a drag that
-did not land where the person meant it to, because the anchor's residual is that one term
-and nothing else. The report names the capture, its anchor residual, and **how many units'
-medians include that capture**, so a reader can see what the bad drag reached. Nothing is
-failed on it: a median over three captures survives one bad draw, and a rule that discarded
-the capture would let the grader choose which observations to keep.
+**Sample.** Every graded summit in every after-drag capture except that capture's anchor,
+binned by distance.
 
-**Sample.** Every graded summit in the after-drag captures except the anchor, binned by
-distance, one unit per summit per axis.
-
-**Limits — 2σ of the budget in § 1.5 rounded to the nearest 0.05°, and 3σ at 1.5 × that,
-rounded up. One table per k:**
-
-**k = 1** — the summit was settled in one after-drag capture:
+**Limits — 2σ of the budget in §1.5 rounded to 0.05°, and 3σ at 1.5 × that, rounded up:**
 
 | band | distance | 2σ H | 2σ V | 3σ H | 3σ V | 2σ at a 1920 px frame |
 |---|---|---|---|---|---|---|
@@ -881,37 +801,11 @@ rounded up. One table per k:**
 | `distant` | 20 to under 45 km | **1.90°** | **1.45°** | 2.85° | 2.20° | 42.5 px / 32.4 px |
 | `horizon` | 45 km and beyond | **1.90°** | **1.45°** | 2.85° | 2.20° | 42.5 px / 32.4 px |
 
-**k = 2** — the median of two captures, drag term 0.384°:
-
-| band | 2σ H | 2σ V | 3σ H | 3σ V |
-|---|---|---|---|---|
-| `near` | **2.25°** | **1.35°** | 3.40° | 2.05° |
-| `mid` | **1.80°** | **1.25°** | 2.70° | 1.90° |
-| `far` | **1.75°** | **1.20°** | 2.65° | 1.80° |
-| `distant` | **1.75°** | **1.20°** | 2.65° | 1.80° |
-| `horizon` | **1.75°** | **1.20°** | 2.65° | 1.80° |
-
-**k = 3** — the median of three captures, drag term 0.364°, which is what the protocol
-produces for a summit visible throughout:
-
-| band | 2σ H | 2σ V | 3σ H | 3σ V |
-|---|---|---|---|---|
-| `near` | **2.20°** | **1.35°** | 3.30° | 2.05° |
-| `mid` | **1.80°** | **1.20°** | 2.70° | 1.80° |
-| `far` | **1.70°** | **1.20°** | 2.55° | 1.80° |
-| `distant` | **1.70°** | **1.20°** | 2.55° | 1.80° |
-| `horizon` | **1.70°** | **1.20°** | 2.55° | 1.80° |
-
-The raw 2σ figures the k = 3 far row rounds from are 1.7234° and 1.1810°. **A median over
-more than three captures is charged at the k = 3 row**, because the table registers no
-figure beyond three; that is the permissive direction, and the report says so on any unit
-it applies to rather than letting it pass quietly.
-
 **Why `near` is the loosest row by so much.** Its graded summit and the drag anchor are both
 2 km away, so the geodesy is charged twice at its largest: 0.716° horizontally in each of two
-terms. It is also the row this site cannot fill. § 2.0 pre-declares `F3.near` `no-sample`,
-because the only graded near summit available is Doe Point and the stop rule asks for
-three.
+terms, which is 1.182° of 1σ and 2.35° at 2σ. It is also the row this site cannot fill.
+§ 2.0 pre-declares `F3.near` and `F4.near` `no-sample`, because the only graded near summit
+available is Doe Point and the stop rule asks for three.
 
 A band's lower bound is inclusive and its upper bound exclusive, so a summit exactly 3 km
 away is graded against `mid`. A boundary goes to the tighter of the two bands. The last
@@ -920,65 +814,64 @@ differ by under 0.01°, and only a rounding boundary separates the vertical ones
 three take the `far` row. Collapsing them would hide the flatness, so they are listed
 separately and the result reports n per band.
 
-**Every unit is reported against the 2σ band, and every capture behind it is printed.** The
-unit's median, its axis, its limits and its truth disagreement appear whether it is inside
-or outside, and under it one line per contributing capture with that capture's own signed
-residual and frame offset. A median that hides a wild draw is a median a reader can still
-see through.
+**Every summit is reported against the 2σ band.** Its residual, its axis, its frame offset
+and its truth disagreement are printed whether it is inside or outside.
 
-**The band's verdict counts exceedances, on a schedule:**
+**The band's verdict counts exceedances:**
 
-- **More than the allowance of summit-axis units past 2σ in a band fails it.** The
-  allowance is **one up to twelve units, two from thirteen to twenty-four**, and one more
-  per further twelve. The two axes of one summit count separately, because they are two
-  draws of two different terms.
-- **Any summit-axis unit past 3σ fails the band on its own**, whatever else is in it.
+- **More than one summit-axis past 2σ in a band fails it.** The two axes of one summit count
+  separately, because they are two draws.
+- **Any summit-axis past 3σ fails the band on its own**, whatever else is in it.
 - **A band with fewer than three graded summits may not pass.** It is reported `no-sample`
   under § 2.0's stop rule, with the truth instrument named. A band that fails the count
   above still fails at any n. A band whose only observations were the anchor says so, rather
   than naming the truth instrument: nothing was withheld there, and nothing was graded.
 
-**What a correct app scores against that gate, with the arithmetic.** The budget's terms are
-1σ and each unit is one draw, so a *correct* budget puts units outside 2σ at the normal rate:
+**Why one exceedance is tolerated, with the arithmetic.** The budget's terms are 1σ and each
+summit-axis is one draw, so a *correct* budget puts draws outside 2σ at the normal rate:
 
 ```
 P(|z| > 2) = 0.04550        P(|z| > 3) = 0.00270
-p0 = P(inside 2σ)      = 0.95450
+p0 = P(inside 2σ)     = 0.95450
 p1 = P(between 2σ, 3σ) = 0.04550 − 0.00270 = 0.04280
 ```
 
-A gate tolerating `a` exceedances and refusing any 3σ excursion passes with
-`Σ_{j≤a} C(n,j)·p1^j·p0^(n−j)`. A band here holds three to five summits, so it is **six to
-ten units**:
+A gate of "every axis inside 2σ" passes a correct budget with probability `p0^n`:
 
 ```
-n = 6  (3 summits, a = 1):  0.960
-n = 8  (4 summits, a = 1):  0.936
-n = 10 (5 summits, a = 1):  0.909
-n = 12 (6 summits, a = 1):  0.880
-n = 14 (7 summits, a = 2):  0.943
-n = 24 (12 summits, a = 2): 0.861
+n = 6 :  0.95450^6  = 0.756
+n = 18:  0.95450^18 = 0.432
+n = 30:  0.95450^30 = 0.247
 ```
 
-So a correct budget passes a band with probability 0.96 at the smallest size this session
-produces and 0.88 at the largest the first step reaches. A fixed allowance of one falls away
-as n grows — it is 0.68 at n = 24 — which is why the schedule adds a second at thirteen
-units rather than holding at one.
+Those are the sizes a band here reaches. A band holds three to five settled summits (§ 2.0),
+each graded in each of the three after-drag captures, so it is 18 to 30 axis draws; a band
+scraping the stop rule on one capture is 6. A correct budget would fail an "every axis
+inside 2σ" gate more than half the time at the sizes this session produces, which measures
+the sample rather than the app. **Tolerating one 2σ exceedance and refusing any 3σ
+excursion** passes with `p0^n + n·p1·p0^(n−1)`:
 
-The gate still catches a budget wrong by a factor: two units past 2σ, or one past 3σ, is
-what a 1.5× understated term looks like at these sizes. It remains short of an instrument
-that could confirm a correct budget, which is why § 2.0 lets this session refute the budget
-and not confirm it. One thing the arithmetic does not model is stated rather than buried:
-the budget's terms are charged at the frame edge while a summit near the axis carries less,
-which makes a band easier to fail than `Σ C(n,j)p1^j p0^(n−j)` says. 2σ stays the band the
-app displays and the figure every unit is reported against; 3σ is a limit no single unit
+```
+n = 6 :  0.756 + 6  × 0.04280 × 0.95450^5  = 0.756 + 0.204 = 0.960
+n = 18:  0.432 + 18 × 0.04280 × 0.95450^17 = 0.432 + 0.350 = 0.782
+n = 30:  0.247 + 30 × 0.04280 × 0.95450^29 = 0.247 + 0.332 = 0.580
+```
+
+So a correct budget passes a band with probability 0.960 at n = 6, 0.782 at n = 18 and
+0.580 at n = 30. The gate still catches a budget that is wrong by a factor — two axes past
+2σ, or one past 3σ, is what a 1.5× understated term looks like at these sizes — and it is
+still short of an instrument that could confirm a correct budget, which is why § 2.0 lets
+this session refute the budget and not confirm it. Two further things the arithmetic does
+not model are stated rather than buried: the three captures grade the same summits, so a
+summit whose peak position is wrong contributes three correlated exceedances rather than
+three draws, and the budget's terms are charged at the frame edge while a summit near the
+axis carries less. Both make a band easier to fail than `p0^n` says. 2σ stays the band the
+app displays and the figure every summit is reported against; 3σ is a limit no single draw
 should reach.
 
 **When the capture reports a fix accuracy, the limits are recomputed from it** (term 3a), and
-the tighter of the registered and the recomputed figure applies. A unit is recomputed at the
-**worst** accuracy any of its captures reported, and a unit any of whose captures reported
-none is graded against the registered row. For a 10 m accuracy, which is 4.09 m of 1σ per
-axis, at k = 1:
+the tighter of the registered and the recomputed figure applies. For a 10 m accuracy, which
+is 4.09 m of 1σ per axis:
 
 | band | 2σ H | 2σ V | 3σ H | 3σ V |
 |---|---|---|---|---|
@@ -996,8 +889,7 @@ graded summit and once for the 2 km anchor, whose term is the larger of the two 
 **Failure.** A band that fails the count above. **What happens then:** the residual is
 decomposed against §1.3 — is it one summit (check the cross-release diff and the truth
 disagreement), one axis (roll, or the observer-height choice), or a scale (field-of-view
-calibration, which is distance-independent and grows with frame offset)? The per-capture
-lines say whether the median hid a spread or the whole unit moved together. The budget is
+calibration, which is distance-independent and grows with frame offset)? The budget is
 corrected with evidence and the criterion is re-graded against the corrected figure in a
 later session. The limit is not moved.
 
@@ -1012,70 +904,15 @@ capture, and each is made against the frame it belongs to:
   more than 2 % off the track's aspect, is reported as a deviation, because truth's
   precision and its placement depend on § 2.0's frame.
 
-
 ### 2.4 F4 — The same, after a pan and a tilt
 
 **Claim.** The drag holds when the phone moves. A trim that only works at the pose it was
 set at is a coincidence.
 
-**The movement.** From an after-drag capture, **pan until the anchor summit sits at the frame
-edge** — left, then right — and tilt by ±10°. Hold 2 s each time and capture again
-without re-dragging. Four movements per anchor capture: anchor to the left edge, anchor to
-the right edge, +10° tilt, −10° tilt.
-
-**The exact measurement: the paired change.** For each summit settled in both a moved
-capture and the after-drag capture it moved from, the statistic is
-
-```
-change = (residual in the moved capture) − (residual in the reference capture)
-```
-
-per axis, signed. Not the moved capture's residual. A summit whose position is 40 m out is
-40 m out in both frames, and a criterion whose subject is the movement should not be graded
-on an error the movement did not cause. The difference cancels everything the two frames
-share and leaves what the movement did.
-
-**Unit: one summit-axis per movement.** The gated group is the movement, not the band,
-because each moved capture is one pan or one tilt and a residual that appears after one of
-them is the thing this criterion is looking for.
-
-**The budget for the change.** Four terms survive the difference; every other term of § 1.5
-cancels.
-
-| term | 1σ H | 1σ V | why it survives |
-|---|---|---|---|
-| field-of-view scale | 0.275° | 0.039° | one calibration error, displacing a marker in proportion to its offset from the axis; the pair keeps `ε·(u_moved − u_reference)`, charged at the frame edge as § 1.5 charges everything |
-| roll | 0.048° | 0.455° | two braced holds, two draws from term 7's 0.5°, so the change carries √2 of one term's edge displacement |
-| sensor hold | 0.054° | 0.054° | term 8's residual 2 s after a 20 °/s pan stops; § 1.5 drops it, and F4 carries it because the movement is what F4 is about |
-| truth read | 0.106° | 0.106° | two frames, annotated apart, so it does not cancel |
-| **RSS** | **0.304°** | **0.472°** | |
-
-What cancels, and why: the summit's own position and height (the same error in both
-frames), the observer's position and height (the person did not move), the anchor's own
-error (one drag, subtracted from both frames alike), and the drag's own precision (the same
-trim, carried round the movement). **So the paired budget does not depend on distance at
-all**, and the fix accuracy does not enter it. One row grades every band.
-
-The truth read is the term § 1.5 leaves out. It is charged here because the paired budget is
-a third of § 1.5's and a term that was under 1 % of the variance there is 12 % of it here.
-The figure comes from the instrument's own registered limit: § 2.0 refuses a grade when the
-two annotators sit more than 0.3° apart, and reading that as a 2σ bound on the difference of
-two independent reads puts one annotator at `0.3/2√2 = 0.106°`, the midpoint that truth
-uses at `0.106/√2 = 0.075°`, and two frames' difference back at `0.106°`. **That reading is
-an assumption and it is the loosest link here.** If the 0.3° were one annotator's 1σ instead,
-the term would be 0.212° and the limits below would be 0.70° and 1.00° rather than 0.60° and
-0.95°. It is registered at the tighter figure, before any field number exists, and it moves
-only with a measurement of the instrument.
-
-**Limits — 2σ rounded to the nearest 0.05°, 3σ at 1.5 × that, rounded up:**
-
-| axis | 2σ | 3σ | 2σ at a 1920 px frame |
-|---|---|---|---|
-| across | **0.60°** | 0.90° | 13.4 px |
-| up/down | **0.95°** | 1.45° | 21.2 px |
-
-This is three times tighter than F3's `far` row, and that is the point: F4 asks a much
-narrower question than F3 and can afford a much narrower tolerance.
+**The exact measurement.** From an after-drag capture, **pan until the anchor summit sits at
+the frame edge** — left, then right — and tilt by ±10°. Hold 2 s each time and capture again
+without re-dragging. Grade exactly as F3, against the same limits. Four movements per anchor
+capture: anchor to the left edge, anchor to the right edge, +10° tilt, −10° tilt.
 
 **"At the frame edge" is a number, read from the overlay as drawn.** The anchor summit's
 marker must sit at a normalised horizontal offset **u ≥ 0.8** of the half-frame, where u = 0
@@ -1089,35 +926,23 @@ The target is a pan the person can see themselves reach, rather than an angle th
 estimate. Gating on the pan angle in the pose would gate the sensor's account of the motion
 as well, inside a criterion whose subject is the drag.
 
-**Sample.** Four movement captures per after-drag capture; the summits settled in both
-frames of the pair, minus the anchor. A moved capture carries no drag of its own, so its
-anchor is the one the after-drag capture it moved from (`movedFromCaptureId`) was dragged
-onto, and the exclusion and the reporting of § 2.3 apply to it unchanged. A moved capture
-that names its own `dragAnchorSummitId` is read by that. A capture whose anchor did not
-reach u = 0.8, or whose anchor the overlay did not draw at all, is reported off-protocol and
-not graded. A tilt must still be within 5–15°, read from the pose.
+**Sample.** Four movement captures per after-drag capture; the same graded summits, minus
+any the movement pushed out of frame, and minus the anchor. A moved capture carries no drag
+of its own, so its anchor is the one the after-drag capture it moved from
+(`movedFromCaptureId`) was dragged onto, and the exclusion and the reporting of § 2.3 apply to
+it unchanged. A moved capture that names its own `dragAnchorSummitId` is read by that. A capture whose anchor did not reach u = 0.8, or whose
+anchor the overlay did not draw at all, is reported off-protocol and not graded. A tilt must
+still be within 5–15°, read from the pose.
 
-**A moved capture whose trim is not its reference's is not a pair.** Step 9 registers the
-movement as made *without re-dragging*, and the pose records the trim, so a trim that
-changed says the overlay was dragged again. The drag then does not cancel in the difference.
-Such a capture is reported under `F4.unpaired` and graded by nothing.
-
-**The verdict, per movement.** F3's fail rule: more than the allowance past 2σ, or any past
-3σ. A movement pairs three to five summits, so it is six to ten units, and a correct app
-passes one movement with probability 0.96 at n = 6 and 0.91 at n = 10 — 0.85 over all four
-movements at the smallest size. A movement pairing fewer than three summits is reported
-`no-sample` under § 2.0's stop rule, exactly as a thin band is.
-
-**Failure.** A movement that fails that count. Distinguishing F4 from F3 is the point: a
-change that appears only after the movement implicates the sensors or the roll, while an
-error present in both frames is geometry and F3 is where it is graded.
+**Failure.** A band that fails F3's count, on the moved captures. Distinguishing F4 from F3
+is the point: a residual that appears only after the movement implicates the sensors or the
+roll, while one present in both is geometry.
 
 **What the pan exercises.** At hFOV 73.74°, u = 0.8 puts the field-of-view scale term at
 0.253° of the 0.275° available at the edge, so the pan probes 92 % of that term. It also
 carries the anchor itself to 31° off the optical axis,
-where a 0.5° roll displaces it by 0.270° vertically. The result reports each unit's frame
-offset in both frames, so an edge effect can be told from a whole-frame one.
-
+where a 0.5° roll displaces it by 0.270° vertically. The result reports each graded summit's
+frame offset u, so an edge effect can be told from a whole-frame one.
 
 ### 2.5 F5 — What the labels claim
 
@@ -1215,17 +1040,9 @@ budget terms § 2.3's recomputation needs, and the F2–F5 arithmetic. `npm run 
 F1 and F6 are stopwatch numbers recorded by the person on site and are not computed from a
 bundle.
 
-**The thresholds live in code as `PREREGISTERED_THRESHOLDS`**, the per-k rows beside it and
-`PREREGISTERED_MOVEMENT_LIMITS` for § 2.4, and the analyzer takes no threshold argument. A
-run cannot be graded against anything but this document, and changing a number there changes
-it here, in the same commit, with the reason.
-
-**F3 prints one criterion per band and F4 one per movement**, named for the moved capture:
-`F3.far`, `F4.c3`. F3's `n` is the number of summit-axis units in the band — twice the
-summits — and each unit's line is followed by one line per capture whose residual went into
-its median. `F3.slipped-drag` names the after-drag captures whose anchor residual passed
-three drag terms, and `F4.unpaired` the moved captures there was no reference to difference
-against.
+**The thresholds live in code as `PREREGISTERED_THRESHOLDS`**, and the analyzer takes no
+threshold argument. A run cannot be graded against anything but this document, and changing
+a number there changes it here, in the same commit, with the reason.
 
 **The anchor of each after-drag and moved capture is printed apart from the graded table**,
 with its residual and its band, under `F3.anchor` and `F4.anchor`. A capture's anchor is its
@@ -1616,65 +1433,3 @@ inputs do not support.
   threshold is justified against that rather than against a superseded 25.
 
 No threshold moved, and no criterion changed what it grades.
-
-### 2026-09-29 — the graded unit becomes a summit, and F4 grades the change
-
-Still before any field number exists. The per-draw gate F3 and F4 shared had two faults, and
-both were found by computing what it does to an app that is exactly right.
-
-**It failed a correct app 42 % of the time at n = 30.** The gate tolerated one 2σ exceedance
-whatever the sample size, so its pass rate fell away as n grew: 0.96 at n = 6, 0.58 at
-n = 30. A gate that a correct budget fails more often than not measures the sample rather
-than the app.
-
-**It counted one bad summit three times.** The unit was one summit-axis in one capture, and
-the three after-drag captures grade the same summits. A summit whose peak position is 40 m
-out is 40 m out in all three, so one error produced three exceedances and two summits could
-fail a band the budget says should pass. The same arithmetic let three captures of a single
-summit clear a stop rule written for three summits.
-
-What changed:
-
-- **F3's unit is one summit-axis per band (§ 1.5, § 2.3)**, and its value is the median
-  signed residual over the after-drag captures that settled the summit. Every common term
-  keeps its full size under the median; only the drag shrinks, because only the drag is
-  re-made per capture.
-- **The drag term is charged at a factor keyed on k (§ 1.5, § 2.3)**: 1 at k = 1, 1/√2 at
-  k = 2, and `√(1 − √3/π) = 0.66983` at k = 3, the standard deviation of the median of three
-  standard normals, derived in § 1.5 from that median's density. § 2.3 publishes a limit
-  table per k; at k = 3 beyond 7 km the 1σ is 0.862° horizontally and 0.590° vertically, and
-  the limits are 1.70° and 1.20°.
-- **The 2σ allowance is a schedule (§ 2.3)**: one up to twelve units, two from thirteen to
-  twenty-four, one more per further twelve. A correct app now passes a band with probability
-  0.96 at n = 6, 0.91 at n = 10 and 0.88 at n = 12, instead of falling away.
-- **A slipped drag is reported (§ 2.3).** An after-drag capture whose anchor residual passes
-  three drag terms — 1.63° — is named with how many units' medians include it. Reported,
-  never gated: a median over three captures survives one bad draw, and discarding the
-  capture would let the grader choose its own observations.
-- **F4 grades the paired change (§ 2.4).** The statistic is the moved capture's residual
-  minus the reference after-drag capture's, per axis, for a summit settled in both. The
-  geometry, the anchor and the drag cancel; the field-of-view scale at the new offset, the
-  roll of the new hold, the sensors' settle over the move and the truth read of a second
-  frame do not. Its budget is 0.304° horizontally and 0.472° vertically, so its limits are
-  0.60° and 0.95° at 2σ — one row for every band, because nothing left in it depends on
-  distance. The unit is a summit-axis per movement and each movement is gated on its own.
-- **§ 2.4 charges a truth-read term, which § 1.5 does not.** At 0.106°, derived from § 2.0's
-  0.3° disagreement limit read as a 2σ bound, it is under 1 % of F3's variance and 12 % of
-  F4's. The reading is an assumption and § 2.4 states what it would cost if it were wrong.
-- **A moved capture whose trim is not its reference's is reported unpaired (§ 2.4)**, because
-  step 9 registers the movement as made without re-dragging and the drag does not otherwise
-  cancel.
-
-No F3 limit was widened. Every k = 2 and k = 3 row is tighter than the k = 1 row it replaces,
-and F4's limits are about a third of the F3 limits it used to borrow. The `u ≥ 0.8` pan
-target, the tilt envelope, the off-protocol rules, the stop rule, the anchor exclusion and
-the bands themselves are unchanged.
-
-**The committed `aligned` fixture now fails `F4.c3`, and the fixture was not adjusted to
-prevent it.** That fixture draws every summit with an error of its own in every capture,
-about ±10 px, independent between the reference and the moved capture. Each one is inside
-F3's 1.90° far band, so F3 still passes. The paired change differences them, where a
-summit's own position error would cancel and an independent redraw does not, and two units
-land past the 0.60° movement budget. A real summit carries one position error into both
-frames of a pair, so what failed is the fixture's noise model rather than the criterion. The
-fixture stays as it is, and `fixtures/field/README.md` records the verdict.

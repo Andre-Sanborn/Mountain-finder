@@ -22,10 +22,24 @@
  * anything else. Changing a number here changes it there, in the same commit,
  * with the reason.
  *
- * Each band carries a 2σ band and a 3σ limit, and the verdict is the band's
- * rather than the summit's: more than `MAX_TWO_SIGMA_EXCEEDANCES` summit-axes
- * past 2σ fails it, and one axis past 3σ fails it alone. Every summit is
- * reported against 2σ either way.
+ * ── THE GRADED UNIT IS A SUMMIT, NOT A CAPTURE ─────────────────────────────
+ * F3's unit is one summit-axis per band, and its value is the MEDIAN signed
+ * residual over the after-drag captures that settled that summit. The three
+ * after-drag captures grade the same summits, so a summit whose peak position
+ * is wrong appears in all three: a per-capture unit counts one error three
+ * times, and a gate built on it failed a correct app 42 % of the time. The
+ * median leaves every common term at full size and shrinks only the drag, which
+ * is the one term re-made per capture — by `MEDIAN_SIGMA_FACTORS`[k−1].
+ *
+ * A band fails when more than `twoSigmaAllowanceFor(n)` units sit past 2σ, or
+ * when any one sits past 3σ. Every unit is reported against 2σ either way, and
+ * every capture behind it is printed with its own residual.
+ *
+ * F4's unit is one summit-axis per movement, and its value is the PAIRED
+ * CHANGE: the moved capture's residual minus the residual of the after-drag
+ * capture it moved from. The geometry, the anchor and the drag are the same
+ * error in both frames and cancel, so `PREREGISTERED_MOVEMENT_LIMITS` is one
+ * row for every band and does not depend on distance.
  *
  * A capture that reports its own fix accuracy is graded against the limits that
  * accuracy implies, by `bandLimitsFor` and the terms in `BUDGET_TERMS`. That can
@@ -173,71 +187,159 @@ export interface BandThreshold extends BandLimits {
  * boundary separates the vertical ones, so all three take the `far` row. They
  * stay separate rows so the result reports how many summits each band held.
  */
-export const PREREGISTERED_THRESHOLDS: readonly BandThreshold[] = [
-  {
-    band: 'near',
-    fromKm: 0,
-    toKm: 3,
-    budgetDistanceKm: 2,
-    horizontalDeg: 2.35,
-    verticalDeg: 1.55,
-    horizontal3SigmaDeg: 3.55,
-    vertical3SigmaDeg: 2.35,
-  },
-  {
-    band: 'mid',
-    fromKm: 3,
-    toKm: 7,
-    budgetDistanceKm: 5,
-    horizontalDeg: 1.95,
-    verticalDeg: 1.45,
-    horizontal3SigmaDeg: 2.95,
-    vertical3SigmaDeg: 2.2,
-  },
-  {
-    band: 'far',
-    fromKm: 7,
-    toKm: 20,
-    budgetDistanceKm: 10,
-    horizontalDeg: 1.9,
-    verticalDeg: 1.45,
-    horizontal3SigmaDeg: 2.85,
-    vertical3SigmaDeg: 2.2,
-  },
-  {
-    band: 'distant',
-    fromKm: 20,
-    toKm: 45,
-    budgetDistanceKm: 30,
-    horizontalDeg: 1.9,
-    verticalDeg: 1.45,
-    horizontal3SigmaDeg: 2.85,
-    vertical3SigmaDeg: 2.2,
-  },
-  {
-    band: 'horizon',
-    fromKm: 45,
-    toKm: Infinity,
-    budgetDistanceKm: 60,
-    horizontalDeg: 1.9,
-    verticalDeg: 1.45,
-    horizontal3SigmaDeg: 2.85,
-    vertical3SigmaDeg: 2.2,
-  },
+/** A band's 2σ H, 2σ V, 3σ H, 3σ V, degrees. */
+type LimitRow = readonly [number, number, number, number];
+
+function thresholdsFor(rows: Readonly<Record<BandId, LimitRow>>): readonly BandThreshold[] {
+  const row = (
+    band: BandId,
+    fromKm: number,
+    toKm: number,
+    budgetDistanceKm: number,
+  ): BandThreshold => {
+    const [horizontalDeg, verticalDeg, horizontal3SigmaDeg, vertical3SigmaDeg] = rows[band];
+    return {
+      band,
+      fromKm,
+      toKm,
+      budgetDistanceKm,
+      horizontalDeg,
+      verticalDeg,
+      horizontal3SigmaDeg,
+      vertical3SigmaDeg,
+    };
+  };
+  return [
+    row('near', 0, 3, 2),
+    row('mid', 3, 7, 5),
+    row('far', 7, 20, 10),
+    row('distant', 20, 45, 30),
+    row('horizon', 45, Infinity, 60),
+  ];
+}
+
+export const PREREGISTERED_THRESHOLDS: readonly BandThreshold[] = thresholdsFor({
+  near: [2.35, 1.55, 3.55, 2.35],
+  mid: [1.95, 1.45, 2.95, 2.2],
+  far: [1.9, 1.45, 2.85, 2.2],
+  distant: [1.9, 1.45, 2.85, 2.2],
+  horizon: [1.9, 1.45, 2.85, 2.2],
+});
+
+/**
+ * The limits for a unit whose median ran over two, then three, after-drag
+ * captures: § 2.3's per-k table.
+ *
+ * Only the drag term moves. Averaging the same summit over more captures buys
+ * nothing on its peak position, the anchor's position, the field-of-view scale
+ * or the roll, because each of those is one error repeated in every capture.
+ * The drag is re-made per capture (step 10 re-drags without re-bracing), so the
+ * median of k of them carries {@link MEDIAN_SIGMA_FACTORS}[k−1] of one drag.
+ */
+const MEDIAN_THRESHOLDS_BY_K: readonly (readonly BandThreshold[])[] = [
+  PREREGISTERED_THRESHOLDS,
+  thresholdsFor({
+    near: [2.25, 1.35, 3.4, 2.05],
+    mid: [1.8, 1.25, 2.7, 1.9],
+    far: [1.75, 1.2, 2.65, 1.8],
+    distant: [1.75, 1.2, 2.65, 1.8],
+    horizon: [1.75, 1.2, 2.65, 1.8],
+  }),
+  thresholdsFor({
+    near: [2.2, 1.35, 3.3, 2.05],
+    mid: [1.8, 1.2, 2.7, 1.8],
+    far: [1.7, 1.2, 2.55, 1.8],
+    distant: [1.7, 1.2, 2.55, 1.8],
+    horizon: [1.7, 1.2, 2.55, 1.8],
+  }),
 ];
 
 /**
- * How many summit-axes in one band may sit past 2σ and the band still pass.
+ * How much of one drag's precision the median of k drags carries, k = 1, 2, 3.
  *
- * One. At 2σ a correct budget puts 4.55 % of axis draws outside, so "every axis
- * inside 2σ" passes a correct budget with probability 0.9545^n — 0.432 at the
- * 18 axis draws a three-summit band produces over three after-drag captures,
- * and 0.247 at 30. A gate a correct budget fails more than half the time
- * measures the sample size. Tolerating one exceedance while refusing any 3σ
- * excursion passes 0.782 at n = 18 and 0.580 at n = 30 (pre-registration
- * § 2.3), which is better and still short of confirming a correct budget.
+ * k = 1 is one drag. k = 2 is the median of two, which is their mean, so
+ * 1/√2. k = 3 is the standard deviation of the median of three standard
+ * normals. The median of three has density `6·Φ(x)(1−Φ(x))·φ(x)`, so
+ *
+ *     Var = 6∫x²φΦ − 6∫x²φΦ² = 6·(1/2) − 6·(1/3 + √3/6π) = 1 − √3/π = 0.44867
+ *
+ * using ∫x²φΦ = 1/2 by symmetry and ∫x²φΦ² = 1/3 + √3/6π. Its square root is
+ * 0.66983. Derived in § 1.5 of the pre-registration.
+ */
+export const MEDIAN_SIGMA_FACTORS: readonly number[] = [
+  1,
+  Math.SQRT1_2,
+  Math.sqrt(1 - Math.sqrt(3) / Math.PI),
+];
+
+/** After-drag captures the protocol registers per summit (§ 2.7 step 10). */
+export const MAX_REGISTERED_CAPTURES_PER_UNIT = 3;
+
+/**
+ * The drag factor for a unit built from k captures.
+ *
+ * Beyond the registered three the table has no figure, so the k = 3 factor is
+ * charged. That is the permissive direction — a median of four or more drags is
+ * steadier than one of three — and a unit charged that way says so in the
+ * report rather than passing quietly.
+ */
+export function medianSigmaFactor(captureCount: number): number {
+  const index = Math.min(Math.max(captureCount, 1), MAX_REGISTERED_CAPTURES_PER_UNIT) - 1;
+  return MEDIAN_SIGMA_FACTORS[index] ?? 1;
+}
+
+/** The registered limits for a band, for a unit built from k captures. */
+export function thresholdForCaptureCount(
+  threshold: BandThreshold,
+  captureCount: number,
+): BandThreshold {
+  const index = Math.min(Math.max(captureCount, 1), MAX_REGISTERED_CAPTURES_PER_UNIT) - 1;
+  const table = MEDIAN_THRESHOLDS_BY_K[index] ?? PREREGISTERED_THRESHOLDS;
+  return table.find((row) => row.band === threshold.band) ?? threshold;
+}
+
+/**
+ * How many summit-axis units in one group may sit past 2σ and it still pass,
+ * the first step of the schedule.
+ *
+ * One, up to twelve units. At 2σ a correct budget puts 4.55 % of units outside,
+ * so "every unit inside 2σ" passes a correct budget with probability 0.9545^n,
+ * which is 0.76 at the six units a three-summit band produces and 0.58 at
+ * twelve. Tolerating one while refusing any 3σ excursion passes 0.960 at n = 6
+ * and 0.880 at n = 12 (pre-registration § 2.3).
  */
 export const MAX_TWO_SIGMA_EXCEEDANCES = 1;
+
+/** Units per further tolerated 2σ exceedance, beyond the first twelve. */
+export const TWO_SIGMA_ALLOWANCE_STEP = 12;
+
+/**
+ * Tolerated 2σ exceedances for a group of n summit-axis units.
+ *
+ * One up to twelve units, two from thirteen to twenty-four, and one more per
+ * further twelve. A fixed allowance of one falls away as n grows — 0.68 at
+ * n = 24 — so the schedule holds a correct budget's pass rate near 0.9 over
+ * every size this session produces. A band here holds three to five summits,
+ * which is six to ten units, so the first step is the one that normally
+ * applies.
+ */
+export function twoSigmaAllowanceFor(units: number): number {
+  if (units <= 0) return MAX_TWO_SIGMA_EXCEEDANCES;
+  return MAX_TWO_SIGMA_EXCEEDANCES + Math.floor((units - 1) / TWO_SIGMA_ALLOWANCE_STEP);
+}
+
+/**
+ * How far an after-drag capture's anchor residual may sit from zero before the
+ * drag is reported as having slipped: three times the drag term.
+ *
+ * The anchor's residual is the drag's own precision and nothing else (§ 1.1),
+ * so a residual past 3σ of that one term is a drag that did not land where the
+ * person meant it to. Such a capture is named, with how many units' medians
+ * include it, and nothing is gated on it: a median over three captures survives
+ * one bad draw, and a rule that dropped the capture would let the grader choose
+ * which observations to keep.
+ */
+export const SLIPPED_DRAG_SIGMAS = 3;
 
 /**
  * Fewest graded summits a band needs before its verdict may be a pass.
@@ -300,6 +402,74 @@ export const BUDGET_TERMS = {
   dragDeg: 0.543,
 } as const;
 
+/** An anchor residual past this reports a slipped drag (§ 2.3). */
+export const SLIPPED_DRAG_DEG = SLIPPED_DRAG_SIGMAS * BUDGET_TERMS.dragDeg;
+
+/**
+ * The paired-change budget of § 2.4, degrees, 1σ.
+ *
+ * F4 grades `moved residual − reference residual` for one summit across one
+ * movement. The summit's own position, the observer's position, the anchor's
+ * position and the drag are the same error in both frames, so they subtract
+ * out. What is left is what the movement itself changed.
+ *
+ * - **Field-of-view scale.** One calibration error, displacing a marker in
+ *   proportion to its offset from the axis. The pair keeps
+ *   `ε·(u_moved − u_reference)`, charged at the frame edge like every term in
+ *   § 1.5: 0.275° across, 0.039° up/down.
+ * - **Roll.** Two braced holds, two draws from term 7's 0.5° spread, so the
+ *   change carries √2 of one: 0.048° across and 0.455° up/down at the edge.
+ * - **Sensor hold.** Term 8's residual 2 s after a 20 °/s pan stops, 0.054°.
+ *   F3 drops this term; F4 carries it, because the movement is what F4 is
+ *   about and a term the movement creates belongs in its budget.
+ * - **Truth read.** Two frames, annotated apart, so it does not cancel.
+ *   {@link MAX_TRUTH_DISAGREEMENT_DEG} read as a 2σ bound on the difference of
+ *   two annotators puts one annotator at 0.3/2√2 = 0.106°, the midpoint truth
+ *   at 0.075°, and the two frames' difference back at 0.106°. § 1.5 charges no
+ *   truth term because it is invisible against a 0.95° budget; here the budget
+ *   is a third of that and the term is not.
+ */
+export const MOVEMENT_BUDGET_TERMS = {
+  fovHorizontalDeg: BUDGET_TERMS.fovHorizontalDeg,
+  fovVerticalDeg: BUDGET_TERMS.fovVerticalDeg,
+  rollHorizontalDeg: Math.SQRT2 * BUDGET_TERMS.rollHorizontalDeg,
+  rollVerticalDeg: Math.SQRT2 * BUDGET_TERMS.rollVerticalDeg,
+  sensorHoldDeg: 0.054,
+  truthReadDeg: 0.3 / (2 * Math.SQRT2),
+} as const;
+
+/**
+ * The limits F4 grades a paired change against: § 2.4, 2σ of
+ * {@link MOVEMENT_BUDGET_TERMS} rounded to 0.05°, and 3σ at 1.5 × that.
+ *
+ * One row, not five. Every distance-dependent term cancels in the pair, so a
+ * 60 km summit's change is budgeted exactly like a 2 km one, and the fix
+ * accuracy does not enter at all.
+ */
+export const PREREGISTERED_MOVEMENT_LIMITS = {
+  horizontalDeg: 0.6,
+  verticalDeg: 0.95,
+  horizontal3SigmaDeg: 0.9,
+  vertical3SigmaDeg: 1.45,
+} as const;
+
+/** The 1σ paired change of § 2.4, rebuilt from {@link MOVEMENT_BUDGET_TERMS}. */
+export function movementSigma(): {
+  readonly horizontalDeg: number;
+  readonly verticalDeg: number;
+} {
+  const t = MOVEMENT_BUDGET_TERMS;
+  return {
+    horizontalDeg: Math.hypot(
+      t.fovHorizontalDeg,
+      t.rollHorizontalDeg,
+      t.sensorHoldDeg,
+      t.truthReadDeg,
+    ),
+    verticalDeg: Math.hypot(t.fovVerticalDeg, t.rollVerticalDeg, t.sensorHoldDeg, t.truthReadDeg),
+  };
+}
+
 /**
  * What a reported horizontal accuracy means, and the divisor that follows.
  *
@@ -345,24 +515,26 @@ function metresAsDeg(metres: number, distanceKm: number): number {
 export function bandSigmaFor(
   threshold: BandThreshold,
   observerPositionM: number = BUDGET_TERMS.observerPositionM,
+  captureCount = 1,
 ): { readonly horizontalDeg: number; readonly verticalDeg: number } {
   const t = BUDGET_TERMS;
   const geodesyHorizontalM = Math.hypot(t.peakPositionM, observerPositionM);
   const geodesyVerticalM = Math.hypot(t.summitElevationM, t.observerHeightM);
+  const dragDeg = t.dragDeg * medianSigmaFactor(captureCount);
   return {
     horizontalDeg: Math.hypot(
       metresAsDeg(geodesyHorizontalM, threshold.budgetDistanceKm),
       metresAsDeg(geodesyHorizontalM, t.anchorDistanceKm),
       t.fovHorizontalDeg,
       t.rollHorizontalDeg,
-      t.dragDeg,
+      dragDeg,
     ),
     verticalDeg: Math.hypot(
       metresAsDeg(geodesyVerticalM, threshold.budgetDistanceKm),
       metresAsDeg(geodesyVerticalM, t.anchorDistanceKm),
       t.fovVerticalDeg,
       t.rollVerticalDeg,
-      t.dragDeg,
+      dragDeg,
     ),
   };
 }
@@ -379,20 +551,26 @@ export function bandSigmaFor(
 export function bandLimitsFor(
   threshold: BandThreshold,
   observerAccuracyM?: number,
+  captureCount = 1,
 ): BandLimits {
-  if (observerAccuracyM === undefined) return threshold;
-  const sigma = bandSigmaFor(threshold, observerSigmaFromAccuracyM(observerAccuracyM));
-  const horizontalDeg = Math.min(roundUpToStep(2 * sigma.horizontalDeg), threshold.horizontalDeg);
-  const verticalDeg = Math.min(roundUpToStep(2 * sigma.verticalDeg), threshold.verticalDeg);
+  const registered = thresholdForCaptureCount(threshold, captureCount);
+  if (observerAccuracyM === undefined) return registered;
+  const sigma = bandSigmaFor(
+    threshold,
+    observerSigmaFromAccuracyM(observerAccuracyM),
+    captureCount,
+  );
+  const horizontalDeg = Math.min(roundUpToStep(2 * sigma.horizontalDeg), registered.horizontalDeg);
+  const verticalDeg = Math.min(roundUpToStep(2 * sigma.verticalDeg), registered.verticalDeg);
   return {
-    band: threshold.band,
+    band: registered.band,
     horizontalDeg,
     verticalDeg,
     horizontal3SigmaDeg: Math.min(
       roundUpToStep(1.5 * horizontalDeg),
-      threshold.horizontal3SigmaDeg,
+      registered.horizontal3SigmaDeg,
     ),
-    vertical3SigmaDeg: Math.min(roundUpToStep(1.5 * verticalDeg), threshold.vertical3SigmaDeg),
+    vertical3SigmaDeg: Math.min(roundUpToStep(1.5 * verticalDeg), registered.vertical3SigmaDeg),
   };
 }
 
@@ -2322,7 +2500,7 @@ export interface Criterion {
   /** What was claimed, in one line. */
   readonly claim: string;
   readonly outcome: Outcome;
-  /** How many summit-observations the criterion was graded on. */
+  /** What the criterion was graded on: units for F3 and F4, observations elsewhere. */
   readonly n: number;
   /** The numbers behind the outcome. One claim per line, no coordinates. */
   readonly evidence: readonly string[];
@@ -2342,12 +2520,9 @@ export interface RuleBoundSplit {
   readonly free: TruthDisagreement;
 }
 
-/** One graded summit-observation. Carries a band label, never a distance. */
-export interface GradedSummit {
+/** One capture's contribution to a unit. Carries a band label, never a distance. */
+export interface CaptureResidual {
   readonly captureId: string;
-  readonly summitId: string;
-  readonly name: string;
-  readonly band: BandId;
   readonly residual: Residual;
   /** 0 at the frame centre, 1 at its edge. Separates the scale terms. */
   readonly frameOffset: number;
@@ -2356,7 +2531,65 @@ export interface GradedSummit {
   readonly landmark?: string;
   /** The registered apex rule both annotators followed, when both quoted one. */
   readonly rule?: string;
+}
+
+/**
+ * One graded unit: one summit, over every after-drag capture that settled it.
+ *
+ * The unit's value is the MEDIAN signed residual per axis, not one capture's.
+ * The same summit graded in three captures is one draw of its peak position,
+ * its height and the anchor's position, so counting it three times counts one
+ * error three times. The median leaves those terms unchanged and shrinks the
+ * drag, which is the one term re-made per capture.
+ */
+export interface GradedSummit {
+  readonly summitId: string;
+  readonly name: string;
+  readonly band: BandId;
+  /** k: after-drag captures where both annotators settled this summit. */
+  readonly captureCount: number;
+  readonly captures: readonly CaptureResidual[];
+  /** The unit's value: the median signed residual, per axis. */
+  readonly residual: Residual;
+  /** The median of the per-capture offsets. */
+  readonly frameOffset: number;
+  /** The widest of the per-capture annotator disagreements. */
+  readonly truthDisagreementDeg: number;
+  /** The point feature both annotators took the apex from, in every capture. */
+  readonly landmark?: string;
+  /** The registered apex rule both annotators followed, in every capture. */
+  readonly rule?: string;
+  /** The limits this unit was graded against, at its k. */
+  readonly limits: BandLimits;
   /** Inside the 2σ band on both axes. */
+  readonly withinThreshold: boolean;
+  readonly exceedances: readonly AxisExceedance[];
+  readonly axesOverTwoSigma: number;
+  readonly axesOverThreeSigma: number;
+}
+
+/**
+ * One graded paired change: one summit, one movement.
+ *
+ * The statistic is the moved capture's residual minus the residual of the
+ * after-drag capture it moved from. What the two frames share — the summit's
+ * position, the observer's, the anchor's, the drag — cancels, so what is left
+ * is what the movement did.
+ */
+export interface GradedMovement {
+  readonly captureId: string;
+  readonly referenceCaptureId: string;
+  readonly summitId: string;
+  readonly name: string;
+  readonly band: BandId;
+  /** Moved minus reference, per axis. The unit's value. */
+  readonly change: Residual;
+  readonly movedResidual: Residual;
+  readonly referenceResidual: Residual;
+  /** The summit's offset from the axis in the moved frame, 0 centre, 1 edge. */
+  readonly frameOffset: number;
+  readonly referenceFrameOffset: number;
+  readonly truthDisagreementDeg: number;
   readonly withinThreshold: boolean;
   readonly exceedances: readonly AxisExceedance[];
   readonly axesOverTwoSigma: number;
@@ -2368,7 +2601,10 @@ export interface FieldAnalysis {
   readonly device: string;
   readonly captureCount: number;
   readonly criteria: readonly Criterion[];
+  /** F3's units: one per summit per band, each a median over its captures. */
   readonly graded: readonly GradedSummit[];
+  /** F4's units: one per summit per movement, each a paired change. */
+  readonly movements: readonly GradedMovement[];
   /**
    * What each annotator was given, one line each.
    *
@@ -2535,32 +2771,104 @@ interface Observation {
 }
 
 /**
- * One row of the graded table, or nothing when the summit's distance falls in no
- * band. The limits come from the capture, because a capture that reported its
- * own fix accuracy is graded against the budget that accuracy implies.
+ * One capture's residual for one summit, with what choosing the limits needs.
+ *
+ * A unit is a median over several of these, so the pieces the median does not
+ * touch — the distance that picks the band, and the fix accuracy that can
+ * tighten it — travel with each contribution rather than being read back off a
+ * capture later.
  */
-function gradedSummitOf(
+interface CaptureContribution extends CaptureResidual {
+  readonly distanceKm: number;
+  readonly horizontalAccuracyM?: number;
+}
+
+/** What one capture contributes, or nothing when its crop cannot be recovered. */
+function contributionOf(
   capture: Capture,
   summit: DrawnSummit,
   truth: Extract<SummitTruth, { kind: 'located' }>,
-): GradedSummit | undefined {
-  const { apexPx, disagreementDeg: truthDisagreementDeg, landmark, rule } = truth;
-  const threshold = bandFor(summit.distanceKm);
-  if (threshold === undefined) return undefined;
-  const limits = bandLimitsFor(threshold, capture.horizontalAccuracyM);
-  const residual = residualOf(capture, summit.summitPx, apexPx);
+): CaptureContribution | undefined {
+  const residual = residualOf(capture, summit.summitPx, truth.apexPx);
   if (residual === undefined) return undefined;
-  const exceedances = exceedancesOf(residual, limits);
   return {
     captureId: capture.captureId,
-    summitId: summit.summitId,
-    name: summit.name,
-    band: threshold.band,
     residual,
-    frameOffset: frameOffsetFraction(apexPx.xPx, capture.framePx.widthPx),
-    truthDisagreementDeg,
+    frameOffset: frameOffsetFraction(truth.apexPx.xPx, capture.framePx.widthPx),
+    truthDisagreementDeg: truth.disagreementDeg,
+    ...(truth.landmark !== undefined ? { landmark: truth.landmark } : {}),
+    ...(truth.rule !== undefined ? { rule: truth.rule } : {}),
+    distanceKm: summit.distanceKm,
+    ...(capture.horizontalAccuracyM !== undefined
+      ? { horizontalAccuracyM: capture.horizontalAccuracyM }
+      : {}),
+  };
+}
+
+/** The middle value, or the mean of the two middle ones. */
+function medianOf(values: readonly number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  const upper = sorted[mid] ?? 0;
+  return sorted.length % 2 === 1 ? upper : ((sorted[mid - 1] ?? 0) + upper) / 2;
+}
+
+/** The median taken per axis, which is what a summit-axis unit's value is. */
+function medianResidual(residuals: readonly Residual[]): Residual {
+  return {
+    horizontalDeg: medianOf(residuals.map((r) => r.horizontalDeg)),
+    verticalDeg: medianOf(residuals.map((r) => r.verticalDeg)),
+    horizontalPx: medianOf(residuals.map((r) => r.horizontalPx)),
+    verticalPx: medianOf(residuals.map((r) => r.verticalPx)),
+  };
+}
+
+/** A value every contribution agrees on, or nothing. */
+function sharedValue(values: readonly (string | undefined)[]): string | undefined {
+  const first = values[0];
+  if (first === undefined) return undefined;
+  return values.every((value) => value === first) ? first : undefined;
+}
+
+/**
+ * One graded unit from one summit's contributions, or nothing when its distance
+ * falls in no band.
+ *
+ * The band comes from the median distance, so a summit whose reported distance
+ * wobbles between captures is still graded once. The fix accuracy taken is the
+ * WORST any contributing capture reported, and a unit any of whose captures
+ * reported none is graded against the registered row: a good fix in one capture
+ * cannot tighten a unit the others were graded loosely in.
+ */
+function unitOf(
+  summitId: string,
+  name: string,
+  contributions: readonly CaptureContribution[],
+): GradedSummit | undefined {
+  if (contributions.length === 0) return undefined;
+  const threshold = bandFor(medianOf(contributions.map((c) => c.distanceKm)));
+  if (threshold === undefined) return undefined;
+  const accuracies = contributions.map((c) => c.horizontalAccuracyM);
+  const accuracy = accuracies.every((value) => value !== undefined)
+    ? Math.max(...accuracies)
+    : undefined;
+  const limits = bandLimitsFor(threshold, accuracy, contributions.length);
+  const residual = medianResidual(contributions.map((c) => c.residual));
+  const exceedances = exceedancesOf(residual, limits);
+  const landmark = sharedValue(contributions.map((c) => c.landmark));
+  const rule = sharedValue(contributions.map((c) => c.rule));
+  return {
+    summitId,
+    name,
+    band: threshold.band,
+    captureCount: contributions.length,
+    captures: contributions.map(({ distanceKm: _d, horizontalAccuracyM: _a, ...rest }) => rest),
+    residual,
+    frameOffset: medianOf(contributions.map((c) => c.frameOffset)),
+    truthDisagreementDeg: Math.max(...contributions.map((c) => c.truthDisagreementDeg)),
     ...(landmark !== undefined ? { landmark } : {}),
     ...(rule !== undefined ? { rule } : {}),
+    limits,
     withinThreshold: withinThreshold(residual, limits),
     exceedances,
     axesOverTwoSigma: exceedances.filter((axis) => axis.overTwoSigma).length,
@@ -2809,58 +3117,134 @@ function anchorLineOf(
 ): string {
   const head = `${capture.captureId} ${summit.name}: anchor, not graded`;
   if (truth.kind !== 'located') return `${head} — its truth gives no apex to measure against`;
-  const row = gradedSummitOf(capture, summit, truth);
-  if (row === undefined) return `${head} — it falls in no tolerance band, so it has no residual`;
+  const threshold = bandFor(summit.distanceKm);
+  const contribution = contributionOf(capture, summit, truth);
+  if (threshold === undefined || contribution === undefined) {
+    return `${head} — it falls in no tolerance band, so it has no residual`;
+  }
   return (
-    `${head}. Its residual is ${Math.abs(row.residual.horizontalDeg).toFixed(3)}° across and ` +
-    `${Math.abs(row.residual.verticalDeg).toFixed(3)}° up/down, at ${(row.frameOffset * 100).toFixed(0)}% ` +
-    `of the half-frame, in the ${row.band} band`
+    `${head}. Its residual is ${Math.abs(contribution.residual.horizontalDeg).toFixed(3)}° across and ` +
+    `${Math.abs(contribution.residual.verticalDeg).toFixed(3)}° up/down, at ${(contribution.frameOffset * 100).toFixed(0)}% ` +
+    `of the half-frame, in the ${threshold.band} band`
   );
 }
 
+/** One unit's line, and one line per capture whose residual went into it. */
+function unitEvidence(row: GradedSummit): readonly string[] {
+  const across = row.exceedances[0];
+  const upDown = row.exceedances[1];
+  const flag =
+    row.axesOverThreeSigma > 0 ? ' — OVER 3σ' : row.axesOverTwoSigma > 0 ? ' — over 2σ' : '';
+  const mark =
+    (row.landmark === undefined ? '' : ` [landmark: ${row.landmark}]`) +
+    (row.rule === undefined ? '' : ` [rule: ${row.rule}]`);
+  const head =
+    `${row.name}: median of ${row.captureCount} capture(s) — ` +
+    `${Math.abs(row.residual.horizontalDeg).toFixed(3)}° across (2σ ${across?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${across?.threeSigmaDeg.toFixed(2) ?? '?'}°), ` +
+    `${Math.abs(row.residual.verticalDeg).toFixed(3)}° up/down (2σ ${upDown?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${upDown?.threeSigmaDeg.toFixed(2) ?? '?'}°), ` +
+    `at ${(row.frameOffset * 100).toFixed(0)}% of the half-frame, truth ±${row.truthDisagreementDeg.toFixed(3)}°${mark}${flag}`;
+  const perCapture = row.captures.map(
+    (capture) =>
+      `    ${capture.captureId} ${row.name}: ${capture.residual.horizontalDeg.toFixed(3)}° across, ` +
+      `${capture.residual.verticalDeg.toFixed(3)}° up/down, at ${(capture.frameOffset * 100).toFixed(0)}% ` +
+      `of the half-frame, truth ±${capture.truthDisagreementDeg.toFixed(3)}°`,
+  );
+  const overRegistered =
+    row.captureCount > MAX_REGISTERED_CAPTURES_PER_UNIT
+      ? [
+          `    charged at the ${MAX_REGISTERED_CAPTURES_PER_UNIT}-capture drag factor, which is the most § 1.5 registers; a median of ${row.captureCount} is steadier than that, so this unit was graded more loosely than it deserved`,
+        ]
+      : [];
+  return [head, ...perCapture, ...overRegistered];
+}
+
+/** What a group of units failed, or that it passed. One implementation. */
+interface GateVerdict {
+  readonly units: number;
+  readonly allowance: number;
+  readonly overTwoSigma: number;
+  readonly overThreeSigma: number;
+  readonly failed: boolean;
+  readonly line: string;
+}
+
+function gateOf(
+  rows: readonly { readonly axesOverTwoSigma: number; readonly axesOverThreeSigma: number }[],
+): GateVerdict {
+  const units = rows.length * 2;
+  const allowance = twoSigmaAllowanceFor(units);
+  const overTwoSigma = rows.reduce((count, row) => count + row.axesOverTwoSigma, 0);
+  const overThreeSigma = rows.reduce((count, row) => count + row.axesOverThreeSigma, 0);
+  return {
+    units,
+    allowance,
+    overTwoSigma,
+    overThreeSigma,
+    failed: overThreeSigma > 0 || overTwoSigma > allowance,
+    line: `${overTwoSigma} of ${units} summit-axis unit(s) past 2σ (${allowance} tolerated at this n), ${overThreeSigma} past 3σ (none tolerated)`,
+  };
+}
+
 /**
- * Grade the after-drag residuals of whichever captures `select` picks.
+ * F3 — the after-drag residuals, one unit per summit-axis per band.
  *
- * The verdict is the band's, not the summit's. Every summit is reported against
- * the 2σ band it was budgeted for, and the band fails only when more than
- * {@link MAX_TWO_SIGMA_EXCEEDANCES} summit-axes sit past 2σ, or when any one
- * sits past 3σ. A single 2σ exceedance is what a correct budget produces at this
- * n, so treating it as a failure would grade the sample size.
+ * **The unit is a summit-axis, not a capture-axis.** The three after-drag
+ * captures grade the same summits, so a summit whose peak position is wrong
+ * appears in all three: counting each capture separately counts one error three
+ * times, and a per-draw gate failed a correct app 42 % of the time at the n that
+ * produces. The unit's value is the median signed residual over the captures
+ * that settled the summit, and its limits come from that k (§ 2.3).
  *
  * **The drag anchor is not graded.** The drag aligned the overlay onto that one
- * summit, so its residual is the drag's own precision and nothing else (§ 1.1):
- * grading it would report the anchor against itself and count a residual that is
- * near zero by construction as evidence about the other summits. It is reported
- * with its residual under `<id>.anchor` and counted there.
+ * summit, so its residual is the drag's own precision and nothing else (§ 1.1).
+ * It is reported with its residual under `F3.anchor`, and an anchor residual
+ * past three drag terms is reported again under `F3.slipped-drag` with how many
+ * units' medians include that capture.
  */
-function gradePositional(
-  id: string,
-  claim: string,
+function gradeF3(
   observations: readonly Observation[],
   anchorOf: (capture: Capture) => string | undefined,
-  select: (capture: Capture) => boolean,
-): readonly Criterion[] {
-  const rows: GradedSummit[] = [];
+): { readonly criteria: readonly Criterion[]; readonly graded: readonly GradedSummit[] } {
   const disputed: string[] = [];
   const excluded: string[] = [];
   const anchors: string[] = [];
-  /** Drawn summits per band, whatever their truth. The stop rule counts these. */
-  const drawnPerBand = new Map<BandId, number>();
+  const slipped: { readonly captureId: string; readonly line: string }[] = [];
+  /** Distinct summits drawn per band, whatever their truth. The stop rule counts these. */
+  const drawnPerBand = new Map<BandId, Set<string>>();
   /** Anchor observations per band, which the stop rule counts apart. */
   const anchorsPerBand = new Map<BandId, number>();
+  const bySummit = new Map<string, { name: string; contributions: CaptureContribution[] }>();
 
   for (const { capture, summit, truth } of observations) {
-    if (!select(capture)) continue;
+    if (capture.role !== 'after-drag') continue;
     const drawnBand = bandFor(summit.distanceKm);
     if (summit.summitId === anchorOf(capture)) {
       if (drawnBand !== undefined) {
         anchorsPerBand.set(drawnBand.band, (anchorsPerBand.get(drawnBand.band) ?? 0) + 1);
       }
       anchors.push(anchorLineOf(capture, summit, truth));
+      if (truth.kind === 'located') {
+        const contribution = contributionOf(capture, summit, truth);
+        const worst =
+          contribution === undefined
+            ? 0
+            : Math.max(
+                Math.abs(contribution.residual.horizontalDeg),
+                Math.abs(contribution.residual.verticalDeg),
+              );
+        if (worst > SLIPPED_DRAG_DEG) {
+          slipped.push({
+            captureId: capture.captureId,
+            line: `${capture.captureId} ${summit.name}: the anchor sat ${worst.toFixed(3)}° off on its worst axis, past the ${SLIPPED_DRAG_DEG.toFixed(2)}° that is ${SLIPPED_DRAG_SIGMAS} drag terms`,
+          });
+        }
+      }
       continue;
     }
     if (drawnBand !== undefined) {
-      drawnPerBand.set(drawnBand.band, (drawnPerBand.get(drawnBand.band) ?? 0) + 1);
+      const seen = drawnPerBand.get(drawnBand.band) ?? new Set<string>();
+      seen.add(summit.summitId);
+      drawnPerBand.set(drawnBand.band, seen);
     }
     if (truth.kind === 'disputed') {
       disputed.push(`${capture.captureId} ${summit.name}: truth disputed — ${truth.why}`);
@@ -2871,31 +3255,24 @@ function gradePositional(
       continue;
     }
     if (truth.kind !== 'located') continue;
-    const row = gradedSummitOf(capture, summit, truth);
-    if (row !== undefined) rows.push(row);
+    const contribution = contributionOf(capture, summit, truth);
+    if (contribution === undefined) continue;
+    const entry = bySummit.get(summit.summitId) ?? { name: summit.name, contributions: [] };
+    entry.contributions.push(contribution);
+    bySummit.set(summit.summitId, entry);
+  }
+
+  const graded: GradedSummit[] = [];
+  for (const [summitId, entry] of bySummit) {
+    const unit = unitOf(summitId, entry.name, entry.contributions);
+    if (unit !== undefined) graded.push(unit);
   }
 
   const criteria: Criterion[] = PREREGISTERED_THRESHOLDS.map((threshold) => {
-    const band = rows.filter((row) => row.band === threshold.band);
-    const drawn = drawnPerBand.get(threshold.band) ?? 0;
-    const overTwoSigma = band.reduce((count, row) => count + row.axesOverTwoSigma, 0);
-    const overThreeSigma = band.reduce((count, row) => count + row.axesOverThreeSigma, 0);
-    const failed = overThreeSigma > 0 || overTwoSigma > MAX_TWO_SIGMA_EXCEEDANCES;
+    const band = graded.filter((row) => row.band === threshold.band);
+    const drawn = drawnPerBand.get(threshold.band)?.size ?? 0;
+    const gate = gateOf(band);
     const underStopRule = band.length < MIN_GRADED_PER_BAND;
-    const evidence = band.map((row) => {
-      const across = row.exceedances[0];
-      const upDown = row.exceedances[1];
-      const flag =
-        row.axesOverThreeSigma > 0
-          ? ' — OVER 3σ'
-          : row.axesOverTwoSigma > 0
-            ? ' — over 2σ'
-            : '';
-      const mark =
-        (row.landmark === undefined ? '' : ` [landmark: ${row.landmark}]`) +
-        (row.rule === undefined ? '' : ` [rule: ${row.rule}]`);
-      return `${row.captureId} ${row.name}: ${Math.abs(row.residual.horizontalDeg).toFixed(3)}° across (2σ ${across?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${across?.threeSigmaDeg.toFixed(2) ?? '?'}°), ${Math.abs(row.residual.verticalDeg).toFixed(3)}° up/down (2σ ${upDown?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${upDown?.threeSigmaDeg.toFixed(2) ?? '?'}°), at ${(row.frameOffset * 100).toFixed(0)}% of the half-frame, truth ±${row.truthDisagreementDeg.toFixed(3)}°${mark}${flag}`;
-    });
     const anchorCount = anchorsPerBand.get(threshold.band) ?? 0;
     const anchorTail =
       anchorCount === 0 ? '' : `, beside ${anchorCount} anchor observation(s) this band never grades`;
@@ -2906,27 +3283,27 @@ function gradePositional(
         ? anchorCount === 0
           ? 'no summit was drawn in this band, so there was nothing for the truth instrument to settle'
           : 'the only summit-observation(s) drawn in this band were the drag anchor, which the drag aligned the overlay onto and which is not graded against itself (§ 1.1)'
-        : `${band.length} of ${drawn} drawn summit-observation(s) in this band were graded${anchorTail}, under the pre-registered floor of ${MIN_GRADED_PER_BAND}; the truth instrument limited this row, not the app (§ 2.0 stop rule)`;
+        : `${band.length} of ${drawn} drawn summit(s) in this band were graded${anchorTail}, under the pre-registered floor of ${MIN_GRADED_PER_BAND}; the truth instrument limited this row, not the app (§ 2.0 stop rule)`;
     return {
-      id: `${id}.${threshold.band}`,
-      claim: `${claim} (${threshold.band}: ${threshold.fromKm}${Number.isFinite(threshold.toKm) ? `–${threshold.toKm}` : '+'} km)`,
-      outcome: failed ? 'fail' : underStopRule ? 'no-sample' : 'pass',
-      n: band.length,
+      id: `F3.${threshold.band}`,
+      claim: `after one drag anchored on one summit, every other labelled summit sits within the budget (${threshold.band}: ${threshold.fromKm}${Number.isFinite(threshold.toKm) ? `–${threshold.toKm}` : '+'} km)`,
+      outcome: gate.failed ? 'fail' : underStopRule ? 'no-sample' : 'pass',
+      n: gate.units,
       evidence:
         band.length === 0
           ? [stopRuleLine]
           : [
-              band.length === 1 ? 'n = 1' : `n = ${band.length}`,
+              `n = ${gate.units} summit-axis unit(s) over ${band.length} summit(s)`,
               ...(underStopRule ? [stopRuleLine] : []),
-              `${overTwoSigma} summit-axis/axes past 2σ (${MAX_TWO_SIGMA_EXCEEDANCES} tolerated), ${overThreeSigma} past 3σ (none tolerated)`,
-              ...evidence,
+              gate.line,
+              ...band.flatMap(unitEvidence),
             ],
     };
   });
 
   if (anchors.length > 0) {
     criteria.push({
-      id: `${id}.anchor`,
+      id: 'F3.anchor',
       claim:
         'the summit the drag was anchored on, reported with its residual and graded against nothing',
       outcome: 'no-sample',
@@ -2937,9 +3314,23 @@ function gradePositional(
       ],
     });
   }
+  if (slipped.length > 0) {
+    criteria.push({
+      id: 'F3.slipped-drag',
+      claim: 'after-drag captures whose anchor residual says the drag slipped, reported and not gated',
+      outcome: 'no-sample',
+      n: slipped.length,
+      evidence: slipped.map((entry) => {
+        const affected = graded.filter((row) =>
+          row.captures.some((capture) => capture.captureId === entry.captureId),
+        );
+        return `${entry.line}; ${affected.length} unit median(s) include this capture${affected.length === 0 ? '' : `: ${affected.map((row) => row.name).join(', ')}`}`;
+      }),
+    });
+  }
   if (disputed.length > 0) {
     criteria.push({
-      id: `${id}.truth-disputed`,
+      id: 'F3.truth-disputed',
       claim: 'summits the two annotators did not agree on, excluded from grading',
       outcome: 'no-sample',
       n: disputed.length,
@@ -2948,14 +3339,200 @@ function gradePositional(
   }
   if (excluded.length > 0) {
     criteria.push({
-      id: `${id}.truth-unidentifiable`,
+      id: 'F3.truth-unidentifiable',
       claim: 'summits an annotator could not identify, excluded from grading',
       outcome: 'no-sample',
       n: excluded.length,
       evidence: excluded,
     });
   }
-  return criteria;
+  return { criteria, graded };
+}
+
+/** One movement's paired-change line. */
+function movementEvidence(row: GradedMovement): string {
+  const across = row.exceedances[0];
+  const upDown = row.exceedances[1];
+  const flag =
+    row.axesOverThreeSigma > 0 ? ' — OVER 3σ' : row.axesOverTwoSigma > 0 ? ' — over 2σ' : '';
+  return (
+    `${row.name}: change ${row.change.horizontalDeg.toFixed(3)}° across (2σ ${across?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${across?.threeSigmaDeg.toFixed(2) ?? '?'}°), ` +
+    `${row.change.verticalDeg.toFixed(3)}° up/down (2σ ${upDown?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${upDown?.threeSigmaDeg.toFixed(2) ?? '?'}°); ` +
+    `moved ${row.movedResidual.horizontalDeg.toFixed(3)}°/${row.movedResidual.verticalDeg.toFixed(3)}° at ${(row.frameOffset * 100).toFixed(0)}% of the half-frame, ` +
+    `reference ${row.referenceResidual.horizontalDeg.toFixed(3)}°/${row.referenceResidual.verticalDeg.toFixed(3)}° at ${(row.referenceFrameOffset * 100).toFixed(0)}%, ` +
+    `${row.band} band, truth ±${row.truthDisagreementDeg.toFixed(3)}°${flag}`
+  );
+}
+
+/**
+ * F4 — the paired change over one movement.
+ *
+ * The statistic is the moved capture's residual minus the residual of the
+ * after-drag capture it moved from, per axis. The summit's position, the
+ * observer's, the anchor's and the drag are the same error in both frames, so
+ * they cancel and what is left is what the movement did: the field-of-view
+ * scale at the summit's new offset, the roll of the new hold, the sensors'
+ * settle over the move, and the truth read of a second frame (§ 2.4). The
+ * limits are {@link PREREGISTERED_MOVEMENT_LIMITS}, one row for every band.
+ *
+ * **The gated group is the movement**, not the band: each moved capture is one
+ * pan or one tilt, and a residual that appears only after one of them is what
+ * the criterion is looking for. The fail rule is F3's.
+ *
+ * A moved capture whose pose trim differs from its reference's was re-dragged,
+ * so the drag does not cancel and the pair is not a pair. It is reported under
+ * `F4.unpaired` and graded by nothing, because § 2.7 step 9 registers the
+ * movement as made WITHOUT re-dragging.
+ */
+function gradeF4(
+  captures: readonly Capture[],
+  observations: readonly Observation[],
+  anchorOf: (capture: Capture) => string | undefined,
+): { readonly criteria: readonly Criterion[]; readonly movements: readonly GradedMovement[] } {
+  const byId = new Map(captures.map((capture) => [capture.captureId, capture]));
+  const perCapture = new Map<string, Map<string, Observation>>();
+  for (const observation of observations) {
+    const index = perCapture.get(observation.capture.captureId) ?? new Map<string, Observation>();
+    index.set(observation.summit.summitId, observation);
+    perCapture.set(observation.capture.captureId, index);
+  }
+
+  const criteria: Criterion[] = [];
+  const movements: GradedMovement[] = [];
+  const anchors: string[] = [];
+  const unpaired: string[] = [];
+
+  for (const capture of captures) {
+    if (capture.role !== 'moved') continue;
+    const anchorId = anchorOf(capture);
+    const own = perCapture.get(capture.captureId) ?? new Map<string, Observation>();
+    const anchorObservation = anchorId === undefined ? undefined : own.get(anchorId);
+    if (anchorObservation !== undefined) {
+      anchors.push(
+        anchorLineOf(capture, anchorObservation.summit, anchorObservation.truth),
+      );
+    }
+
+    const reference =
+      capture.movedFromCaptureId === undefined
+        ? undefined
+        : byId.get(capture.movedFromCaptureId);
+    if (reference === undefined || reference.role !== 'after-drag') {
+      unpaired.push(
+        `${capture.captureId}: the after-drag capture it moved from is not among the graded captures, so there is no reference residual to difference against`,
+      );
+      continue;
+    }
+    if (
+      reference.pose.trimHeadingDeg !== capture.pose.trimHeadingDeg ||
+      reference.pose.trimPitchDeg !== capture.pose.trimPitchDeg
+    ) {
+      unpaired.push(
+        `${capture.captureId}: its trim is not the trim of ${reference.captureId}, so the overlay was dragged again after the movement and the drag does not cancel in the pair (§ 2.7 step 9)`,
+      );
+      continue;
+    }
+
+    const referenceIndex = perCapture.get(reference.captureId) ?? new Map<string, Observation>();
+    const rows: GradedMovement[] = [];
+    const unsettled: string[] = [];
+    for (const summit of capture.overlay.drawn) {
+      if (summit.summitId === anchorId) continue;
+      const here = own.get(summit.summitId);
+      const there = referenceIndex.get(summit.summitId);
+      if (here === undefined || there === undefined) {
+        unsettled.push(`${summit.name}: drawn in only one frame of the pair`);
+        continue;
+      }
+      if (here.truth.kind !== 'located' || there.truth.kind !== 'located') {
+        unsettled.push(
+          `${summit.name}: the truth instrument settled it in only one frame of the pair`,
+        );
+        continue;
+      }
+      const threshold = bandFor(summit.distanceKm);
+      if (threshold === undefined) continue;
+      const moved = contributionOf(capture, here.summit, here.truth);
+      const base = contributionOf(reference, there.summit, there.truth);
+      if (moved === undefined || base === undefined) continue;
+      const change: Residual = {
+        horizontalDeg: moved.residual.horizontalDeg - base.residual.horizontalDeg,
+        verticalDeg: moved.residual.verticalDeg - base.residual.verticalDeg,
+        horizontalPx: moved.residual.horizontalPx - base.residual.horizontalPx,
+        verticalPx: moved.residual.verticalPx - base.residual.verticalPx,
+      };
+      const limits: BandLimits = { band: threshold.band, ...PREREGISTERED_MOVEMENT_LIMITS };
+      const exceedances = exceedancesOf(change, limits);
+      rows.push({
+        captureId: capture.captureId,
+        referenceCaptureId: reference.captureId,
+        summitId: summit.summitId,
+        name: summit.name,
+        band: threshold.band,
+        change,
+        movedResidual: moved.residual,
+        referenceResidual: base.residual,
+        frameOffset: moved.frameOffset,
+        referenceFrameOffset: base.frameOffset,
+        truthDisagreementDeg: Math.max(moved.truthDisagreementDeg, base.truthDisagreementDeg),
+        withinThreshold: withinThreshold(change, limits),
+        exceedances,
+        axesOverTwoSigma: exceedances.filter((axis) => axis.overTwoSigma).length,
+        axesOverThreeSigma: exceedances.filter((axis) => axis.overThreeSigma).length,
+      });
+    }
+
+    movements.push(...rows);
+    const gate = gateOf(rows);
+    const underStopRule = rows.length < MIN_GRADED_PER_BAND;
+    criteria.push({
+      id: `F4.${capture.captureId}`,
+      claim: `the drag holds across the movement from ${reference.captureId} to ${capture.captureId}`,
+      outcome: gate.failed ? 'fail' : underStopRule ? 'no-sample' : 'pass',
+      n: gate.units,
+      evidence:
+        rows.length === 0
+          ? [
+              'no summit was settled in both frames of this pair, so the movement has no paired change to grade',
+              ...unsettled,
+            ]
+          : [
+              `n = ${gate.units} summit-axis unit(s) over ${rows.length} summit(s)`,
+              ...(underStopRule
+                ? [
+                    `${rows.length} summit(s) were paired across this movement, under the pre-registered floor of ${MIN_GRADED_PER_BAND}; the truth instrument limited this row, not the app (§ 2.0 stop rule)`,
+                  ]
+                : []),
+              gate.line,
+              ...rows.map(movementEvidence),
+              ...unsettled,
+            ],
+    });
+  }
+
+  if (anchors.length > 0) {
+    criteria.push({
+      id: 'F4.anchor',
+      claim:
+        'the summit the drag was anchored on, reported with its residual and graded against nothing',
+      outcome: 'no-sample',
+      n: anchors.length,
+      evidence: [
+        'the drag aligned the overlay onto this summit, so its residual measures the drag rather than the budget (§ 1.1)',
+        ...anchors,
+      ],
+    });
+  }
+  if (unpaired.length > 0) {
+    criteria.push({
+      id: 'F4.unpaired',
+      claim: 'moved captures with no reference frame to difference against, reported and not graded',
+      outcome: 'no-sample',
+      n: unpaired.length,
+      evidence: unpaired,
+    });
+  }
+  return { criteria, movements };
 }
 
 /**
@@ -3160,23 +3737,13 @@ export function analyseFieldRun(
   const observations = observationsOf(gradable, truth);
   const byId = new Map(gradable.map((capture) => [capture.captureId, capture]));
   const anchorOf = (capture: Capture): string | undefined => anchorSummitIdOf(capture, byId);
+  const f3 = gradeF3(observations, anchorOf);
+  const f4 = gradeF4(gradable, observations, anchorOf);
   const criteria: Criterion[] = [
     gradeF2(observations),
     gradeF2Pose(observations),
-    ...gradePositional(
-      'F3',
-      'after one drag anchored on one summit, every other labelled summit sits within the budget',
-      observations,
-      anchorOf,
-      (capture) => capture.role === 'after-drag',
-    ),
-    ...gradePositional(
-      'F4',
-      'the drag holds after a pan and a tilt',
-      observations,
-      anchorOf,
-      (capture) => capture.role === 'moved',
-    ),
+    ...f3.criteria,
+    ...f4.criteria,
     gradeF5a(observations),
     gradeF5b(gradable),
     gradeF5c(gradable),
@@ -3194,23 +3761,22 @@ export function analyseFieldRun(
     });
   }
 
-  const graded: GradedSummit[] = [];
+  const graded = f3.graded;
   const anchorObservations: string[] = [];
   for (const { capture, summit, truth: reduced } of observations) {
     if (!DRAGGED_ROLES.includes(capture.role)) continue;
-    if (summit.summitId === anchorOf(capture)) {
-      anchorObservations.push(anchorLineOf(capture, summit, reduced));
-      continue;
-    }
-    if (reduced.kind !== 'located') continue;
-    const row = gradedSummitOf(capture, summit, reduced);
-    if (row !== undefined) graded.push(row);
+    if (summit.summitId !== anchorOf(capture)) continue;
+    anchorObservations.push(anchorLineOf(capture, summit, reduced));
   }
 
   const landmarkObservations = graded.flatMap((row) =>
     row.landmark === undefined
       ? []
-      : [`${row.captureId} ${row.name}: apex taken from ${row.landmark}`],
+      : [
+          `${row.name}: apex taken from ${row.landmark} in ${row.captures
+            .map((capture) => capture.captureId)
+            .join(', ')}`,
+        ],
   );
 
   return {
@@ -3218,6 +3784,7 @@ export function analyseFieldRun(
     captureCount: bundle.captures.length,
     criteria,
     graded,
+    movements: f4.movements,
     annotatorMethods: annotatorMethodLines(truth),
     landmarkObservations,
     ruleBound: ruleBoundSplitOf(graded),
@@ -3288,7 +3855,10 @@ export function renderFieldReport(analysis: FieldAnalysis, options: { brief?: bo
   const lines: string[] = [];
   lines.push(`device:   ${analysis.device}`);
   lines.push(`captures: ${analysis.captureCount}`);
-  lines.push(`graded:   ${analysis.graded.length} summit-observation(s)`);
+  lines.push(
+    `graded:   ${analysis.graded.length * 2} F3 summit-axis unit(s) over ${analysis.graded.length} summit(s), ` +
+      `${analysis.movements.length * 2} F4 paired unit(s)`,
+  );
   if (analysis.annotatorMethods.length > 0) {
     lines.push('');
     lines.push('what each annotator was given:');
@@ -3303,7 +3873,7 @@ export function renderFieldReport(analysis: FieldAnalysis, options: { brief?: bo
     const { ruleBound, free } = analysis.ruleBound;
     lines.push('');
     lines.push(
-      `graded under a registered apex rule: ${ruleBound.n} of ${analysis.graded.length} summit-observation(s)`,
+      `graded under a registered apex rule: ${ruleBound.n} of ${analysis.graded.length} summit(s)`,
     );
     lines.push(`  ⊢ rule-bound: ${truthDisagreementLine(ruleBound)}`);
     lines.push(`  ⊢ free:       ${truthDisagreementLine(free)}`);
