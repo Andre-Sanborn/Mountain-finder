@@ -1068,3 +1068,35 @@ CI. Summit dots take the same arithmetic path. Nine mutations each fail between 
 11. still for 3 minutes
 12. 1 minute of normal handling
 13. two taps on the sun near the left and right edges
+
+## Route corrections from the error-budget review, 2026-09-29
+
+The strategy adversary reviewed the changes the budget suggested. It is still pre-data, so
+every change below is legitimate, and each lands in code and doc together.
+
+- **The live sweep reaches the site radius, not 30 km.** `liveSweepConfig()` spread `APP_SWEEP`
+  (`maxRangeKm` 30), so on the phone every summit beyond 30 km was `unmeasured`. The site
+  package's "78 labelled" came from a 60 km script path the phone never runs. At Bogus Basin,
+  63 of 104 summits within 60 km lie beyond 30 km. The ten highest by apparent height are all
+  34–58 km away (Trinity 56.4 km, Freeman 36.5 km, Pilot 38.4 km). For every heading, the
+  in-frame top three include a summit beyond 30 km. The fix: keep the 60 km terrain and take the
+  sweep range from the served site. The throttled-CPU sweep timing becomes a precondition of the
+  field session. Cutting to 40 km was rejected, because it drops the most prominent summit and
+  half the top ten.
+- **The F3/F4 gate tolerates one 2σ exceedance and no 3σ exceedance.** "Every summit inside
+  2σ" passes a correct budget with probability 0.95^32 ≈ 0.19 at n = 16, which is
+  self-defeating. 2σ stays the reported band.
+- **The drag term is measured before thresholds move.** Fine drag, a 4× slow mode, ships now.
+  0.05° nudges are below the 0.0899°/px quantisation, so there are none. The home session
+  gains three repeated drags on a reference, with and without fine mode, plus a roll-spread
+  record. The thresholds are re-derived from those measurements, not from a second judgement.
+- **F4's pan becomes "until the anchor summit sits at the frame edge"**, a target visible on
+  screen, instead of ±20° or ±30°.
+- **`coords.accuracy` is recorded per fix, with its confidence stated.** W3C defines it as a
+  95 % radius, about 2.45σ per axis. Apple does not state one. It lives only in the bundle, and
+  the committed fixtures must not trip the privacy gate.
+- **Prereg text corrections.** At Bogus Basin the anchor is in practice 35–57 km out, not
+  7–20 km; the thresholds stay conservative. Near and mid bands will likely report
+  `no-sample`, and the doc says so now. F2 is conditional on calibration. The field steps say
+  to stand within a few hundred metres of the site coordinate, because the cut has 0.5 km of
+  margin.

@@ -49,6 +49,11 @@ after its self-check has run and passed here. The checks are in
 - [ ] Re-check CV-2/CV-8's 14 mm figures via `npm run annotate`: suggestPoseTrim now reads coverage 66.6 %, not 0 %
 - [ ] Write the field-session steps; run the field test with the human
 
+- [ ] Take the live sweep range from the served site (60 km at Bogus Basin), not APP_SWEEP's 30 km
+- [ ] Measure the 60 km live sweep in Chromium under 4-6x CPU throttling; precondition of the field session
+- [ ] Fine-drag mode (4x slow) on the live screen; home session records drag and roll spread
+- [ ] Prereg: gate F3/F4 at one 2σ exceedance and no 3σ; F4 pan to frame edge; accuracy confidence; text fixes
+
 ## Other open work
 
 - [ ] Get the human's answer on whether the seven photos in fixtures/photos/real/ stay public.
