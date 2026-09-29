@@ -2,7 +2,7 @@
 name: plain-language-editor
 description: Rewrite comments, docstrings, and prose that fail AGENTS.md's plain-language rules. Use after the work is verified and before it is committed. It edits prose only, never code, so behavior cannot change. It works through every comment in each file it enters, rewrites what fails the rules, and defends anything borderline it keeps by quoting it with the rule it passes. Matching the surrounding voice is not a defense.
 tools: Read, Edit, Write, Bash
-model: claude-opus-5-5
+model: opus
 effort: xhigh
 ---
 

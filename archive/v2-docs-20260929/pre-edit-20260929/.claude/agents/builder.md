@@ -1,7 +1,7 @@
 ---
 name: builder
 description: Delegate coding, documentation, or infrastructure work to this agent. Use it to implement a feature, fix a bug, write or update docs, or change build, container, and CI configuration. Give it one task and a clear definition of done. It reports what it changed, what it ran to verify, and what it left undone.
-model: claude-opus-5-5
+model: opus
 ---
 
 # Builder

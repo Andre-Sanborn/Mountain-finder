@@ -197,14 +197,6 @@ still yours. The `strategy-adversary` step above is not optional either way.
 | `adversarial-verifier` | work that already exists, and tries to break it | fixes what it finds |
 | `plain-language-editor` | comments, docstrings and prose that fail the writing rules | touches code |
 
-**Every agent runs on Opus 5.5, model id `claude-opus-5-5`.** This is the human's standing
-instruction. Each file in `.claude/agents/` pins `model: claude-opus-5-5` by its full id, not the
-`opus` alias, because the alias can resolve to a different Opus. An agent launched without a
-project definition, such as `general-purpose`, is given no model override, so it inherits the
-orchestrator session's model; the session itself must run on Opus 5.5. The nightly Routine fires
-into the orchestrator session and so runs on the same model. Changing any agent's model is the
-human's call.
-
 The two adversaries split by stage: `strategy-adversary` reviews the route
 before you walk it, `adversarial-verifier` reviews what you built when you got
 there.

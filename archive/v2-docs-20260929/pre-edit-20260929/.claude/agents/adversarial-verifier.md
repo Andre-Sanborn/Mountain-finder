@@ -2,7 +2,7 @@
 name: adversarial-verifier
 description: Try to break what was just built and disprove the claims made about it. Use after the builder finishes and before the work is accepted. It hunts wrong assumptions, unhandled inputs, broken edge cases, and claims asserted but never run. It reports findings and fixes nothing.
 tools: Read, Write, Edit, Bash, WebFetch, WebSearch
-model: claude-opus-5-5
+model: fable
 ---
 
 # Adversarial verifier

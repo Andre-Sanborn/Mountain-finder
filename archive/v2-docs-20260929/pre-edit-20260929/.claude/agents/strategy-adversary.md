@@ -2,7 +2,7 @@
 name: strategy-adversary
 description: Attack a plan before it is built. Use when the orchestrator has settled on an approach and before the work starts. It judges whether the plan reaches the goal, whether a better, faster or simpler route exists, and what is most likely to go wrong. It reports and changes nothing.
 tools: Read, Bash, WebFetch, WebSearch
-model: claude-opus-5-5
+model: claude-fable-5-1
 ---
 
 # Strategy adversary
