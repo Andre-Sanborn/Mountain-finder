@@ -42,6 +42,7 @@ import {
   MAX_OBSERVER_ACCURACY_M,
   PAN_ANCHOR_EDGE_OFFSET,
   parseFieldBundle,
+  signedFrameOffset,
   type BundleProblem,
   type Capture,
   type FieldBundle,
@@ -347,8 +348,25 @@ export function FieldSessionPanel(props: FieldSessionPanelProps): JSX.Element {
             }
           : {}),
       });
+      // Where the anchor sat before the turn, signed. § 2.7 step 6 asks for it
+      // near the middle, and § 2.4 will not grade a pan that started further
+      // out — the person can still fix that while they are standing there.
+      const referenceAnchor =
+        referenceCapture === undefined || anchorSummitId === undefined
+          ? undefined
+          : referenceCapture.overlay.drawn.find(
+              (summit) => summit.summitId === anchorSummitId,
+            );
+      const referenceAnchorSignedU =
+        referenceAnchor === undefined
+          ? undefined
+          : signedFrameOffset(
+              referenceAnchor.summitPx.xPx,
+              referenceCapture?.overlayPx.widthPx ?? 0,
+            );
       const shortfalls = captureShortfalls(capture, {
         ...(anchorU === undefined ? {} : { anchorU }),
+        ...(referenceAnchorSignedU === undefined ? {} : { referenceAnchorSignedU }),
         ...(side === undefined ? {} : { anchorSide: side }),
         ...(step?.edge === undefined ? {} : { wantedEdge: step.edge }),
         ...(step?.tilt === undefined ? {} : { wantedTilt: step.tilt }),

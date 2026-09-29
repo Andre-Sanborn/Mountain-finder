@@ -231,10 +231,16 @@ export const PREREGISTERED_THRESHOLDS: readonly BandThreshold[] = thresholdsFor(
  * captures: § 2.3's per-k table.
  *
  * Only the drag term moves. Averaging the same summit over more captures buys
- * nothing on its peak position, the anchor's position, the field-of-view scale
- * or the roll, because each of those is one error repeated in every capture.
- * The drag is re-made per capture (step 10 re-drags without re-bracing), so the
- * median of k of them carries {@link MEDIAN_SIGMA_FACTORS}[k−1] of one drag.
+ * nothing on its peak position, the anchor's position or the field-of-view
+ * scale, because each of those is one error repeated in every capture. The drag
+ * is re-made per capture, so the median of k of them carries
+ * {@link MEDIAN_SIGMA_FACTORS}[k−1] of one drag.
+ *
+ * **Roll is charged at full size at every k, as the conservative choice.** The
+ * three drags are made over one braced hold, so one roll draw is what the
+ * protocol expects; if the person re-settles between them the roll re-draws and
+ * the median shrinks it as it shrinks the drag. Charging it whole is the
+ * direction that cannot let a wrong budget pass.
  */
 const MEDIAN_THRESHOLDS_BY_K: readonly (readonly BandThreshold[])[] = [
   PREREGISTERED_THRESHOLDS,
@@ -272,7 +278,14 @@ export const MEDIAN_SIGMA_FACTORS: readonly number[] = [
   Math.sqrt(1 - Math.sqrt(3) / Math.PI),
 ];
 
-/** After-drag captures the protocol registers per summit (§ 2.7 step 10). */
+/**
+ * After-drag captures the protocol registers per summit.
+ *
+ * Three, and the run plan in `src/app/live/field-session.ts` produces exactly
+ * three: § 2.7 step 8 drags and captures once, and step 10 repeats that pair
+ * twice more. A test ties this figure to that plan, so a fourth drag cannot be
+ * added to the protocol without the table here being extended to k = 4.
+ */
 export const MAX_REGISTERED_CAPTURES_PER_UNIT = 3;
 
 /**
@@ -406,22 +419,178 @@ export const BUDGET_TERMS = {
 export const SLIPPED_DRAG_DEG = SLIPPED_DRAG_SIGMAS * BUDGET_TERMS.dragDeg;
 
 /**
- * The paired-change budget of § 2.4, degrees, 1σ.
+ * How far into the half-frame the anchor summit must sit for an F4 pan.
+ *
+ * The registered movement is "pan until the anchor summit is at the frame edge",
+ * which a person can see on screen; 0.8 of the half-frame is what counts as the
+ * edge. At u = 0.8 the field-of-view scale term is 0.253° of the 0.275°
+ * available at u = 1, so the pan exercises 92 % of it.
+ */
+export const PAN_ANCHOR_EDGE_OFFSET = 0.8;
+
+/** How far a tilt may stray from the registered ±10° and still be graded. */
+export const TILT_ENVELOPE_DEG = { min: 5, max: 15 } as const;
+
+/**
+ * The viewport the budget was computed on, § 1.2 of the pre-registration.
+ *
+ * Two frames matter and they are different sizes. This is the one the overlay is
+ * DRAWN in, and it is what the roll and field-of-view terms were budgeted on:
+ * both scale with the drawn offset from the optical axis, and the drag's own
+ * precision is a finger against this frame's px-per-degree.
+ * {@link REGISTERED_STORED_FRAME} is the other one.
+ */
+export const REGISTERED_VIEWPORT = { hFovDeg: 73.74, aspectRatio: 956 / 440 } as const;
+
+/* ── the frame geometry § 2.4 charges its movement terms at ──────────────── */
+
+const DEG_PER_RAD = 180 / Math.PI;
+
+/** Half the registered horizontal field of view, degrees. */
+export const HALF_HFOV_DEG = REGISTERED_VIEWPORT.hFovDeg / 2;
+
+/**
+ * Half the registered vertical field of view, degrees.
+ *
+ * The camera has one focal length, so the vertical half-angle follows from the
+ * horizontal one and the viewport's aspect: 19.044° at § 1.2's 956 × 440.
+ */
+export const HALF_VFOV_DEG =
+  Math.atan(Math.tan(HALF_HFOV_DEG / DEG_PER_RAD) / REGISTERED_VIEWPORT.aspectRatio) * DEG_PER_RAD;
+
+/** The frame angle of a marker at fractional offset `u` of the half-frame. */
+export function frameAngleDeg(offset: number, halfFovDeg: number = HALF_HFOV_DEG): number {
+  return Math.atan(offset * Math.tan(halfFovDeg / DEG_PER_RAD)) * DEG_PER_RAD;
+}
+
+/** Term 6's calibrated field-of-view scale error, as a fraction. */
+export const FOV_SCALE_ERROR = 0.01;
+
+/** Term 7's roll spread over a braced hold, degrees. */
+export const ROLL_SIGMA_DEG = 0.5;
+
+/**
+ * How far off centre the drag anchor may start, as a fraction of the half-frame.
+ *
+ * § 2.7 step 6 registers the framing: Deer Point sits near the middle of the
+ * picture before the drag. 0.2 is a fifth of the half-frame — 96 px of the 478 px
+ * half-width on § 1.2's viewport — which is a position a person can judge by eye
+ * and the grader can read off the drawn overlay.
+ *
+ * It is here because it BOUNDS THE PAN, and the pan is what sets the
+ * field-of-view term in {@link MOVEMENT_BUDGET_TERMS}. A summit that crosses the
+ * optical axis during the pan sees a scale error of opposite sign at each end,
+ * so the paired change grows with the turn; without a bound on where the anchor
+ * starts, the turn — and the term — is unbounded.
+ */
+export const ANCHOR_START_MAX_OFFSET = 0.2;
+
+/**
+ * The widest pan the registered framing allows, degrees.
+ *
+ * The anchor starts within {@link ANCHOR_START_MAX_OFFSET} of the centre and
+ * finishes at the frame edge on the other side. A marker that is drawn at all
+ * sits at |u| ≤ 1, so the far end is the edge itself rather than
+ * {@link PAN_ANCHOR_EDGE_OFFSET}: 36.870° + 8.531° = 45.401°.
+ */
+export const MAX_REGISTERED_PAN_DEG = frameAngleDeg(1) + frameAngleDeg(ANCHOR_START_MAX_OFFSET);
+
+/**
+ * How far a summit label sits from the horizon, degrees.
+ *
+ * Term 7's horizontal displacement is the roll times the label's VERTICAL
+ * offset, and summit labels sit near the horizon. § 1.5 charges 0.034°, which is
+ * a 0.5° roll at 3.9°; 4° is that rounded, and it is what the reference frame of
+ * an F4 pair is charged at. A tilt adds itself to it.
+ */
+export const NEAR_HORIZON_OFFSET_DEG = 4;
+
+/**
+ * How long a capture must have been still before F4 grades it, milliseconds.
+ *
+ * Term 8's exclusion is earned by the hold and by nothing else: at 20 °/s the
+ * smoothing lag is 8° while panning and 0.054° two seconds after stopping, and
+ * 0.054° is what {@link MOVEMENT_BUDGET_TERMS} charges. A capture taken sooner
+ * carries a term the budget does not hold, so it is reported off-protocol
+ * rather than graded against a budget that does not cover it.
+ */
+export const MIN_STILL_MS = 2000;
+
+/**
+ * How close two poses' trims must be to count as the same trim, degrees.
+ *
+ * § 2.7 step 9 registers the movement as made WITHOUT re-dragging, so a moved
+ * capture's trim should be its reference's exactly. It is compared with a
+ * tolerance rather than with `!==` because the two numbers travel through JSON
+ * and back: a trim written as 1.0000000000000002 and read as 1 is the same drag,
+ * and an exact comparison would report a pair as re-dragged over a float that
+ * changed in the last bit. 1e-9° is 4 × 10⁻⁹ px on a 956 px viewport, far below
+ * anything a finger can do, so no real re-drag hides under it.
+ */
+export const TRIM_MATCH_DEG = 1e-9;
+
+/**
+ * The largest field-of-view paired change a turn of `turnDeg` can produce.
+ *
+ * A fractional error ε in `tan(F/2)` displaces a marker at frame angle θ by
+ * `(ε/2)·sin 2θ` (term 6). That is ODD in θ, so a summit that crosses the
+ * optical axis during the turn is displaced one way before and the other way
+ * after, and the paired change is the difference of the two. Maximising
+ * `f(θ+P) − f(θ)` over θ gives θ = −P/2 and a change of `ε·sin P` radians —
+ * twice the edge charge when P is a right angle, and 1.48 × it at the widest
+ * registered pan.
+ *
+ * The maximum is clamped to the summits that are actually in frame at both ends:
+ * θ ≥ −halfFov and θ + P ≤ halfFov. `f(θ+P) − f(θ)` is unimodal with its peak at
+ * −P/2, so clamping the peak into that interval gives the constrained maximum.
+ */
+export function fovPairedChangeDeg(turnDeg: number, halfFovDeg: number): number {
+  const displacement = (thetaDeg: number): number =>
+    (FOV_SCALE_ERROR / 2) * Math.sin((2 * thetaDeg) / DEG_PER_RAD) * DEG_PER_RAD;
+  const turn = Math.abs(turnDeg);
+  if (turn > 2 * halfFovDeg) return 0;
+  const start = Math.min(Math.max(-turn / 2, -halfFovDeg), halfFovDeg - turn);
+  return Math.abs(displacement(start + turn) - displacement(start));
+}
+
+/**
+ * The roll contribution to a paired change, for a marker at two offsets.
+ *
+ * Roll displaces a marker perpendicular to its radius by `ρ · offset`, so the
+ * vertical displacement uses the horizontal offset and the horizontal one uses
+ * the vertical offset (term 7). The two holds are two independent draws of ρ, so
+ * the change carries `ρ·√(a² + b²)` where a and b are the offsets in the two
+ * frames. With a = b that is √2 of one hold, which is what § 2.4 charged before
+ * the tilt's own offset was accounted for.
+ */
+export function rollPairedChangeDeg(offsetADeg: number, offsetBDeg: number): number {
+  return (ROLL_SIGMA_DEG / DEG_PER_RAD) * Math.hypot(offsetADeg, offsetBDeg);
+}
+
+/**
+ * The paired-change budget of § 2.4, degrees, 1σ, one row per registered movement.
  *
  * F4 grades `moved residual − reference residual` for one summit across one
  * movement. The summit's own position, the observer's position, the anchor's
  * position and the drag are the same error in both frames, so they subtract
- * out. What is left is what the movement itself changed.
+ * out. What is left is what the movement itself changed, and a pan and a tilt
+ * do not change the same things.
  *
- * - **Field-of-view scale.** One calibration error, displacing a marker in
- *   proportion to its offset from the axis. The pair keeps
- *   `ε·(u_moved − u_reference)`, charged at the frame edge like every term in
- *   § 1.5: 0.275° across, 0.039° up/down.
- * - **Roll.** Two braced holds, two draws from term 7's 0.5° spread, so the
- *   change carries √2 of one: 0.048° across and 0.455° up/down at the edge.
+ * - **Field-of-view scale.** One calibration error, displacing a marker by
+ *   `(ε/2)·sin 2θ`. The pair keeps the difference of that at the two frame
+ *   angles, which is largest for a summit that crosses the optical axis:
+ *   `ε·sin P` at a turn of P. A pan turns up to
+ *   {@link MAX_REGISTERED_PAN_DEG} horizontally and nothing vertically; a tilt
+ *   the other way round, up to {@link TILT_ENVELOPE_DEG}.max.
+ * - **Roll.** Two braced holds, two draws from term 7's 0.5° spread. Vertically
+ *   both frames hold the summit at up to the frame edge, so the change carries
+ *   √2 of one edge displacement. Horizontally the reference frame is charged at
+ *   {@link NEAR_HORIZON_OFFSET_DEG} and the moved frame at that plus the tilt,
+ *   which is why a tilt charges three times a pan's horizontal roll.
  * - **Sensor hold.** Term 8's residual 2 s after a 20 °/s pan stops, 0.054°.
  *   F3 drops this term; F4 carries it, because the movement is what F4 is
- *   about and a term the movement creates belongs in its budget.
+ *   about and a term the movement creates belongs in its budget. Its
+ *   precondition is {@link MIN_STILL_MS}.
  * - **Truth read.** Two frames, annotated apart, so it does not cancel.
  *   {@link MAX_TRUTH_DISAGREEMENT_DEG} read as a 2σ bound on the difference of
  *   two annotators puts one annotator at 0.3/2√2 = 0.106°, the midpoint truth
@@ -429,37 +598,56 @@ export const SLIPPED_DRAG_DEG = SLIPPED_DRAG_SIGMAS * BUDGET_TERMS.dragDeg;
  *   truth term because it is invisible against a 0.95° budget; here the budget
  *   is a third of that and the term is not.
  */
-export const MOVEMENT_BUDGET_TERMS = {
-  fovHorizontalDeg: BUDGET_TERMS.fovHorizontalDeg,
-  fovVerticalDeg: BUDGET_TERMS.fovVerticalDeg,
-  rollHorizontalDeg: Math.SQRT2 * BUDGET_TERMS.rollHorizontalDeg,
-  rollVerticalDeg: Math.SQRT2 * BUDGET_TERMS.rollVerticalDeg,
-  sensorHoldDeg: 0.054,
-  truthReadDeg: 0.3 / (2 * Math.SQRT2),
+export interface MovementTerms {
+  readonly fovHorizontalDeg: number;
+  readonly fovVerticalDeg: number;
+  readonly rollHorizontalDeg: number;
+  readonly rollVerticalDeg: number;
+  readonly sensorHoldDeg: number;
+  readonly truthReadDeg: number;
+}
+
+/** Term 8's residual after the registered hold, degrees. Both axes. */
+const SENSOR_HOLD_DEG = 0.054;
+
+/** One annotated frame's contribution, degrees. Both axes. */
+const TRUTH_READ_DEG = MAX_TRUTH_DISAGREEMENT_DEG / (2 * Math.SQRT2);
+
+export const MOVEMENT_BUDGET_TERMS: Readonly<Record<'pan' | 'tilt', MovementTerms>> = {
+  pan: {
+    fovHorizontalDeg: fovPairedChangeDeg(MAX_REGISTERED_PAN_DEG, HALF_HFOV_DEG),
+    fovVerticalDeg: 0,
+    rollHorizontalDeg: rollPairedChangeDeg(NEAR_HORIZON_OFFSET_DEG, NEAR_HORIZON_OFFSET_DEG),
+    rollVerticalDeg: rollPairedChangeDeg(HALF_HFOV_DEG, HALF_HFOV_DEG),
+    sensorHoldDeg: SENSOR_HOLD_DEG,
+    truthReadDeg: TRUTH_READ_DEG,
+  },
+  tilt: {
+    fovHorizontalDeg: 0,
+    fovVerticalDeg: fovPairedChangeDeg(TILT_ENVELOPE_DEG.max, HALF_VFOV_DEG),
+    rollHorizontalDeg: rollPairedChangeDeg(
+      NEAR_HORIZON_OFFSET_DEG,
+      NEAR_HORIZON_OFFSET_DEG + TILT_ENVELOPE_DEG.max,
+    ),
+    rollVerticalDeg: rollPairedChangeDeg(HALF_HFOV_DEG, HALF_HFOV_DEG),
+    sensorHoldDeg: SENSOR_HOLD_DEG,
+    truthReadDeg: TRUTH_READ_DEG,
+  },
 } as const;
 
 /**
- * The limits F4 grades a paired change against: § 2.4, 2σ of
- * {@link MOVEMENT_BUDGET_TERMS} rounded to 0.05°, and 3σ at 1.5 × that.
+ * The 1σ paired change of § 2.4: the worst registered movement, per axis.
  *
- * One row, not five. Every distance-dependent term cancels in the pair, so a
- * 60 km summit's change is budgeted exactly like a 2 km one, and the fix
- * accuracy does not enter at all.
+ * One row grades every movement, so each axis takes the movement that charges it
+ * most — the pan across, the tilt up and down. Combining the worst of each term
+ * instead would charge a pan's field-of-view scale against a tilt's roll, and no
+ * registered movement does both.
  */
-export const PREREGISTERED_MOVEMENT_LIMITS = {
-  horizontalDeg: 0.6,
-  verticalDeg: 0.95,
-  horizontal3SigmaDeg: 0.9,
-  vertical3SigmaDeg: 1.45,
-} as const;
-
-/** The 1σ paired change of § 2.4, rebuilt from {@link MOVEMENT_BUDGET_TERMS}. */
 export function movementSigma(): {
   readonly horizontalDeg: number;
   readonly verticalDeg: number;
 } {
-  const t = MOVEMENT_BUDGET_TERMS;
-  return {
+  const rss = (t: MovementTerms): { horizontalDeg: number; verticalDeg: number } => ({
     horizontalDeg: Math.hypot(
       t.fovHorizontalDeg,
       t.rollHorizontalDeg,
@@ -467,8 +655,29 @@ export function movementSigma(): {
       t.truthReadDeg,
     ),
     verticalDeg: Math.hypot(t.fovVerticalDeg, t.rollVerticalDeg, t.sensorHoldDeg, t.truthReadDeg),
+  });
+  const pan = rss(MOVEMENT_BUDGET_TERMS.pan);
+  const tilt = rss(MOVEMENT_BUDGET_TERMS.tilt);
+  return {
+    horizontalDeg: Math.max(pan.horizontalDeg, tilt.horizontalDeg),
+    verticalDeg: Math.max(pan.verticalDeg, tilt.verticalDeg),
   };
 }
+
+/**
+ * The limits F4 grades a paired change against: § 2.4, 2σ of
+ * {@link movementSigma} rounded to 0.05°, and 3σ at 1.5 × that, rounded up.
+ *
+ * One row, not five. Every distance-dependent term cancels in the pair, so a
+ * 60 km summit's change is budgeted exactly like a 2 km one, and the fix
+ * accuracy does not enter at all.
+ */
+export const PREREGISTERED_MOVEMENT_LIMITS = {
+  horizontalDeg: 0.85,
+  verticalDeg: 1,
+  horizontal3SigmaDeg: 1.3,
+  vertical3SigmaDeg: 1.5,
+} as const;
 
 /**
  * What a reported horizontal accuracy means, and the divisor that follows.
@@ -492,8 +701,6 @@ export const MAX_OBSERVER_ACCURACY_M = 30;
 export function observerSigmaFromAccuracyM(accuracyM: number): number {
   return accuracyM / ACCURACY_SIGMA_DIVISOR;
 }
-
-const DEG_PER_RAD = 180 / Math.PI;
 
 /** Rounded up to the next 0.05°, the granularity every registered limit uses. */
 function roundUpToStep(deg: number): number {
@@ -574,30 +781,6 @@ export function bandLimitsFor(
   };
 }
 
-/**
- * How far into the half-frame the anchor summit must sit for an F4 pan.
- *
- * The registered movement is "pan until the anchor summit is at the frame edge",
- * which a person can see on screen; 0.8 of the half-frame is what counts as the
- * edge. At u = 0.8 the field-of-view scale term is 0.253° of the 0.275°
- * available at u = 1, so the pan exercises 92 % of it.
- */
-export const PAN_ANCHOR_EDGE_OFFSET = 0.8;
-
-/** How far a tilt may stray from the registered ±10° and still be graded. */
-export const TILT_ENVELOPE_DEG = { min: 5, max: 15 } as const;
-
-/**
- * The viewport the budget was computed on, § 1.2 of the pre-registration.
- *
- * Two frames matter and they are different sizes. This is the one the overlay is
- * DRAWN in, and it is what the roll and field-of-view terms were budgeted on:
- * both scale with the drawn offset from the optical axis, and the drag's own
- * precision is a finger against this frame's px-per-degree.
- * {@link REGISTERED_STORED_FRAME} is the other one.
- */
-export const REGISTERED_VIEWPORT = { hFovDeg: 73.74, aspectRatio: 956 / 440 } as const;
-
 /** Fractional deviation from {@link REGISTERED_VIEWPORT} that is worth reporting. */
 export const FRAME_DEVIATION_TOLERANCE = 0.1;
 
@@ -675,8 +858,8 @@ export interface AxisExceedance {
 /**
  * Both axes of one summit, classified.
  *
- * The band's verdict counts these: more than {@link MAX_TWO_SIGMA_EXCEEDANCES}
- * axes past 2σ fails it, and one axis past 3σ fails it alone.
+ * The band's verdict counts these: more than {@link twoSigmaAllowanceFor} of the
+ * group's units past 2σ fails it, and one axis past 3σ fails it alone.
  */
 export function exceedancesOf(
   residual: Residual,
@@ -2329,6 +2512,18 @@ export function frameOffsetFraction(xPx: number, widthPx: number): number {
   return Math.abs(xPx - widthPx / 2) / (widthPx / 2);
 }
 
+/**
+ * The same offset, keeping the side of the frame it sits on.
+ *
+ * The pan envelope needs the sign: an anchor that starts left of centre and
+ * finishes at the right edge has turned through the optical axis, and that turn
+ * is the sum of the two angles rather than their difference.
+ */
+export function signedFrameOffset(xPx: number, widthPx: number): number {
+  if (!(widthPx > 0)) return 0;
+  return (xPx - widthPx / 2) / (widthPx / 2);
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
  * SECTION 6 — Truth, reduced
  * ══════════════════════════════════════════════════════════════════════════ */
@@ -3138,10 +3333,12 @@ function unitEvidence(row: GradedSummit): readonly string[] {
   const mark =
     (row.landmark === undefined ? '' : ` [landmark: ${row.landmark}]`) +
     (row.rule === undefined ? '' : ` [rule: ${row.rule}]`);
+  // Signed, as the per-capture lines under it are: the sign says which way the
+  // marker sat, and a median printed unsigned cannot be checked against them.
   const head =
     `${row.name}: median of ${row.captureCount} capture(s) — ` +
-    `${Math.abs(row.residual.horizontalDeg).toFixed(3)}° across (2σ ${across?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${across?.threeSigmaDeg.toFixed(2) ?? '?'}°), ` +
-    `${Math.abs(row.residual.verticalDeg).toFixed(3)}° up/down (2σ ${upDown?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${upDown?.threeSigmaDeg.toFixed(2) ?? '?'}°), ` +
+    `${row.residual.horizontalDeg.toFixed(3)}° across (2σ ${across?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${across?.threeSigmaDeg.toFixed(2) ?? '?'}°), ` +
+    `${row.residual.verticalDeg.toFixed(3)}° up/down (2σ ${upDown?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${upDown?.threeSigmaDeg.toFixed(2) ?? '?'}°), ` +
     `at ${(row.frameOffset * 100).toFixed(0)}% of the half-frame, truth ±${row.truthDisagreementDeg.toFixed(3)}°${mark}${flag}`;
   const perCapture = row.captures.map(
     (capture) =>
@@ -3388,6 +3585,7 @@ function gradeF4(
   captures: readonly Capture[],
   observations: readonly Observation[],
   anchorOf: (capture: Capture) => string | undefined,
+  offProtocol: ReadonlyMap<string, readonly string[]>,
 ): { readonly criteria: readonly Criterion[]; readonly movements: readonly GradedMovement[] } {
   const byId = new Map(captures.map((capture) => [capture.captureId, capture]));
   const perCapture = new Map<string, Map<string, Observation>>();
@@ -3417,19 +3615,39 @@ function gradeF4(
       capture.movedFromCaptureId === undefined
         ? undefined
         : byId.get(capture.movedFromCaptureId);
-    if (reference === undefined || reference.role !== 'after-drag') {
+    if (reference === undefined) {
       unpaired.push(
-        `${capture.captureId}: the after-drag capture it moved from is not among the graded captures, so there is no reference residual to difference against`,
+        `${capture.captureId}: the capture it names as the one it moved from is not among the graded captures, so there is no reference residual to difference against`,
+      );
+      continue;
+    }
+    if (reference.role !== 'after-drag') {
+      unpaired.push(
+        `${capture.captureId}: it names ${reference.captureId} as the capture it moved from, but that capture's role is \`${reference.role}\` rather than \`after-drag\`; a pair differences a movement against the drag it was made from, so only an after-drag capture can be the reference`,
       );
       continue;
     }
     if (
-      reference.pose.trimHeadingDeg !== capture.pose.trimHeadingDeg ||
-      reference.pose.trimPitchDeg !== capture.pose.trimPitchDeg
+      Math.abs(reference.pose.trimHeadingDeg - capture.pose.trimHeadingDeg) > TRIM_MATCH_DEG ||
+      Math.abs(reference.pose.trimPitchDeg - capture.pose.trimPitchDeg) > TRIM_MATCH_DEG
     ) {
       unpaired.push(
         `${capture.captureId}: its trim is not the trim of ${reference.captureId}, so the overlay was dragged again after the movement and the drag does not cancel in the pair (§ 2.7 step 9)`,
       );
+      continue;
+    }
+    const wrong = offProtocol.get(capture.captureId);
+    if (wrong !== undefined) {
+      criteria.push({
+        id: `F4.${capture.captureId}`,
+        claim: `the drag holds across the movement from ${reference.captureId} to ${capture.captureId}`,
+        outcome: 'no-sample',
+        n: 0,
+        evidence: [
+          'this movement was not the registered one, so § 2.4 reports it off-protocol and grades it by nothing',
+          ...wrong,
+        ],
+      });
       continue;
     }
 
@@ -3536,24 +3754,40 @@ function gradeF4(
 }
 
 /**
- * Whether each moved capture performed the registered movement.
+ * Which moved captures did something other than the registered movement.
  *
- * A pan is registered as "pan until the anchor summit sits at the frame edge",
- * so what is checked is where the anchor was drawn: its normalised horizontal
- * offset must reach {@link PAN_ANCHOR_EDGE_OFFSET} of the half-frame. The offset
- * is read from the overlay as drawn, which is the same thing the person saw. The
- * pan in degrees is recorded in the bundle and not gated: how far the phone had
- * to turn depends on where the anchor started.
+ * A pan is registered as "pan until the anchor summit sits at the frame edge"
+ * from a start near the middle of the picture, so two things are read from the
+ * overlay as drawn — the same markers the person saw. The anchor's offset in the
+ * moved capture must reach {@link PAN_ANCHOR_EDGE_OFFSET} of the half-frame, and
+ * the turn its two offsets imply must not exceed {@link MAX_REGISTERED_PAN_DEG}.
+ * The pan in degrees recorded in the bundle is the sensors' own account of the
+ * motion and is not gated, inside a criterion whose subject is the drag.
+ *
+ * A tilt must sit inside {@link TILT_ENVELOPE_DEG}, and every moved capture must
+ * have been still for {@link MIN_STILL_MS}.
+ *
+ * Each of these is a precondition of a term in {@link MOVEMENT_BUDGET_TERMS}, so
+ * a capture that breaks one is graded by nothing: § 2.4 reports it off-protocol
+ * rather than scoring it against a budget that does not cover what it did.
  */
-function gradeF4Envelope(captures: readonly Capture[]): readonly string[] {
-  const problems: string[] = [];
+function offProtocolMovements(
+  captures: readonly Capture[],
+): ReadonlyMap<string, readonly string[]> {
+  const found = new Map<string, readonly string[]>();
   const byId = new Map(captures.map((capture) => [capture.captureId, capture]));
   for (const capture of captures) {
     if (capture.role !== 'moved') continue;
+    const problems: string[] = [];
     const pan = capture.panFromReferenceDeg;
     const tilt = capture.tiltFromReferenceDeg;
+    const anchorId = anchorSummitIdOf(capture, byId);
+    const reference =
+      capture.movedFromCaptureId === undefined
+        ? undefined
+        : byId.get(capture.movedFromCaptureId);
+
     if (pan !== undefined && pan !== 0) {
-      const anchorId = anchorSummitIdOf(capture, byId);
       const anchor = capture.overlay.drawn.find((summit) => summit.summitId === anchorId);
       if (anchor === undefined) {
         problems.push(
@@ -3566,8 +3800,24 @@ function gradeF4Envelope(captures: readonly Capture[]): readonly string[] {
             `${capture.captureId}: panned until the anchor sat at ${offset.toFixed(2)} of the half-frame, short of the registered ${PAN_ANCHOR_EDGE_OFFSET}`,
           );
         }
+        const start =
+          reference === undefined
+            ? undefined
+            : reference.overlay.drawn.find((summit) => summit.summitId === anchorId);
+        if (start !== undefined) {
+          const turn = Math.abs(
+            frameAngleDeg(signedFrameOffset(anchor.summitPx.xPx, capture.overlayPx.widthPx)) -
+              frameAngleDeg(signedFrameOffset(start.summitPx.xPx, reference?.overlayPx.widthPx ?? 0)),
+          );
+          if (turn > MAX_REGISTERED_PAN_DEG) {
+            problems.push(
+              `${capture.captureId}: the anchor's two drawn offsets say the phone turned ${turn.toFixed(1)}°, past the ${MAX_REGISTERED_PAN_DEG.toFixed(1)}° the registered framing allows; § 2.4's field-of-view term is charged at that turn and does not cover a wider one`,
+            );
+          }
+        }
       }
     }
+
     if (tilt !== undefined && tilt !== 0) {
       const size = Math.abs(tilt);
       if (size < TILT_ENVELOPE_DEG.min || size > TILT_ENVELOPE_DEG.max) {
@@ -3576,8 +3826,16 @@ function gradeF4Envelope(captures: readonly Capture[]): readonly string[] {
         );
       }
     }
+
+    if (capture.trace.stillForMs < MIN_STILL_MS) {
+      problems.push(
+        `${capture.captureId}: held still for ${capture.trace.stillForMs} ms before the capture, short of the registered ${MIN_STILL_MS} ms brace; the sensor-hold term § 2.4 charges is the residual after that hold (term 8)`,
+      );
+    }
+
+    if (problems.length > 0) found.set(capture.captureId, problems);
   }
-  return problems;
+  return found;
 }
 
 /**
@@ -3738,7 +3996,8 @@ export function analyseFieldRun(
   const byId = new Map(gradable.map((capture) => [capture.captureId, capture]));
   const anchorOf = (capture: Capture): string | undefined => anchorSummitIdOf(capture, byId);
   const f3 = gradeF3(observations, anchorOf);
-  const f4 = gradeF4(gradable, observations, anchorOf);
+  const offProtocol = offProtocolMovements(gradable);
+  const f4 = gradeF4(gradable, observations, anchorOf, offProtocol);
   const criteria: Criterion[] = [
     gradeF2(observations),
     gradeF2Pose(observations),
@@ -3749,7 +4008,7 @@ export function analyseFieldRun(
     gradeF5c(gradable),
   ];
 
-  const envelope = gradeF4Envelope(gradable);
+  const envelope = [...offProtocol.values()].flat();
   if (envelope.length > 0) {
     criteria.push({
       id: 'F4.envelope',

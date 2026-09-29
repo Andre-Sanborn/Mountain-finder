@@ -108,8 +108,11 @@ after its self-check has run and passed here. The checks are in
 - [x] Make F3's unit a summit-axis medianed over its captures, with per-k drag factors and an allowance schedule
 - [x] Make F4 grade the paired change over each movement, on its own distance-independent budget
 - [x] Regenerate `fixtures/field/aligned-*` so a summit's error is carried into both frames of a pair
-- [ ] Fix F4's field-of-view term for summits crossing the axis; register Deer Point's start offset
-- [ ] Withhold F4 verdicts from off-protocol movements; restate pass rates under shared-term correlation
+- [x] Fix F4's field-of-view term for summits crossing the axis; register Deer Point's start offset
+- [x] Withhold F4 verdicts from off-protocol movements; restate pass rates under shared-term correlation
+- [ ] Measure heading-dependent compass deviation over a 45° pan, and budget it or drop it
+- [ ] Settle § 1.3's 0.017° against § 1.5's 0.034° for the roll's horizontal term
+- [ ] Decide whether the 2 s brace should be a precondition of F3's captures as well as F4's
 
 ## Other open work
 

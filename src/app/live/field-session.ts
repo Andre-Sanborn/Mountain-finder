@@ -42,6 +42,8 @@ import type { CameraPose } from '../../core/types';
 import type { OverlayLayout, OverlayPeak } from '../../render/types';
 import type { PoseUncertainty } from '../uncertainty';
 import {
+  frameAngleDeg,
+  MAX_REGISTERED_PAN_DEG,
   PAN_ANCHOR_EDGE_OFFSET,
   TILT_ENVELOPE_DEG,
   BUNDLE_FORMAT,
@@ -772,6 +774,7 @@ export interface CaptureShortfall {
     | 'uncalibrated'
     | 'fix-too-loose'
     | 'pan-short'
+    | 'pan-too-wide'
     | 'pan-wrong-side'
     | 'tilt-outside'
     | 'tilt-wrong-way';
@@ -790,6 +793,15 @@ export function captureShortfalls(
   options: {
     readonly anchorU?: number;
     readonly anchorSide?: 'left' | 'right' | 'centre';
+    /**
+     * Where the anchor sat in the capture this one moved from, signed.
+     *
+     * § 2.7 step 6 asks for it near the middle, and § 2.4 charges its
+     * field-of-view term at the widest pan that framing allows. A pan from
+     * further out turns the phone further than the budget covers, so the
+     * grader will not score it.
+     */
+    readonly referenceAnchorSignedU?: number;
     readonly wantedEdge?: 'left' | 'right';
     readonly wantedTilt?: 'up' | 'down';
   } = {},
@@ -838,6 +850,22 @@ export function captureShortfalls(
           `That summit only reached ${(options.anchorU * 100).toFixed(0)} % of the way to the ` +
           `edge. It needs ${(PAN_ANCHOR_EDGE_OFFSET * 100).toFixed(0)} %. Turn a little further.`,
       });
+    }
+    if (options.referenceAnchorSignedU !== undefined) {
+      const movedSignedU = options.anchorSide === 'left' ? -options.anchorU : options.anchorU;
+      const turnDeg = Math.abs(
+        frameAngleDeg(movedSignedU) - frameAngleDeg(options.referenceAnchorSignedU),
+      );
+      if (turnDeg > MAX_REGISTERED_PAN_DEG) {
+        out.push({
+          code: 'pan-too-wide',
+          text:
+            `You turned about ${turnDeg.toFixed(0)}°, and the test allows up to ` +
+            `${MAX_REGISTERED_PAN_DEG.toFixed(0)}°. That summit started ` +
+            `${Math.abs(options.referenceAnchorSignedU * 100).toFixed(0)} % of the way to the edge ` +
+            `instead of near the middle. Frame it nearer the middle and take the drag again.`,
+        });
+      }
     }
     if (options.wantedEdge !== undefined && options.anchorSide !== options.wantedEdge) {
       out.push({

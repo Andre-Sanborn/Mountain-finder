@@ -104,7 +104,7 @@ const FOV_SCALE_DEG = { h: 0.275, v: 0.039 } as const;
 const ROLL_DEG = { h: 0.034, v: 0.322 } as const;
 const DRAG_DEG = 0.543;
 /** § 2.4's RSS for the paired change: what a movement adds and nothing else. */
-const MOVEMENT_DEG = { h: 0.304, v: 0.472 } as const;
+const MOVEMENT_DEG = { h: 0.428, v: 0.493 } as const;
 
 /** Every draw is truncated here, in units of its own term's 1σ. */
 const CLAMP_SIGMA = 0.8;
@@ -308,7 +308,7 @@ const ALIGNED_LIMITS = {
   far: { h: 1.7, v: 1.45 },
 } as const;
 /** § 2.4's paired-change limits, which no distance moves. */
-const MOVEMENT_LIMITS = { h: 0.6, v: 0.95 } as const;
+const MOVEMENT_LIMITS = { h: 0.85, v: 1 } as const;
 /** § 2.2 gates F2 on the band the capture displayed, half-width. */
 const ALIGNED_RAW_BAND_DEG = 8.7;
 /** One raw pointing offset, standing for the compass bias before the drag. */
@@ -417,7 +417,10 @@ function alignedPair(): { bundle: unknown; truth: unknown } {
       horizontalAccuracyM: accuracy,
       dragAnchorSummitId: TRINITY.summitId,
       // The drag anchor sits at 0.84 of the half-frame; § 2.4 registers 0.8.
-      panFromReferenceDeg: 26,
+      // The anchor's two drawn offsets put the turn at 11.8°, inside the 45.4°
+      // the registered framing allows. What the bundle records here is the
+      // sensors' own account of the motion, which § 2.4 does not gate.
+      panFromReferenceDeg: 11.8,
       summits: [
         drawn(TRINITY, { xPx: 155, yPx: 310 }, settledError(TRINITY, session.movement())),
         drawn(SHAFER, { xPx: 620, yPx: 370 }, settledError(SHAFER, session.movement())),

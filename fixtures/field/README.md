@@ -102,7 +102,7 @@ capture's injected residual is then:
 |---|---|---|
 | before-drag | `a_i + r` | `r` is one raw pointing offset of 55 px across and 12 px down, common to every summit, standing for the compass bias the drag has not yet removed |
 | after-drag | `(a_i − a_anchor) + d` | `d` is that drag's own precision, one draw shared by every summit in the capture |
-| moved | `(a_i − a_anchor) + d + m_i` | `d` is the reference capture's draw, because a moved capture carries the trim round the movement without re-dragging; `m_i` is what the movement itself adds, from § 2.4's 0.304° across and 0.472° up/down |
+| moved | `(a_i − a_anchor) + d + m_i` | `d` is the reference capture's draw, because a moved capture carries the trim round the movement without re-dragging; `m_i` is what the movement itself adds, from § 2.4's 0.428° across and 0.493° up/down |
 
 So `F3` reads `(a_i − a_anchor) + d`, and `F4`'s paired change is `m_i` plus a
 small second-order term from reading the same pixel error at a different frame
@@ -149,9 +149,13 @@ three-state truth schema exists to prevent.
 ## What the aligned pair reaches
 
 `aligned-bundle.json` exercises the rest of the protocol. Every summit is inside
-F3's 2σ; its pan capture carries the drag anchor to 0.84 of the half-frame (the
-registered pan target is 0.8); every capture reports a fix accuracy of 8.4 m
-under the bundle's declared convention, so the bands are graded against the
+F3's 2σ; its pan capture carries the drag anchor from 0.46 of the half-frame to
+0.84 of it on the same side, which is a turn of 11.8° — inside both the 0.8 pan
+target and the 45.4° § 2.4 charges its field-of-view term at. That start is
+further from the middle than § 2.7 step 6 asks a person for, and the capture is
+graded anyway: what § 2.4 gates is the turn the two drawn offsets imply, which
+is the quantity its budget depends on. Every capture reports a fix accuracy of
+8.4 m under the bundle's declared convention, so the bands are graded against the
 limits that accuracy derives rather than the registered ones. Three summits sit
 in the `far` band, which is § 2.0's stop-rule floor, so that band returns a
 verdict; the `near` band holds one graded summit and is reported `no-sample` with

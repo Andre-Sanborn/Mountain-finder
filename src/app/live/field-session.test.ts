@@ -30,6 +30,7 @@ import {
   parseFieldBundle,
   type Capture,
 } from '../../live/field-analysis';
+import { MAX_REGISTERED_CAPTURES_PER_UNIT } from '../../live/field-analysis';
 import type { OverlayLayout, OverlayPeak, PeakMarker, UnlabelledSummit } from '../../render/types';
 import type { PoseUncertainty } from '../uncertainty';
 import {
@@ -292,6 +293,18 @@ describe('the run plan', () => {
       'turned',
       'turned',
     ]);
+  });
+
+  it('produces exactly the after-drag captures § 1.5 has a drag factor for', () => {
+    // k is how many after-drag captures settled a summit, and § 2.3 registers a
+    // limits table for k = 1, 2 and 3 only. The plan produces three: step 8
+    // drags and captures once, and step 10 repeats that pair twice more. A
+    // fourth would need a k = 4 row before it could be graded honestly, so the
+    // count is asserted here rather than left to the protocol's prose.
+    const afterDrag = fieldRunPlan().filter((entry) => entry.step.role === 'after-drag');
+    expect(afterDrag).toHaveLength(MAX_REGISTERED_CAPTURES_PER_UNIT);
+    expect(afterDrag).toHaveLength(REPEATED_DRAG_COUNT);
+    expect(afterDrag.map((entry) => entry.repeat)).toEqual([1, 2, 3]);
   });
 
   it('takes the second direction after every drag, and drags nothing in it', () => {
@@ -640,6 +653,34 @@ describe('the shortfalls a capture is reported with', () => {
     });
     expect(captureShortfalls(panned, { anchorU: 0.67 }).map((s) => s.code)).toEqual(['pan-short']);
     expect(captureShortfalls(panned, { anchorU: 0.8 })).toEqual([]);
+  });
+
+  it('names a pan that turned further than the budget allows', () => {
+    // The anchor started 0.6 of the way to the left edge instead of inside the
+    // registered 0.2, and finished 0.84 of the way to the right one:
+    // atan(0.84 × tan 36.87°) + atan(0.6 × tan 36.87°) = 56.6°, past 45.4°.
+    const panned = captureOf({
+      captureId: 'c3',
+      role: 'moved',
+      dragAnchorSummitId: SHAFER.id,
+      movedFromCaptureId: 'c2',
+      panFromReferenceDeg: 56,
+    });
+    expect(
+      captureShortfalls(panned, {
+        anchorU: 0.84,
+        anchorSide: 'right',
+        referenceAnchorSignedU: -0.6,
+      }).map((s) => s.code),
+    ).toEqual(['pan-too-wide']);
+    // The same pan from a start inside the registered framing is fine.
+    expect(
+      captureShortfalls(panned, {
+        anchorU: 0.84,
+        anchorSide: 'right',
+        referenceAnchorSignedU: -0.2,
+      }),
+    ).toEqual([]);
   });
 
   it('names a pan that reached the wrong edge', () => {

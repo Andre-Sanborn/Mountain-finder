@@ -321,8 +321,8 @@
             "altitudeDeg": 6.1,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 75.50678951041667,
-              "yPx": 153.69267301458333
+              "xPx": 74.63613840208333,
+              "yPx": 153.74843569791668
             },
             "labelled": true
           },
@@ -334,8 +334,8 @@
             "altitudeDeg": 4.1,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 312.0654577875,
-              "yPx": 181.30602049583334
+              "xPx": 312.65658993125004,
+              "yPx": 181.196957825
             },
             "labelled": true
           },
@@ -347,8 +347,8 @@
             "altitudeDeg": 2.8,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 447.43409431875,
-              "yPx": 200.84085976666668
+              "xPx": 448.31537993125,
+              "yPx": 200.73062848541667
             },
             "labelled": true
           },
@@ -360,8 +360,8 @@
             "altitudeDeg": 5.2,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 182.20902563958333,
-              "yPx": 161.34228775833333
+              "xPx": 182.25389440416666,
+              "yPx": 161.27942229375
             },
             "labelled": true
           }
@@ -370,7 +370,7 @@
       },
       "dragAnchorSummitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e",
       "movedFromCaptureId": "c2",
-      "panFromReferenceDeg": 26,
+      "panFromReferenceDeg": 11.8,
       "horizontalAccuracyM": 8.4
     },
     {
@@ -432,8 +432,8 @@
             "altitudeDeg": 4.1,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 521.5507955979166,
-              "yPx": 65.55494462083333
+              "xPx": 522.2889112479166,
+              "yPx": 65.39114397916666
             },
             "labelled": true
           },
@@ -445,8 +445,8 @@
             "altitudeDeg": 2.8,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 653.165615475,
-              "yPx": 86.87497895624999
+              "xPx": 652.6627052020834,
+              "yPx": 86.78943936249999
             },
             "labelled": true
           },
@@ -458,8 +458,8 @@
             "altitudeDeg": 5.2,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 390.98015875416667,
-              "yPx": 49.25690923749998
+              "xPx": 390.88068745208335,
+              "yPx": 49.302400895833316
             },
             "labelled": true
           }

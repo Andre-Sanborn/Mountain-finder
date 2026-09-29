@@ -1134,13 +1134,49 @@ The harness lives outside the repository, in the session scratch directory.
 The revision history is in docs/FIELD-TEST-PREREGISTRATION.md, and the pre-edit copy is
 archived.
 
-**The F3/F4 gate counts exceedances.** A band fails on more than one summit-axis past 2σ, or on
-any axis past 3σ. The 3σ limit is 1.5 × 2σ, rounded up to 0.05°. A correct budget passes with
-probability p0^n + n·p1·p0^(n−1), where p0 = 0.9545 and p1 = 0.0428. That is 0.936 at n = 8 and
-0.815 at n = 16. The old rule passed with 0.9545^n: 0.475 at 16 and 0.225 at 32.
+**The F3/F4 gate counts exceedances on a schedule.** A group fails on more units past 2σ than
+the allowance (one up to 12 units, two from 13 to 24, one more per further 12) or on any unit
+past 3σ. The 3σ limit is 1.5 × 2σ, rounded up to 0.05°.
 
-**F4's pan target is the anchor at u ≥ 0.8** of the half-frame, read from the drawn overlay.
-The pan angle is recorded but not gated.
+**A band's units are not independent draws.** They share the anchor's error, the observer's
+position, the field-of-view scale, the roll and the same drags; only the graded summit's own
+position is drawn per summit. A seeded Monte Carlo of that structure
+(`scripts/lib/field-budget-simulation.ts`, pinned by `tests/unit/field-budget-simulation.test.ts`)
+puts a correct app at 0.914 for a three-summit far band and 0.902 for twelve summits at k = 1,
+and 0.942 to 0.931 at k = 3. The independent-unit binomial said 0.960 falling to 0.861.
+Exceedances arrive together, so a failing band is read with its per-capture and `F3.anchor`
+lines before any term is blamed. A drag understated by half again drops a three-summit band to
+0.797. For F4, one movement passes 0.943 (3 summits) and all four together 0.839.
+
+**F4's pan target is the anchor at u ≥ 0.8** of the half-frame, read from the drawn overlay, and
+the turn the anchor's two offsets imply must not exceed 45.401°. The pan angle in the pose is
+recorded, not gated.
+
+**F4's field-of-view term is charged at the turn.** A scale error ε displaces a marker by
+(ε/2)·sin 2θ, odd in θ, so a summit crossing the optical axis during a pan moves one way and
+then the other. The largest paired change over a turn P is ε·sin P. § 2.7 step 6 registers the
+framing: the anchor starts within 0.2 of the half-frame of the centre, which bounds the widest
+pan at 45.401° and the term at 0.408°, 1.48 times the 0.275° edge charge. It is charged at the
+frame-edge envelope, not the 0.8 target (0.364°), because the budget must cover every capture
+the grader accepts. The grader gates the turn, the quantity the budget depends on, rather than
+the start offset; the screen warns on site with a `pan-too-wide` shortfall.
+
+A pan and a tilt carry different terms, so each has a row: pan 0.428° H / 0.470° V, tilt 0.207°
+/ 0.493°. The limits take the worse movement per axis: 0.85° / 1.00° at 2σ, 1.30° / 1.50° at 3σ.
+A movement with its anchor short of u = 0.8, a turn past 45.401°, a tilt outside 5° to 15°, or
+under 2 s of stillness is graded by nothing: its `F4.<capture>` row reads `no-sample` with the
+reason, and `F4.envelope` fails the run.
+
+The truth-read term reads the 0.3° disagreement limit as 2σ of the two annotators' difference:
+0.106°. Read as 1σ of the difference it would be 0.212°, limits 0.95° / 1.05°; as one
+annotator's 1σ, 0.300°, limits 1.00° / 1.15°.
+
+One term is unbudgeted: heading-dependent compass deviation over a 22° to 45° pan. Nothing has
+measured it on this device. A change on both pans and neither tilt would implicate it.
+
+The protocol makes exactly three after-drag captures (step 8's, then step 10's two), so k never
+exceeds 3; a test ties the limit to the run plan. Roll is charged whole across them as the
+conservative choice.
 
 **Observer accuracy is measured.** A capture may carry `horizontalAccuracyM` under a declared
 `accuracyConvention`. W3C defines it as a 95 % radius, so σ = r/2.4477. Apple states no
@@ -1754,7 +1790,7 @@ residual minus its reference after-drag capture's, for a summit settled in both.
 observer, anchor and drag errors cancel. What remains is the field-of-view scale (0.275° H /
 0.039° V, one calibration charged at the frame edge), a second braced hold's roll (0.048° /
 0.455°), the sensors' settle over the move (0.054°), and a second frame's truth read (0.106°).
-RSS is 0.304° / 0.472°, so the limits are 0.60° / 0.95° at 2σ for every band. Each movement is
+The limits are one row for every band; see "F4's field-of-view term is charged at the turn". Each movement is
 gated alone with F3's rule and needs three paired summits. A moved capture whose trim differs
 from its reference was re-dragged; it is reported unpaired and graded by nothing.
 

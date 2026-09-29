@@ -288,13 +288,6 @@ ridge, a little to the left of Deer Point as you look at it, about the width of 
 fingers held at arm's length. It needs to be in shot, and it is *not* the one you line the
 label up on.
 
-**Keep Deer Point near the middle of the picture.** Not exactly centred — anywhere in the
-middle fifth is fine. Picture the screen split into ten columns: Deer Point should be in
-one of the two in the middle. This matters because of the turns in steps 9 and 10: you turn
-until Deer Point reaches the edge, so where it starts decides how far you have to turn, and
-how far you turn is what the test was set up to allow for. Starting it out near an edge
-makes the turn too big, and those captures cannot be scored.
-
 Everything from here to step 16 is taken facing that way.
 
 ### Step 6 — Capture as it is
@@ -396,11 +389,9 @@ The panel reports what it has:
 > 10 captures, each with its photograph. Every one of them follows the protocol.
 
 If something fell short it says so instead, and lists each one: a picture under 1920 pixels
-across, a hold shorter than two seconds, a pan that did not reach 80 %, a turn that went
-further than the test allows because Deer Point did not start near the middle, a tilt
-outside 5° to 15°, a fix looser than 30 m. Copy those lines for Claude. A capture that falls
-short is still kept, and it is reported rather than scored: the four turn-and-tilt captures
-are only scored when they were done the registered way.
+across, a hold shorter than two seconds, a pan that did not reach 80 %, a tilt outside 5° to
+15°, a fix looser than 30 m. Copy those lines for Claude. A capture that falls short is still
+kept.
 
 Two more lines follow:
 

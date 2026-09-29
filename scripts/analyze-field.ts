@@ -12,8 +12,14 @@
  * argument, so a run cannot be graded against anything but the pre-registration.
  *
  * Every graded summit is reported against its band's 2σ figure. A band fails
- * when more than one of its summit-axes sits past 2σ, or when any one sits past
- * 3σ. A capture that reports its own fix accuracy is graded against the limits
+ * when more of its summit-axis units sit past 2σ than the § 2.3 schedule allows
+ * — one up to twelve units, and one more per further twelve — or when any one
+ * sits past 3σ. The units in a band are not independent draws: they share the
+ * anchor, the observer's position, the field-of-view scale, the roll and the
+ * same drags, so exceedances arrive together. Read a failing band's per-capture
+ * lines and its anchor line before blaming a single term.
+ *
+ * A capture that reports its own fix accuracy is graded against the limits
  * that accuracy implies, which can only be tighter than the registered ones.
  *
  * F2 is graded twice: on the drawn markers, and on the pose. The pose-level check

@@ -35,9 +35,21 @@ import {
   MAX_TWO_SIGMA_EXCEEDANCES,
   MEDIAN_SIGMA_FACTORS,
   MIN_GRADED_PER_BAND,
+  ANCHOR_START_MAX_OFFSET,
+  frameAngleDeg,
+  fovPairedChangeDeg,
+  HALF_HFOV_DEG,
+  HALF_VFOV_DEG,
+  MAX_REGISTERED_PAN_DEG,
+  MIN_STILL_MS,
   MOVEMENT_BUDGET_TERMS,
   movementSigma,
+  NEAR_HORIZON_OFFSET_DEG,
   PREREGISTERED_MOVEMENT_LIMITS,
+  rollPairedChangeDeg,
+  signedFrameOffset,
+  TILT_ENVELOPE_DEG,
+  TRIM_MATCH_DEG,
   SLIPPED_DRAG_DEG,
   thresholdForCaptureCount,
   twoSigmaAllowanceFor,
@@ -1186,6 +1198,180 @@ describe('the F4 pan target', () => {
     const analysis = analyseFieldRun(parsed.value, truth, lookup);
     expect(criterion(analysis, 'F4.envelope')?.outcome).toBe('fail');
     expect(criterion(analysis, 'F4.envelope')?.evidence[0]).toContain('not among the summits');
+  });
+});
+
+describe('the unit line prints the median signed', () => {
+  it('keeps the sign, so the median can be checked against its captures', () => {
+    // Two captures, both drawing the summit 30 px to the LEFT of its apex. The
+    // median of the two is −1.34263°, and a line that printed 1.343° could not
+    // be told from a summit 30 px the other way.
+    expect(degreesAcross(0, -30)).toBeCloseTo(-1.34263, 5);
+    const drawn = (captureId: string): SynthCapture => ({
+      captureId,
+      role: 'after-drag',
+      dragAnchorSummitId: HORIZON,
+      summits: [
+        summit({ summitId: HORIZON, distanceKm: 50, truthPx: { xPx: 300, yPx: 300 } }),
+        summit({
+          summitId: FAR,
+          distanceKm: 12,
+          truthPx: { xPx: FRAME_WIDTH_PX / 2, yPx: FRAME_HEIGHT_PX / 2 },
+          errorPx: { xPx: -30, yPx: 0 },
+        }),
+        ...padBand(12, [FAR, HORIZON]),
+      ],
+    });
+    const analysis = run([drawn('c2'), drawn('c3')]);
+    const line = criterion(analysis, 'F3.far')?.evidence.find((entry) =>
+      entry.startsWith('Shafer Butte:'),
+    );
+    expect(line).toBeDefined();
+    expect(line).toContain('-1.343° across');
+    expect(line).not.toContain(' 1.343° across');
+  });
+});
+
+describe('a movement that was not the registered one is graded by nothing', () => {
+  // § 2.4: each precondition below is what earns a term in the paired budget,
+  // so a capture that breaks one is reported off-protocol rather than scored
+  // against a budget that does not cover what it did.
+  // Three summits beside the anchor, so a graded movement clears § 2.0's floor.
+  const others = (): readonly SynthSummit[] =>
+    [MID, DISTANT, HORIZON].map((summitId, index) =>
+      summit({
+        summitId,
+        distanceKm: 12,
+        truthPx: { xPx: 300 + index * 220, yPx: 300 + index * 60 },
+        errorPx: { xPx: 0, yPx: 0 },
+      }),
+    );
+  const reference = (anchorPx: number): SynthCapture => ({
+    captureId: 'c2',
+    role: 'after-drag',
+    dragAnchorSummitId: FAR,
+    summits: [summit({ summitId: FAR, truthPx: { xPx: anchorPx, yPx: 442 } }), ...others()],
+  });
+  const moved = (over: Partial<SynthCapture>, anchorPx = 150): SynthCapture => ({
+    captureId: 'c3',
+    role: 'moved',
+    dragAnchorSummitId: FAR,
+    summits: [summit({ summitId: FAR, truthPx: { xPx: anchorPx, yPx: 442 } }), ...others()],
+    ...over,
+  });
+
+  it('grades the registered pan, so the off-protocol rule is not simply refusing everything', () => {
+    const analysis = run([reference(900), moved({ panFromReferenceDeg: 26 })]);
+    expect(criterion(analysis, 'F4.envelope')).toBeUndefined();
+    expect(criterion(analysis, 'F4.c3')?.outcome).toBe('pass');
+    expect(criterion(analysis, 'F4.c3')?.n).toBe(6);
+  });
+
+  it('grades nothing on a pan that stopped short of the frame edge', () => {
+    const analysis = run([reference(900), moved({ panFromReferenceDeg: 26 }, 400)]);
+    expect(criterion(analysis, 'F4.envelope')?.outcome).toBe('fail');
+    expect(criterion(analysis, 'F4.c3')?.outcome).toBe('no-sample');
+    expect(criterion(analysis, 'F4.c3')?.n).toBe(0);
+    expect(criterion(analysis, 'F4.c3')?.evidence[0]).toContain('off-protocol');
+    expect(analysis.movements).toHaveLength(0);
+  });
+
+  it('grades nothing on a pan wider than the registered framing allows', () => {
+    // The anchor starts at 0.6 of the half-frame on one side and finishes at
+    // 0.844 on the other: atan(0.844 × tan 36.87°) + atan(0.6 × tan 36.87°) =
+    // 32.32° + 24.23° = 56.55°, past the 45.40° § 2.4 charges its
+    // field-of-view term at.
+    expect(frameAngleDeg(0.84375) + frameAngleDeg(0.6)).toBeCloseTo(56.554, 3);
+    expect(signedFrameOffset(384, 1920)).toBeCloseTo(-0.6, 9);
+    const analysis = run([
+      reference(384),
+      moved({ panFromReferenceDeg: 56 }, 1920 - 150),
+    ]);
+    expect(criterion(analysis, 'F4.envelope')?.outcome).toBe('fail');
+    expect(criterion(analysis, 'F4.envelope')?.evidence.join('\n')).toContain('turned 56.6°');
+    expect(criterion(analysis, 'F4.c3')?.outcome).toBe('no-sample');
+  });
+
+  it('grades nothing on a tilt outside the registered envelope', () => {
+    const analysis = run([reference(900), moved({ tiltFromReferenceDeg: 20 })]);
+    expect(TILT_ENVELOPE_DEG.max).toBe(15);
+    expect(criterion(analysis, 'F4.envelope')?.outcome).toBe('fail');
+    expect(criterion(analysis, 'F4.c3')?.outcome).toBe('no-sample');
+    expect(criterion(analysis, 'F4.c3')?.evidence.join('\n')).toContain('envelope');
+  });
+
+  it('grades nothing on a capture taken before the brace finished', () => {
+    const { bundle, truth } = synthesiseFieldBundle({
+      captures: [reference(900), moved({ tiltFromReferenceDeg: -10 })],
+    });
+    const raw = JSON.parse(JSON.stringify(bundle)) as {
+      captures: { captureId: string; trace: { stillForMs: number } }[];
+    };
+    const target = raw.captures.find((capture) => capture.captureId === 'c3');
+    expect(target).toBeDefined();
+    if (target === undefined) return;
+    target.trace.stillForMs = MIN_STILL_MS - 1;
+    const parsed = parseFieldBundle(raw);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const analysis = analyseFieldRun(parsed.value, truth, lookup);
+    expect(criterion(analysis, 'F4.envelope')?.evidence.join('\n')).toContain('brace');
+    expect(criterion(analysis, 'F4.c3')?.outcome).toBe('no-sample');
+    expect(analysis.movements).toHaveLength(0);
+  });
+
+  it('says the reference has the wrong role, not that it is missing', () => {
+    // c2 is a before-drag capture, so there is no drag to difference against.
+    // "Not among the graded captures" would send a reader looking for a capture
+    // that is right there in the bundle.
+    const { bundle, truth } = synthesiseFieldBundle({
+      captures: [
+        { ...reference(900), role: 'before-drag', dragAnchorSummitId: undefined },
+        moved({ tiltFromReferenceDeg: -10 }),
+      ],
+    });
+    const analysis = analyseFieldRun(bundle, truth, lookup);
+    const unpaired = criterion(analysis, 'F4.unpaired');
+    expect(unpaired?.n).toBe(1);
+    expect(unpaired?.evidence.join('\n')).toContain('role is `before-drag`');
+    expect(unpaired?.evidence.join('\n')).not.toContain('not among the graded captures');
+  });
+
+  it('pairs a trim that differs only in the last bit of a float', () => {
+    // A pose written and read back through JSON can differ in the last bit. An
+    // exact comparison would report that pair as re-dragged.
+    const { bundle, truth } = synthesiseFieldBundle({
+      captures: [reference(900), moved({ tiltFromReferenceDeg: -10 })],
+    });
+    const raw = JSON.parse(JSON.stringify(bundle)) as {
+      captures: { captureId: string; pose: { trimHeadingDeg: number } }[];
+    };
+    const target = raw.captures.find((capture) => capture.captureId === 'c3');
+    expect(target).toBeDefined();
+    if (target === undefined) return;
+    target.pose.trimHeadingDeg += TRIM_MATCH_DEG / 2;
+    const parsed = parseFieldBundle(raw);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const analysis = analyseFieldRun(parsed.value, truth, lookup);
+    expect(criterion(analysis, 'F4.unpaired')).toBeUndefined();
+    expect(criterion(analysis, 'F4.c3')?.outcome).toBe('pass');
+  });
+
+  it('still refuses a trim that moved by more than the tolerance', () => {
+    const { bundle, truth } = synthesiseFieldBundle({
+      captures: [reference(900), moved({ tiltFromReferenceDeg: -10 })],
+    });
+    const raw = JSON.parse(JSON.stringify(bundle)) as {
+      captures: { captureId: string; pose: { trimHeadingDeg: number } }[];
+    };
+    const target = raw.captures.find((capture) => capture.captureId === 'c3');
+    if (target === undefined) throw new Error('no c3');
+    target.pose.trimHeadingDeg += TRIM_MATCH_DEG * 10;
+    const parsed = parseFieldBundle(raw);
+    if (!parsed.ok) throw new Error('the mutated bundle does not parse');
+    const analysis = analyseFieldRun(parsed.value, truth, lookup);
+    expect(criterion(analysis, 'F4.unpaired')?.n).toBe(1);
   });
 });
 
@@ -3122,18 +3308,63 @@ describe('a slipped drag', () => {
 describe('F4 grades the paired change', () => {
   const CENTRE = { xPx: FRAME_WIDTH_PX / 2, yPx: FRAME_HEIGHT_PX / 2 };
 
+  it('derives the widest registered pan from the framing rule', () => {
+    // atan(1.0 × tan 36.87°) + atan(0.2 × tan 36.87°) = 36.870° + 8.531°.
+    // The far end is the frame edge rather than the 0.8 pan target: a marker
+    // that is drawn at all sits at |u| ≤ 1, and the grader accepts any capture
+    // whose anchor reached 0.8.
+    expect(HALF_HFOV_DEG).toBeCloseTo(36.87, 2);
+    expect(frameAngleDeg(1)).toBeCloseTo(36.87, 2);
+    expect(frameAngleDeg(ANCHOR_START_MAX_OFFSET)).toBeCloseTo(8.5308, 4);
+    expect(MAX_REGISTERED_PAN_DEG).toBeCloseTo(45.4008, 4);
+    // tan(36.87°)/(956/440) = 0.345188, whose arctangent is 19.0441°.
+    expect(HALF_VFOV_DEG).toBeCloseTo(19.0441, 4);
+  });
+
+  it('charges the field-of-view scale at the turn, not at the frame edge', () => {
+    // ε·(sin 2θ₂ − sin 2θ₁)/2 is odd in θ, so a summit that crosses the axis
+    // sees both signs. The maximum over θ is at θ = −P/2 and is ε·sin P radians:
+    // at P = 45.4008° that is 0.01 × 0.712096 rad = 0.40797°, against the
+    // 0.275° a marker held at the frame edge would see.
+    expect(fovPairedChangeDeg(MAX_REGISTERED_PAN_DEG, HALF_HFOV_DEG)).toBeCloseTo(0.40797, 5);
+    expect(fovPairedChangeDeg(90, 45)).toBeCloseTo((0.01 * 180) / Math.PI, 6);
+    // 15° of tilt inside a 19.044° half-frame: 0.01 × sin 15° rad = 0.14829°.
+    expect(fovPairedChangeDeg(TILT_ENVELOPE_DEG.max, HALF_VFOV_DEG)).toBeCloseTo(0.14829, 5);
+    // A turn wider than the whole frame leaves no summit in both frames.
+    expect(fovPairedChangeDeg(80, 36.87)).toBe(0);
+  });
+
+  it('charges the roll at each frame’s own offset', () => {
+    // ρ = 0.5° = 0.0087266 rad. Vertically both frames hold the summit at the
+    // frame edge: 0.0087266 × √(36.87² + 36.87²) = 0.45503°.
+    expect(rollPairedChangeDeg(HALF_HFOV_DEG, HALF_HFOV_DEG)).toBeCloseTo(0.45503, 5);
+    // Horizontally the reference frame is a near-horizon 4° and a 15° tilt puts
+    // the moved frame at 19°: 0.0087266 × √(4² + 19²) = 0.16944°.
+    expect(rollPairedChangeDeg(NEAR_HORIZON_OFFSET_DEG, NEAR_HORIZON_OFFSET_DEG)).toBeCloseTo(
+      0.049365,
+      6,
+    );
+    expect(
+      rollPairedChangeDeg(NEAR_HORIZON_OFFSET_DEG, NEAR_HORIZON_OFFSET_DEG + TILT_ENVELOPE_DEG.max),
+    ).toBeCloseTo(0.16944, 5);
+  });
+
   it('rebuilds the movement budget of § 2.4 from its terms', () => {
-    // fov 0.275°, roll √2 × 0.034°, sensor hold 0.054°, truth 0.3/2√2 = 0.106°:
-    //   RSS = 0.30350° horizontally, 0.47230° vertically
-    // and 2σ rounds to 0.60° and 0.95°, 3σ to 0.90° and 1.45°.
-    expect(MOVEMENT_BUDGET_TERMS.truthReadDeg).toBeCloseTo(0.10607, 5);
-    expect(movementSigma().horizontalDeg).toBeCloseTo(0.3035, 4);
-    expect(movementSigma().verticalDeg).toBeCloseTo(0.4723, 4);
+    // pan:  fov 0.40797°, roll H 0.04937°, roll V 0.45503°, hold 0.054°,
+    //       truth 0.3/2√2 = 0.10607°  →  RSS 0.42783° H, 0.47030° V
+    // tilt: fov V 0.14829°, roll H 0.16944°, roll V 0.45503°, same hold and
+    //       truth                       →  RSS 0.20707° H, 0.49316° V
+    // Each axis takes the movement that charges it most: 0.42783° across and
+    // 0.49316° up/down. 2σ rounds to 0.85° and 1.00°, 3σ to 1.30° and 1.50°.
+    expect(MOVEMENT_BUDGET_TERMS.pan.truthReadDeg).toBeCloseTo(0.10607, 5);
+    expect(MOVEMENT_BUDGET_TERMS.tilt.truthReadDeg).toBeCloseTo(0.10607, 5);
+    expect(movementSigma().horizontalDeg).toBeCloseTo(0.42783, 5);
+    expect(movementSigma().verticalDeg).toBeCloseTo(0.49316, 5);
     expect(PREREGISTERED_MOVEMENT_LIMITS).toEqual({
-      horizontalDeg: 0.6,
-      verticalDeg: 0.95,
-      horizontal3SigmaDeg: 0.9,
-      vertical3SigmaDeg: 1.45,
+      horizontalDeg: 0.85,
+      verticalDeg: 1,
+      horizontal3SigmaDeg: 1.3,
+      vertical3SigmaDeg: 1.5,
     });
   });
 
@@ -3172,7 +3403,7 @@ describe('F4 grades the paired change', () => {
     // 40 px is 1.78992°, most of the far band's 1.90°, in BOTH frames. The
     // summit's own position error is the same error in both, so the paired
     // change is zero and the drag held. An unpaired grader would read 1.790°
-    // against the movement budget's 0.90° 3σ limit and fail it.
+    // against the movement budget's 1.30° 3σ limit and fail it.
     expect(degreesAcross(0, 40)).toBeCloseTo(1.78992, 5);
     const analysis = pair(40, 40);
     expect(analysis.movements[0]?.change.horizontalDeg).toBeCloseTo(0, 9);
@@ -3182,10 +3413,11 @@ describe('F4 grades the paired change', () => {
   });
 
   it('fails a movement that moved one summit and left the others', () => {
-    // 0 px in the reference and 20 px after the move is a change of 0.89518°,
-    // past the movement budget's 0.60° 2σ on one axis. One 2σ unit is tolerated
-    // at n = 6, so the second summit's change is what fails it.
-    expect(degreesAcross(0, 20)).toBeCloseTo(0.89518, 5);
+    // 0 px in the reference and 24 px after the move is a change of 1.07417°,
+    // past the movement budget's 0.85° 2σ on one axis and inside its 1.30° 3σ.
+    // One 2σ unit is tolerated at n = 6, so the second summit's change is what
+    // fails it.
+    expect(degreesAcross(0, 24)).toBeCloseTo(1.07417, 5);
     const analysis = run([
       {
         captureId: 'c2',
@@ -3205,13 +3437,13 @@ describe('F4 grades the paired change', () => {
             summitId: FAR,
             distanceKm: 12,
             truthPx: CENTRE,
-            errorPx: { xPx: 20, yPx: 0 },
+            errorPx: { xPx: 24, yPx: 0 },
           }),
           summit({
             summitId: DISTANT,
             distanceKm: 15,
             truthPx: { xPx: 600, yPx: 400 },
-            errorPx: { xPx: 20, yPx: 0 },
+            errorPx: { xPx: 24, yPx: 0 },
           }),
           summit({ summitId: HORIZON, distanceKm: 18, truthPx: { xPx: 1300, yPx: 500 } }),
         ],
@@ -3323,16 +3555,16 @@ describe('the committed synthetic fixtures', () => {
     // The property F4 rests on, read off the fixture rather than off a verdict.
     // A summit's own error and the drag are the same in c2 and c3, so the
     // difference of the two injected offsets is what the movement added, and
-    // `scripts/make-field-fixtures.ts` draws that from § 2.4's 0.304°/0.472°
+    // `scripts/make-field-fixtures.ts` draws that from § 2.4's 0.428°/0.493°
     // truncated at 0.8σ. Converted at the frame centre, where a pixel is worth
     // the most, that is the bound below. The generator's own draws are the
     // expectation; nothing here comes from the grader.
     const movementBoundPx = {
-      xPx: FOCAL_PX * Math.tan(((0.8 * 0.304) * Math.PI) / 180),
-      yPx: FOCAL_PX * Math.tan(((0.8 * 0.472) * Math.PI) / 180),
+      xPx: FOCAL_PX * Math.tan(((0.8 * 0.428) * Math.PI) / 180),
+      yPx: FOCAL_PX * Math.tan(((0.8 * 0.493) * Math.PI) / 180),
     };
-    expect(movementBoundPx.xPx).toBeCloseTo(5.433, 3);
-    expect(movementBoundPx.yPx).toBeCloseTo(8.436, 3);
+    expect(movementBoundPx.xPx).toBeCloseTo(7.649, 3);
+    expect(movementBoundPx.yPx).toBeCloseTo(8.811, 3);
 
     const bundle = parseFieldBundle(alignedBundle);
     const truth = parseFieldTruth(alignedTruth);
