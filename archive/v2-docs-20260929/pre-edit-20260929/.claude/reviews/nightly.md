@@ -1,75 +1,21 @@
 # Nightly review — 2 AM Mountain time (America/Denver)
 
-This file is the brief. A Routine fires it.
-
-## The Routine
-
-The Routine is named **Mountain-finder nightly strategy review**. It was created
-from inside a cloud session with the claude-code-remote `create_trigger` tool, on
-this cron expression:
+This file is the brief. The schedule that fires it is a Routine, and Routines do
+not survive forever, so **if the nightly job is missing, recreate it from this
+file.** Check at the start of every session.
 
 ```
 CRON_TZ=America/Denver 52 1 * * *
 ```
 
-The platform accepted it and computed the first firing as 2026-09-29T07:52:00Z,
-which is 01:52 MDT. `CRON_TZ` handles daylight time, so there is one slot and no
-UTC arithmetic. The Routine fires into the persistent orchestrator session rather
-than starting a fresh clone.
-
-A Routine can be disabled or deleted, and one bound to a session stops being
-useful once that session is archived. So **check that it exists at the start of
-every session.** List the Routines with `list_triggers`. If the nightly job is
-missing, recreate it with `create_trigger`, using the cron expression above and
-the prompt text below.
-
-**When those tools are not available in the session, only the human can do it.**
-Ask them, following "When something is needed from the human" in `AGENTS.md`:
-
-1. Open <https://claude.ai/code/routines> in the browser.
-2. Look for a Routine named "Mountain-finder nightly strategy review" and check
-   that it is enabled.
-3. If it is absent, create it with the schedule `CRON_TZ=America/Denver 52 1 * * *`
-   and the prompt text below, copied exactly.
-
-### The Routine's prompt text, verbatim
-
-```
-Run tonight's nightly strategy review for Mountain Finder.
-
-Fetch the development branch claude/gifted-lamport-3tyh5g and read it. Do not
-trust whatever is checked out in the worktree.
-
-Read .claude/reviews/nightly.md and follow it as the brief. Read HANDOFF.md for
-the "Last reviewed commit" and review the commits since it, plus any decision
-still uncommitted in this session.
-
-Delegate the review to strategy-adversary, read-only. Then, as orchestrator,
-decide what to do with each finding, append the adversary's report and your
-decisions to the top of docs/REVIEW-LOG.md, update HANDOFF.md's "Last reviewed
-commit" to the reviewed HEAD, and commit and push both.
-
-If there are no new commits and no uncommitted decisions, write one line to
-docs/REVIEW-LOG.md saying the night had no decisions, and stop.
-
-On the seventh night since the last weekly check recorded in HANDOFF.md, lead
-the reply to the human with the question whether the nightly review should
-continue, with the week's findings behind it. Never touch the trading-templated
-repository.
-```
+`CRON_TZ` handles daylight time, so there is one slot and no UTC arithmetic.
 
 ## What runs
 
-The review reads the development branch `claude/gifted-lamport-3tyh5g`. **Fetch it
-first and review that branch**, rather than trusting whatever the worktree has
-checked out.
+One reviewer: `strategy-adversary`, read-only. It reviews **the decisions of the
+last 24 hours**, not the whole repository. Its material is:
 
-One reviewer: `strategy-adversary`, read-only. It reviews **the decisions since
-the last review**, not the whole repository. `HANDOFF.md` records the "Last
-reviewed commit"; the review covers the commits after it, up to the branch HEAD.
-Its material is:
-
-- those commits, with their diffs,
+- the commits of the last 24 hours, with their diffs,
 - what changed in `TODO.md` and `IMPLEMENTATION.md`,
 - any decision still uncommitted in the session, which the orchestrator writes
   into the brief because the reviewer cannot see the conversation.
@@ -77,9 +23,8 @@ Its material is:
 The orchestrator names the material in the prompt. Never leave the reviewer to
 guess what the day's decisions were.
 
-**When there are no new commits and no uncommitted decisions, write one line to
-`docs/REVIEW-LOG.md` saying so, and stop.** A night with no decisions is a real
-result, and it is how a stalled week becomes visible.
+A night with no decisions still runs, and reports that there were none. That is a
+real result, and it is how a stalled week becomes visible.
 
 ## The three questions, asked of each decision
 
@@ -132,15 +77,6 @@ when there is one.
 Consider, decide, act. Then **record in `IMPLEMENTATION.md` every decision the
 review changed, and every finding it accepted and deferred**, with the reason.
 A review whose outcome is not written down did not happen.
-
-Then write the night down and push it:
-
-- **Append the adversary's report and the orchestrator's decisions to
-  `docs/REVIEW-LOG.md`, newest first**, so the top of the file is the most recent
-  night.
-- **Update `HANDOFF.md`'s "Last reviewed commit" to the HEAD that was reviewed.**
-  That commit is where the next night's review starts.
-- **Commit and push both** to `claude/gifted-lamport-3tyh5g`.
 
 Where the review moves the path, the changed path goes back past
 `strategy-adversary` before it is built.

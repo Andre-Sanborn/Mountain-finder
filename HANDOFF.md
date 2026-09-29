@@ -5,17 +5,18 @@ and self-checks in [IMPLEMENTATION.md](IMPLEMENTATION.md), open work in [TODO.md
 
 ## Needed from the human
 
-- **An action only they can take: hold the phone.** The four calibration holds in the Expo
-  shell are the only thing that can close P8.2's hardware bar, because a frame-convention sign
-  error passes every synthetic test and flips on real hardware. Blocked until then: peak
-  labelling on the phone. The runbook they need is not written yet (see TODO.md).
-- **A decision only they can make: was the restructure the right reading?** "Archive all of our
-  work" was read as snapshot the state, archive the governance documents, keep the code and
-  build on it. The alternative was a v1-style whole-tree archive and a rebuild. Nothing is
-  blocked while the question stands; the answer would change the next phase rather than today's
-  work.
-
-Nothing else is needed from the human.
+- **A decision only they can make: do the seven photographs stay public?** The repository is
+  public (GitHub API, `private: false`). `fixtures/photos/real/` holds seven of the human's own
+  iPhone originals with GPS in their EXIF, public since 2026-08-17, and docs print those
+  coordinates. They are mountain viewpoints, not a residence. Asked 2026-09-29. Nothing is
+  blocked; the default until answered is that they stay. Options given: keep; make the repo
+  private (Pages would then need another host); or rewrite history (overrides "nothing is
+  deleted", needs their explicit word). Repeat this ask in every reply until answered.
+- **Recorded, not asked: how "archive all of our work" was read.** Snapshot the state, archive
+  the governance documents, keep the code and build on it. The human can say if they meant a
+  whole-tree archive and rebuild.
+- **Coming later, not yet: one home session (~15 min) and one field session (~25 min)** with
+  the phone. Steps will be written when the app is ready for them. Nothing is asked now.
 
 ## Where the work lives
 
@@ -122,9 +123,11 @@ full tiles, and stop with instructions when one is missing.
 
 ## Nightly strategy review
 
-- Routine: `strategy-adversary`, 01:52 America/Denver, brief in
+- Routine "Mountain-finder nightly strategy review", `CRON_TZ=America/Denver 52 1 * * *`, firing
+  into the orchestrator session. Brief and verbatim prompt:
   [`.claude/reviews/nightly.md`](.claude/reviews/nightly.md).
 - Entries are appended to [docs/REVIEW-LOG.md](docs/REVIEW-LOG.md), newest first.
 - Last reviewed commit: `<none yet>`.
-- Routines are not permanent. Check at the start of every session that it still exists, and
-  recreate it from the brief if it does not.
+- Nightly reviews started: 2026-09-29. Last weekly continue-question: `<none yet>`; the first is
+  due on the seventh night.
+- At session start, check the Routine exists (`list_triggers`) and recreate it if not.

@@ -378,3 +378,83 @@ the goal document.
   `archive/v2-docs-20260929/<file>`, so a phase or item id in a code comment still resolves.
   References to the old `CLAUDE.md` rules point at the live AGENTS.md section that carries the
   rule instead, because those rules did not move — they were rewritten into AGENTS.md.
+
+## The route to the field test, decided 2026-09-29
+
+The goal is one field test of live peak labels on the human's phone, reached with the fewest
+human sessions and with accuracy proven headlessly before anyone drives anywhere. A planner
+mapped the route, and the strategy adversary reviewed it twice before any building started.
+
+**The phone browser is the primary field vehicle. The Expo shell is the fallback.** This
+reverses the v2.1 choice. The web app can run its whole AR loop in headless Chromium: a real
+photo stands in for the camera through a fake video capture, and CDP sensor overrides stand in
+for the phone. It can be redeployed without the human, and its offline behaviour can be tested
+in Playwright. Expo Go has no Linux path at all, and `exp.host` and `api.expo.dev` return 403
+from this container. No further effort goes into `mobile/` until the web route fails on the
+phone.
+
+**What headless Chromium cannot prove.** Safari exposes `webkitCompassHeading`, which is
+magnetic and referenced to the device's top edge, and a relative `alpha`. Chromium exposes
+neither. So the web sensor adapter is a pure function of raw event objects, and its fixture is
+recorded from the real phone at the home session. iOS 18 switches rear lenses inside a
+`getUserMedia` stream without firing an event, a change of about 2x in field of view. So the app
+opens the single-lens "Back Camera" device and logs `track.getSettings()` every second.
+
+**The field of view the overlay uses is measured, not looked up.** A browser stream is a video
+crop at a resolution Safari picks, not the still-photo field Apple publishes. Apple's figures
+are a labelled initial guess. The value used is calibrated against the sun or a landmark sweep,
+stored against the track settings, and re-checked as the first step in the field.
+
+**Hosting is GitHub Pages, deployed from Actions.** The repository is already public, so the
+free plan serves it. The deploy runs `test:deploy` before publishing and refuses an artifact
+that contains a personal photograph or GPS.
+
+**Declination comes from WMM2025, shown and labelled, never silent.** NOAA's host is blocked
+from here. The coefficients and NOAA's test values come from a GitHub mirror, and are
+cross-checked against an independent package before being called verified.
+
+**Human sessions: one home session and one field session.** The home session (about 15
+minutes) opens the URL, grants permissions, reopens in airplane mode, runs the four calibration
+holds, records 10 s of raw sensor events, captures the sun, sweeps the field of view and tests
+lens switching. The field session (about 25 minutes, Bogus Basin proposed) runs in a Safari
+tab, not from the home screen. Capture bundles travel only by the human's own action to their
+own email, and are never committed.
+
+**Pass criteria are pre-registered as measurements with a budget, not guessed thresholds.** Raw
+heading and pitch errors are recorded, and gated only on falling inside the band the app
+displays. The after-drag tolerance is derived from a written error budget: peak position error,
+elevation error, field-of-view scale at the frame edge, and drag precision. No false `visible`
+label, the three most prominent predicted summits labelled, and summits beyond the terrain
+reported `unmeasured`.
+
+**What stays from v2.1.** The pure core, offline-first D7, D8, D9's drag and uncertainty band,
+D10 `marginal`, labelled magnetic headings, refusals over guesses, summit heights from the peak
+database, and the four-hold calibration instrument. The CV aligner stays out of the live path.
+Its one real-photo result (heading 0.109°, pitch 0.690° on `railroad-ridge-48mm`, n = 1, truth
+an eyeball apex pick, constants tuned on the evaluation frames) is locked later as a regression
+test, not claimed as a capability.
+
+## The portrait field-of-view bug on the phone, confirmed 2026-09-29
+
+`cameraPoseFromFocalLength` in `src/core/projection.ts` gives the 36 mm gate angle to the image
+width unconditionally. `src/exif/fov.ts` gives it to the longer displayed axis, which was the
+W2-3 fix. The phone shell passes its portrait layout to the core function. On a 393×852 screen
+with a 26 mm preset, that yields hFOV 69.39° and vFOV 112.65°, where the visible field is
+35.42° × 69.39°. That is a 2.168x tangent-scale error on both axes: a 100 px vertical drag
+records 19.4° of pitch trim instead of 9.2°. The horizon's slope under roll is unaffected, so
+the four-hold sign check stays valid. `scripts/annotate-photo.ts` repeats the error on portrait
+photographs (`portrait-orientation-6.jpg`: 69.4° × 85.4° instead of 54.9° × 69.4°). Every
+committed real photograph is landscape, which is why no gate caught it. A test in
+`src/live/drag-trim.test.ts` passes only because of the bug.
+Probes: `scratchpad/verify-fov/probe-fov.ts`, `probe-still.ts`, reproduced by the adversarial
+verifier.
+
+The human's current phone, per the EXIF of six of the nine real fixtures, is an iPhone 17 Pro
+Max: 13, 24, 48 (2x), 100 (4x) and 200 (8x) mm-equivalent. `docs/REAL-PHOTO-POSE.md` names the
+15 Pro Max, whose lenses are 13, 24, 48 and 120 mm. The phone shell's presets, 13, 26 and 77
+mm, match neither.
+
+Declination at Bogus Basin (43.77 N, 116.09 W) on 2026-09-29 is +12.8° E. That figure comes
+from IGRF-14 coefficients, checked against three published anchors to 0.3°, and is pending the
+WMM2025 module. `heading-policy.ts` said declination is "under 5° across most of the contiguous
+US", which is false for the Mountain West.

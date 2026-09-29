@@ -67,8 +67,8 @@ Never drop a fact. A rewrite that loses a constraint, a measurement, a date, or 
 is worse than the stylized original. Keep every fact and change only the style.
 
 Established domain terms are not style. Keep a word that names a real thing in this
-system, such as a horizon profile, a tile, a sweep, or a refusal. Replacing it would
-lose precision. Ask whether the word states a fact or only decorates the sentence.
+system, such as a card, a ceiling, a boundary, or a seed. Replacing it would lose
+precision. Ask whether the word states a fact or only decorates the sentence.
 
 ## Method
 

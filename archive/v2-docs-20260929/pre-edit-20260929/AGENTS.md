@@ -7,18 +7,6 @@ Finder. A rule that belongs in every repository belongs in the base — but the
 base is someone else's repository, so raise the change rather than assuming you
 can push it.
 
-[CLAUDE.md](CLAUDE.md) is what loads both files: it imports the base copy and
-then this file. Deleting CLAUDE.md would not stop this file loading, because the
-harness reads `AGENTS.md` on its own, but the base conventions would drop out
-silently.
-
-**This file names where it differs from the base, at the point of disagreement.**
-The first difference is the location of the copy: the base tells you to change
-shared rules in `.devcontainer/base/agents/` and push from that clone. Here the
-copy you can see is `.claude/base/AGENTS.md`, and it is read-only in practice.
-Raise a shared-rule change with the human so it lands upstream; editing the copy
-only makes it disagree with the base.
-
 Where this file and the base disagree, **this file wins**, and it says so
 explicitly at the point of disagreement rather than leaving a reader to work out
 which applies.
@@ -101,35 +89,19 @@ orchestrator puts the question to the human with the week's findings behind it:
 what the reviews caught, and what they cost. The job keeps running until the
 human answers, and a "no" ends it rather than pausing it.
 
-In this cloud environment the job is a **Routine** named "Mountain-finder nightly
-strategy review". It was created from inside a cloud session with the
-claude-code-remote `create_trigger` tool, using a cron expression in Denver's own
-time zone:
+In this cloud environment the job is a **Routine** with a cron expression in
+Denver's own time zone:
 
 ```
 CRON_TZ=America/Denver 52 1 * * *
 ```
 
-The platform accepted that expression and computed the first firing as
-2026-09-29T07:52:00Z, which is 01:52 MDT. `CRON_TZ` handles daylight time itself,
-so there is one slot and no UTC arithmetic to get wrong. It fires at 01:52 rather
-than 02:00 because jobs set exactly on the hour queue behind everyone else's. The
-Routine fires into the persistent orchestrator session rather than starting a
-fresh clone, so the reviewer arrives in a conversation that already has the day's
-context.
-
-A Routine can be disabled or deleted, and one bound to a session stops being
-useful once that session is archived. So **check that it exists at the start of
-every session**: list the Routines with `list_triggers`, and recreate the job with
-`create_trigger` from [`.claude/reviews/nightly.md`](.claude/reviews/nightly.md)
-if it is missing. Check again whenever a session has run close to a week.
-
-**When those tools are not available in a session, this is an action only the
-human can take.** Give them steps, per "When something is needed from the human"
-below: open <https://claude.ai/code/routines> in the browser, check whether
-"Mountain-finder nightly strategy review" is listed and enabled, and if it is
-not, create it there with the cron expression above and the exact prompt text
-recorded in the brief.
+`CRON_TZ` handles daylight time itself, so there is one slot and no UTC
+arithmetic to get wrong. It fires at 01:52 rather than 02:00 because jobs set
+exactly on the hour queue behind everyone else's. The Routine is named
+"Mountain-finder nightly strategy review". Routines are not permanent: **at the start of every
+session, check that the nightly Routine still exists, and recreate it from the
+brief if it does not.** Check again whenever a session has run close to a week.
 
 What is left over is mechanical: carrying out a step the adversary already
 cleared, and answering a question with a fact.
@@ -201,10 +173,8 @@ The two adversaries split by stage: `strategy-adversary` reviews the route
 before you walk it, `adversarial-verifier` reviews what you built when you got
 there.
 
-All four specialists live in the repository's own `.claude/agents/`, and
-`.claude/base/` holds the shared conventions they read. **The base points at
-`~/.claude/agents/`; here the team is in the repository**, so it is versioned with
-the code and a fresh clone gets it.
+All four specialists live in `.claude/agents/`, and `.claude/base/` holds the
+shared conventions they read.
 
 ## Project context
 
@@ -249,12 +219,6 @@ git push -u origin claude/gifted-lamport-3tyh5g
 - Commit only work that has been verified and accepted.
 - **Update TODO.md in the same commit** that completes an item.
 
-**Commits are authored by the agent identity the environment configures.** The
-base says to ask the human for a name and email before committing. Here that git
-identity already exists, so use it. **Never invent the human's name or email, and
-never add them to a commit, a header, a URL or a payload** — the Privacy section
-below is the reason.
-
 ## Archiving
 
 **A document is archived before it is edited or replaced.** Move the old version
@@ -264,12 +228,6 @@ later reader see which rules a decision was taken under.
 **Nothing is deleted.** Anything that would be "removed" is moved into
 `archive/` with `git mv`, so the history follows the file. This applies to code
 as well as documents.
-
-**That rule is about files.** Editing the text inside a live document is not a
-deletion: deleting a stale comment, cutting a sentence, or replacing wording that
-is no longer true is an ordinary edit, and the base's rules on it stand — a
-comment states what the code does now, and documentation states what is true now
-rather than arguing with the version before it.
 
 ## Privacy
 
@@ -290,43 +248,6 @@ Treat the human's photographs and everything derived from them as private.
   header, URL or payload.** When a site refuses anonymous scripted access, read
   it through WebFetch or report the refusal.
 
-**One standing exception is already in the tree.** `fixtures/photos/real/` holds
-seven iPhone originals the human photographed, and their EXIF carries the GPS
-position of each viewpoint. Documents under `docs/` print those coordinates. The
-photographer supplied the frames for this project before the rule above was
-written, and that consent is recorded here so nobody has to re-litigate it. **Any
-further personal photograph needs the human's explicit yes before it is
-committed.**
-
-The repository is public: the GitHub API reports `private: false`. Those seven
-photographs and their coordinates are therefore readable by anyone. The human has
-been asked whether they should stay public. **Until they answer, the photographs
-stay**, and this paragraph records the question as open rather than settled.
-
-### Captures from the phone
-
-A sensor capture from a human session records where that person stood and how
-they moved. These rules apply to every one of them.
-
-- **A committed sensor fixture holds orientation and motion events only.** No
-  geolocation events, no camera frame. Timestamps are relative to the start of
-  the capture; never a wall-clock epoch, which dates the session as precisely as
-  a coordinate places it.
-- **An analysis script prints no coordinates, and writes nothing under
-  `fixtures/` or `docs/` itself.** A field-analysis run such as `analyze:field`
-  reports to the terminal. What gets committed is a stripped copy a human has
-  reviewed.
-- **A finding from a human session cites the fixture file, never the position.**
-  Name `fixtures/…` and the event range; do not quote the latitude and longitude
-  that produced it.
-- **A capture bundle travels only by the human's own action, to their own
-  account** — Web Share to their own email, for instance. It is never committed,
-  never attached to an issue, and never published.
-- **A repository check enforces this, and it is not built yet.** It belongs in
-  `npm run check`, and it fails on EXIF GPS in a new image file and on
-  decimal-degree coordinate pairs in a new fixture. The seven photographs above
-  are its allow-list, as the standing exception.
-
 ## Evidence
 
 These are research conventions. Every one of them is here because this project
@@ -341,10 +262,6 @@ got a plausible wrong answer without them.
   only catch the impossible. For an implausible-but-possible number — a heading,
   a pitch, a horizon angle — two independent derivations agreeing is the
   evidence. Re-running the same code more carefully is not.
-- **Pre-register the claim, the tolerance and the reference before the number
-  exists.** "More accurate" is not a criterion until you name the reference and
-  the tolerance.
-- **Run one heavy job at a time until you have measured what two cost.**
 - **Independent expectations.** A test expectation is derived analytically or
   from a documented reference. Never run the code and paste its output back as
   the expectation. A cone-shaped mathematical mountain has a closed-form horizon
@@ -400,12 +317,11 @@ work". Nothing is done until you ran its check here and watched it pass, without
 a human or a phone in the loop.
 
 **Tests are offline.** Unit, integration and end-to-end tests use
-`FixtureTransport` with recorded responses under `fixtures/api/`. **No test
-reaches the network.** Only the scripts under `scripts/` whose job is to fetch
-data or build fixtures may do so — `record-fixtures`, `fetch-tiles`,
-`fetch-peaks`, `make-tile-fixtures`, `make-case-tile-fixtures` and
-`make-peak-parquet-fixture` — and only when someone runs them deliberately. A
-test that touches the network is a broken test even when it passes.
+`FixtureTransport` with recorded responses under `fixtures/api/`. Only
+`scripts/record-fixtures.ts` and the explicit fetch scripts —
+`scripts/fetch-tiles.ts` and `scripts/fetch-peaks.ts` — may reach the live
+network, and only when someone runs them deliberately. A test that touches the
+network is a broken test even when it passes.
 
 **Keep `src/core/` pure.** No fetch, no DOM, no device APIs, no `Date.now` in
 core logic. If you need I/O, you are in the wrong directory. Pure functions are
