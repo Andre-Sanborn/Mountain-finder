@@ -23,7 +23,13 @@ import {
   analyseFieldRun,
   angularOffsetDeg,
   bandFor,
+  bandLimitsFor,
+  bandSigmaFor,
+  MAX_OBSERVER_ACCURACY_M,
   MAX_TRUTH_DISAGREEMENT_DEG,
+  MAX_TWO_SIGMA_EXCEEDANCES,
+  observerSigmaFromAccuracyM,
+  PAN_ANCHOR_EDGE_OFFSET,
   parseFieldBundle,
   parseFieldTruth,
   PREREGISTERED_THRESHOLDS,
@@ -32,6 +38,7 @@ import {
   residualOf,
   synthesiseFieldBundle,
   withinThreshold,
+  type BandId,
   type Criterion,
   type FieldBundle,
   type SynthCapture,
@@ -138,6 +145,19 @@ function criterion(
   id: string,
 ): Criterion | undefined {
   return analysis.criteria.find((entry) => entry.id === id);
+}
+
+function gradedIn(
+  analysis: ReturnType<typeof analyseFieldRun>,
+  band: BandId,
+): ReturnType<typeof analyseFieldRun>['graded'] {
+  return analysis.graded.filter((row) => row.band === band);
+}
+
+function bandOf(band: BandId): (typeof PREREGISTERED_THRESHOLDS)[number] {
+  const threshold = PREREGISTERED_THRESHOLDS.find((entry) => entry.band === band);
+  if (threshold === undefined) throw new Error(`no ${band} band`);
+  return threshold;
 }
 
 describe('pixels to frame angles', () => {
@@ -262,7 +282,7 @@ describe('F3 against the registered thresholds', () => {
     expect(criterion(analysis, 'F3.far')?.n).toBe(1);
   });
 
-  it('fails the same summit 30 px out', () => {
+  it('reports the same summit 30 px out as one 2σ exceedance, and tolerates it', () => {
     const analysis = run([
       {
         captureId: 'c1',
@@ -270,7 +290,9 @@ describe('F3 against the registered thresholds', () => {
         summits: [summit({ summitId: FAR, distanceKm: 12, errorPx: { xPx: 30, yPx: 0 } })],
       },
     ]);
-    expect(criterion(analysis, 'F3.far')?.outcome).toBe('fail');
+    expect(gradedIn(analysis, 'far')[0]?.axesOverTwoSigma).toBe(1);
+    expect(criterion(analysis, 'F3.far')?.outcome).toBe('pass');
+    expect(criterion(analysis, 'F3.far')?.evidence.join('\n')).toContain('over 2σ');
   });
 
   it('passes a residual exactly at the threshold, and fails one a hair over', () => {
@@ -323,9 +345,9 @@ describe('F3 against the registered thresholds', () => {
   });
 
   it('uses the near band s looser threshold for a 2 km summit', () => {
-    // near horizontal is 1.90°: 1279.9952 x tan(1.90°) = 42.462 px. 40 px passes
-    // in the near band and fails in the far one, so the band choice is tested
-    // rather than assumed.
+    // near horizontal is 1.90°: 1279.9952 x tan(1.90°) = 42.462 px. 40 px is
+    // inside the near band and past the far band's 1.30°, so the band choice is
+    // tested rather than assumed.
     const nearLimitPx = FOCAL_PX * Math.tan((1.9 * Math.PI) / 180);
     expect(nearLimitPx).toBeCloseTo(42.4618, 4);
     const near = run([
@@ -335,7 +357,7 @@ describe('F3 against the registered thresholds', () => {
         summits: [summit({ summitId: NEAR, distanceKm: 2, errorPx: { xPx: 40, yPx: 0 } })],
       },
     ]);
-    expect(criterion(near, 'F3.near')?.outcome).toBe('pass');
+    expect(gradedIn(near, 'near')[0]?.axesOverTwoSigma).toBe(0);
     const far = run([
       {
         captureId: 'c1',
@@ -343,13 +365,14 @@ describe('F3 against the registered thresholds', () => {
         summits: [summit({ summitId: FAR, distanceKm: 12, errorPx: { xPx: 40, yPx: 0 } })],
       },
     ]);
-    expect(criterion(far, 'F3.far')?.outcome).toBe('fail');
+    expect(gradedIn(far, 'far')[0]?.axesOverTwoSigma).toBe(1);
   });
 
   it('grades the vertical axis on its own, tighter threshold', () => {
     // near vertical is 1.45°. On the 884 px axis at vFOV 38.088° the focal
     // length is (884/2)/tan(19.044°) = 1280.0 px, the same lens, so the limit is
-    // 1280.0 x tan(1.45°) = 32.41 px. 34 px must fail while 29 px across passes.
+    // 1280.0 x tan(1.45°) = 32.41 px. 34 px is past it while 29 px across is not,
+    // so the exceedance must land on the vertical axis alone.
     const verticalFocalPx = (FRAME_HEIGHT_PX / 2) / Math.tan(((VFOV_DEG / 2) * Math.PI) / 180);
     expect(verticalFocalPx).toBeCloseTo(1280, 0);
     expect(verticalFocalPx * Math.tan((1.45 * Math.PI) / 180)).toBeCloseTo(32.41, 1);
@@ -362,26 +385,28 @@ describe('F3 against the registered thresholds', () => {
         ],
       },
     ]);
-    expect(criterion(analysis, 'F3.near')?.outcome).toBe('fail');
+    const row = gradedIn(analysis, 'near')[0];
+    expect(row?.exceedances[0]?.overTwoSigma).toBe(false);
+    expect(row?.exceedances[1]?.overTwoSigma).toBe(true);
   });
 
   it('grades a 30 km summit in the distant band against the same 1.30°', () => {
-    const pass = run([
+    const inside = run([
       {
         captureId: 'c1',
         role: 'after-drag',
         summits: [summit({ summitId: DISTANT, distanceKm: 30, errorPx: { xPx: 29, yPx: 0 } })],
       },
     ]);
-    expect(criterion(pass, 'F3.distant')?.outcome).toBe('pass');
-    const fail = run([
+    expect(gradedIn(inside, 'distant')[0]?.axesOverTwoSigma).toBe(0);
+    const over = run([
       {
         captureId: 'c1',
         role: 'after-drag',
         summits: [summit({ summitId: DISTANT, distanceKm: 30, errorPx: { xPx: 30, yPx: 0 } })],
       },
     ]);
-    expect(criterion(fail, 'F3.distant')?.outcome).toBe('fail');
+    expect(gradedIn(over, 'distant')[0]?.axesOverTwoSigma).toBe(1);
   });
 
   it('reports a band no summit fell into as no-sample, never as a pass', () => {
@@ -408,8 +433,132 @@ describe('F3 against the registered thresholds', () => {
   });
 });
 
+describe('the band gate at 2σ and 3σ', () => {
+  // The far band is registered at 2σ = 1.30° and 3σ = 1.95°, so its σ is 0.65°.
+  // A residual of k·0.65° placed at the frame centre is f·tan(k·0.65°) px:
+  //   2.5σ = 1.625° → 1279.99524 × tan(1.625°) = 36.312 px
+  //   3.1σ = 2.015° → 1279.99524 × tan(2.015°) = 45.034 px
+  const SIGMA_DEG = 1.3 / 2;
+  const pxAtSigma = (k: number): number => FOCAL_PX * Math.tan(((k * SIGMA_DEG) * Math.PI) / 180);
+  const CENTRE = { xPx: FRAME_WIDTH_PX / 2, yPx: FRAME_HEIGHT_PX / 2 };
+
+  it('knows what 2.5σ and 3.1σ are worth in pixels on this frame', () => {
+    expect(pxAtSigma(2.5)).toBeCloseTo(36.312, 3);
+    expect(pxAtSigma(3.1)).toBeCloseTo(45.034, 3);
+  });
+
+  it('tolerates one 2σ exceedance per band and no more', () => {
+    expect(MAX_TWO_SIGMA_EXCEEDANCES).toBe(1);
+  });
+
+  it('passes a band whose only exceedance is one summit-axis at 2.5σ', () => {
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [
+          summit({
+            summitId: FAR,
+            distanceKm: 12,
+            truthPx: CENTRE,
+            errorPx: { xPx: pxAtSigma(2.5), yPx: 0 },
+          }),
+          summit({ summitId: DISTANT, distanceKm: 15, truthPx: CENTRE, errorPx: { xPx: 0, yPx: 0 } }),
+        ],
+      },
+    ]);
+    expect(criterion(analysis, 'F3.far')?.n).toBe(2);
+    expect(criterion(analysis, 'F3.far')?.outcome).toBe('pass');
+  });
+
+  it('fails a band holding two summit-axes at 2.5σ', () => {
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [
+          summit({
+            summitId: FAR,
+            distanceKm: 12,
+            truthPx: CENTRE,
+            errorPx: { xPx: pxAtSigma(2.5), yPx: 0 },
+          }),
+          summit({
+            summitId: DISTANT,
+            distanceKm: 15,
+            truthPx: CENTRE,
+            errorPx: { xPx: pxAtSigma(2.5), yPx: 0 },
+          }),
+        ],
+      },
+    ]);
+    expect(criterion(analysis, 'F3.far')?.outcome).toBe('fail');
+    expect(criterion(analysis, 'F3.far')?.evidence.join('\n')).toContain('2 summit-axis/axes past 2σ');
+  });
+
+  it('fails a band on a single summit-axis at 3.1σ', () => {
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [
+          summit({
+            summitId: FAR,
+            distanceKm: 12,
+            truthPx: CENTRE,
+            errorPx: { xPx: pxAtSigma(3.1), yPx: 0 },
+          }),
+        ],
+      },
+    ]);
+    expect(criterion(analysis, 'F3.far')?.outcome).toBe('fail');
+    expect(criterion(analysis, 'F3.far')?.evidence.join('\n')).toContain('OVER 3σ');
+  });
+
+  it('counts the two axes of one summit separately', () => {
+    // 2.5σ across and 2.5σ down on the same summit is two exceedances, so the
+    // band fails although only one summit moved.
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [
+          summit({
+            summitId: FAR,
+            distanceKm: 12,
+            truthPx: CENTRE,
+            errorPx: { xPx: pxAtSigma(2.5), yPx: pxAtSigma(2.5) },
+          }),
+        ],
+      },
+    ]);
+    expect(gradedIn(analysis, 'far')[0]?.axesOverTwoSigma).toBe(2);
+    expect(criterion(analysis, 'F3.far')?.outcome).toBe('fail');
+  });
+
+  it('sets every 3σ limit at 1.5 times the 2σ figure, rounded up to 0.05°', () => {
+    // 1.5 × 1.90 = 2.85; 1.5 × 1.45 = 2.175 → 2.20; 1.5 × 1.40 = 2.10;
+    // 1.5 × 1.30 = 1.95.
+    const expected: Record<BandId, readonly [number, number]> = {
+      near: [2.85, 2.2],
+      mid: [2.1, 1.95],
+      far: [1.95, 1.95],
+      distant: [1.95, 1.95],
+      horizon: [1.95, 1.95],
+    };
+    for (const threshold of PREREGISTERED_THRESHOLDS) {
+      expect([threshold.horizontal3SigmaDeg, threshold.vertical3SigmaDeg]).toEqual(
+        expected[threshold.band],
+      );
+    }
+  });
+});
+
 describe('F4', () => {
   it('grades a moved capture against the same thresholds, separately from F3', () => {
+    // 50 px at the frame centre is atan(50/1279.9952) = 2.23699°, past the far
+    // band's 1.95° 3σ limit, so the moved capture fails on its own.
+    expect(degreesAcross(0, 50)).toBeCloseTo(2.23699, 5);
     const analysis = run([
       {
         captureId: 'c2',
@@ -419,25 +568,12 @@ describe('F4', () => {
       {
         captureId: 'c3',
         role: 'moved',
-        panFromReferenceDeg: 20,
-        summits: [summit({ summitId: FAR, errorPx: { xPx: 40, yPx: 0 } })],
+        tiltFromReferenceDeg: -10,
+        summits: [summit({ summitId: FAR, errorPx: { xPx: 50, yPx: 0 } })],
       },
     ]);
     expect(criterion(analysis, 'F3.far')?.outcome).toBe('pass');
     expect(criterion(analysis, 'F4.far')?.outcome).toBe('fail');
-  });
-
-  it('refuses a movement outside the registered envelope', () => {
-    const analysis = run([
-      {
-        captureId: 'c3',
-        role: 'moved',
-        panFromReferenceDeg: 45,
-        summits: [summit({ summitId: FAR })],
-      },
-    ]);
-    expect(criterion(analysis, 'F4.envelope')?.outcome).toBe('fail');
-    expect(criterion(analysis, 'F4.envelope')?.evidence[0]).toContain('45.0');
   });
 
   it('accepts a tilt inside the envelope without complaint', () => {
@@ -450,6 +586,233 @@ describe('F4', () => {
       },
     ]);
     expect(criterion(analysis, 'F4.envelope')).toBeUndefined();
+  });
+});
+
+describe('the F4 pan target', () => {
+  // The registered movement is "pan until the anchor summit sits at the frame
+  // edge", read as the anchor's drawn offset reaching 0.8 of the half-frame. On
+  // a 1920 px frame that is |x − 960| >= 768 px, so a truth apex at x = 150 is
+  // 0.844 of the half-frame and one at x = 400 is 0.583. The synthesiser anchors
+  // the drag on the first summit of a capture.
+  it('registers the target at 0.8 of the half-frame', () => {
+    expect(PAN_ANCHOR_EDGE_OFFSET).toBe(0.8);
+    expect(Math.abs(150 - 960) / 960).toBeCloseTo(0.84375, 5);
+    expect(Math.abs(400 - 960) / 960).toBeCloseTo(0.58333, 5);
+  });
+
+  it('accepts a pan that carried the anchor to the frame edge', () => {
+    const analysis = run([
+      {
+        captureId: 'c3',
+        role: 'moved',
+        panFromReferenceDeg: 26,
+        summits: [summit({ summitId: FAR, truthPx: { xPx: 150, yPx: 442 } })],
+      },
+    ]);
+    expect(criterion(analysis, 'F4.envelope')).toBeUndefined();
+  });
+
+  it('reports a pan that stopped short of the frame edge', () => {
+    const analysis = run([
+      {
+        captureId: 'c3',
+        role: 'moved',
+        panFromReferenceDeg: 26,
+        summits: [summit({ summitId: FAR, truthPx: { xPx: 400, yPx: 442 } })],
+      },
+    ]);
+    expect(criterion(analysis, 'F4.envelope')?.outcome).toBe('fail');
+    expect(criterion(analysis, 'F4.envelope')?.evidence[0]).toContain('0.58');
+  });
+
+  it('does not gate how far the phone turned', () => {
+    // A 40° pan is off the old ±20° envelope and fine here: how far the phone
+    // must turn depends on where the anchor started in the frame.
+    const analysis = run([
+      {
+        captureId: 'c3',
+        role: 'moved',
+        panFromReferenceDeg: 40,
+        summits: [summit({ summitId: FAR, truthPx: { xPx: 150, yPx: 442 } })],
+      },
+    ]);
+    expect(criterion(analysis, 'F4.envelope')).toBeUndefined();
+  });
+
+  it('reports a pan whose anchor the capture never drew', () => {
+    const { bundle, truth } = synthesiseFieldBundle({
+      captures: [
+        {
+          captureId: 'c3',
+          role: 'moved',
+          panFromReferenceDeg: 26,
+          summits: [summit({ summitId: FAR, truthPx: { xPx: 150, yPx: 442 } })],
+        },
+      ],
+    });
+    const raw = JSON.parse(JSON.stringify(bundle)) as {
+      captures: { dragAnchorSummitId: string }[];
+    };
+    const capture = raw.captures[0];
+    expect(capture).toBeDefined();
+    if (capture === undefined) return;
+    capture.dragAnchorSummitId = HORIZON;
+    const parsed = parseFieldBundle(raw);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const analysis = analyseFieldRun(parsed.value, truth, lookup);
+    expect(criterion(analysis, 'F4.envelope')?.outcome).toBe('fail');
+    expect(criterion(analysis, 'F4.envelope')?.evidence[0]).toContain('not among the summits');
+  });
+});
+
+describe('the observer fix accuracy', () => {
+  const near = bandOf('near');
+
+  it('reads a reported radius as a 95 % circle and returns a per-axis 1σ', () => {
+    // The W3C position API states the figure at 95 % confidence. For a circular
+    // bivariate normal, P(r <= kσ) = 1 − exp(−k²/2), so 0.95 gives
+    // k = sqrt(−2·ln 0.05) = 2.44775 and σ = r / 2.44775.
+    expect(observerSigmaFromAccuracyM(10)).toBeCloseTo(10 / Math.sqrt(-2 * Math.log(0.05)), 12);
+    expect(observerSigmaFromAccuracyM(10)).toBeCloseTo(4.0854, 4);
+  });
+
+  it('rebuilds the 1σ column of the pre-registration from the budget terms', () => {
+    // § 1.5 of docs/FIELD-TEST-PREREGISTRATION.md, horizontal then vertical.
+    const expected: Record<BandId, readonly [number, number]> = {
+      near: [0.951, 0.715],
+      mid: [0.689, 0.649],
+      far: [0.642, 0.639],
+      distant: [0.628, 0.636],
+      horizon: [0.627, 0.636],
+    };
+    for (const threshold of PREREGISTERED_THRESHOLDS) {
+      const sigma = bandSigmaFor(threshold);
+      const [horizontal, vertical] = expected[threshold.band];
+      expect(sigma.horizontalDeg).toBeCloseTo(horizontal, 3);
+      expect(sigma.verticalDeg).toBeCloseTo(vertical, 3);
+    }
+  });
+
+  it('tightens the near band when the fix is a good one', () => {
+    // σ = 10 / 2.44775 = 4.0854 m, so the horizontal geodesy is
+    // hypot(20, 4.0854) = 20.413 m: 0.58482° at 2 km and 0.11696° at the
+    // anchor's 10 km. RSS with the 0.275° scale, 0.034° roll and 0.543° drag is
+    // 0.85281°, so 2σ is 1.70562° and the limit rounds up to 1.75°. The vertical
+    // terms do not move, because the observer's height comes from the DEM.
+    const limits = bandLimitsFor(near, 10);
+    expect(limits.horizontalDeg).toBe(1.75);
+    expect(limits.verticalDeg).toBe(1.45);
+    // 1.5 × 1.75 = 2.625, up to 2.65.
+    expect(limits.horizontal3SigmaDeg).toBe(2.65);
+  });
+
+  it('never widens a registered limit, however bad the fix', () => {
+    expect(bandLimitsFor(near, 100).horizontalDeg).toBe(near.horizontalDeg);
+    expect(bandLimitsFor(near, 100).horizontal3SigmaDeg).toBe(near.horizontal3SigmaDeg);
+  });
+
+  it('leaves the registered row alone when no accuracy was reported', () => {
+    expect(bandLimitsFor(near)).toBe(near);
+  });
+
+  it('grades a capture against the limits its own fix implies', () => {
+    // 41 px at the frame centre is 1.83463°: inside the registered 1.90° near
+    // band, past the 1.75° a 10 m fix derives.
+    expect(degreesAcross(0, 41)).toBeCloseTo(1.83463, 5);
+    const loose = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [summit({ summitId: NEAR, distanceKm: 2, errorPx: { xPx: 41, yPx: 0 } })],
+      },
+    ]);
+    expect(gradedIn(loose, 'near')[0]?.axesOverTwoSigma).toBe(0);
+    const tight = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        horizontalAccuracyM: 10,
+        summits: [summit({ summitId: NEAR, distanceKm: 2, errorPx: { xPx: 41, yPx: 0 } })],
+      },
+    ]);
+    expect(gradedIn(tight, 'near')[0]?.axesOverTwoSigma).toBe(1);
+  });
+
+  it('refuses a capture whose fix is worse than the protocol accepts', () => {
+    expect(MAX_OBSERVER_ACCURACY_M).toBe(30);
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        horizontalAccuracyM: 30.5,
+        summits: [summit({ summitId: FAR })],
+      },
+    ]);
+    expect(criterion(analysis, 'F3.far')?.outcome).toBe('no-sample');
+    expect(analysis.refusals.join('\n')).toContain('over the 30 m');
+  });
+
+  it('grades a fix exactly at the 30 m limit', () => {
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        horizontalAccuracyM: 30,
+        summits: [summit({ summitId: FAR })],
+      },
+    ]);
+    expect(analysis.refusals).toEqual([]);
+    expect(criterion(analysis, 'F3.far')?.outcome).toBe('pass');
+  });
+
+  it('refuses an accuracy figure with no convention declared', () => {
+    const { bundle } = synthesiseFieldBundle({
+      captures: [
+        {
+          captureId: 'c1',
+          role: 'after-drag',
+          horizontalAccuracyM: 8.4,
+          summits: [summit({ summitId: FAR })],
+        },
+      ],
+    });
+    expect(parseFieldBundle(JSON.parse(JSON.stringify(bundle))).ok).toBe(true);
+    const raw = JSON.parse(JSON.stringify(bundle)) as Record<string, unknown>;
+    delete raw['accuracyConvention'];
+    const parsed = parseFieldBundle(raw);
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) return;
+    expect(parsed.problems.some((problem) => problem.message.includes('is not a σ'))).toBe(true);
+  });
+
+  it('refuses a convention it does not know', () => {
+    const { bundle } = synthesiseFieldBundle({
+      captures: [
+        {
+          captureId: 'c1',
+          role: 'after-drag',
+          horizontalAccuracyM: 8.4,
+          summits: [summit({ summitId: FAR })],
+        },
+      ],
+    });
+    const raw = JSON.parse(JSON.stringify(bundle)) as Record<string, unknown>;
+    raw['accuracyConvention'] = 'one-sigma';
+    expect(parseFieldBundle(raw).ok).toBe(false);
+  });
+
+  it('still refuses a bare accuracy key', () => {
+    const { bundle } = synthesiseFieldBundle({
+      captures: [{ captureId: 'c1', role: 'after-drag', summits: [summit({ summitId: FAR })] }],
+    });
+    const raw = JSON.parse(JSON.stringify(bundle)) as {
+      captures: Record<string, unknown>[];
+    };
+    const capture = raw.captures[0];
+    if (capture !== undefined) capture['accuracy'] = 12;
+    expect(parseFieldBundle(raw).ok).toBe(false);
   });
 });
 

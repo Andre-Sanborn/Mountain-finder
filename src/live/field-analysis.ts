@@ -22,6 +22,16 @@
  * anything else. Changing a number here changes it there, in the same commit,
  * with the reason.
  *
+ * Each band carries a 2σ band and a 3σ limit, and the verdict is the band's
+ * rather than the summit's: more than `MAX_TWO_SIGMA_EXCEEDANCES` summit-axes
+ * past 2σ fails it, and one axis past 3σ fails it alone. Every summit is
+ * reported against 2σ either way.
+ *
+ * A capture that reports its own fix accuracy is graded against the limits that
+ * accuracy implies, by `bandLimitsFor` and the terms in `BUDGET_TERMS`. That can
+ * only tighten a limit: a field number cannot buy itself more room than the
+ * pre-registration allowed.
+ *
  * ── PRIVACY: WHY NO POSITION, NO CLOCK, AND NO DISTANCES IN THE OUTPUT ──────
  * `AGENTS.md` § "Captures from the phone" allows orientation and motion events
  * only, with timestamps relative to the start of the capture. The parser here
@@ -69,20 +79,29 @@ import type { Peak } from '../core/types';
 /** The distance bands of the pre-registration's § 2.3 table, nearest first. */
 export type BandId = 'near' | 'mid' | 'far' | 'distant' | 'horizon';
 
-export interface BandThreshold {
+/** The two limits a residual is compared against, per axis. */
+export interface BandLimits {
   readonly band: BandId;
+  /** 2σ of the budget. A residual past it is one reportable exceedance. */
+  readonly horizontalDeg: number;
+  readonly verticalDeg: number;
+  /** 3σ. One residual past it fails the band on its own. */
+  readonly horizontal3SigmaDeg: number;
+  readonly vertical3SigmaDeg: number;
+}
+
+export interface BandThreshold extends BandLimits {
   /** Inclusive lower bound, km. The `near` band starts at 0. */
   readonly fromKm: number;
   /** Exclusive upper bound, km. `Infinity` for `horizon`. */
   readonly toKm: number;
-  /** After-drag tolerance on the horizontal frame angle, degrees. */
-  readonly horizontalDeg: number;
-  /** After-drag tolerance on the vertical frame angle, degrees. */
-  readonly verticalDeg: number;
+  /** The distance § 1.5 of the pre-registration computed this band's budget at. */
+  readonly budgetDistanceKm: number;
 }
 
 /**
- * The F3 and F4 tolerances: 2σ of the error budget, rounded up to 0.05°.
+ * The F3 and F4 limits: 2σ of the error budget rounded to 0.05°, and 3σ at
+ * 1.5 × that, rounded up to 0.05°.
  *
  * The last three bands carry the same figure because the budget is flat beyond
  * 7 km — the drag, the roll and the field-of-view scale do not care how far a
@@ -90,12 +109,69 @@ export interface BandThreshold {
  * so the result reports how many summits each band actually held.
  */
 export const PREREGISTERED_THRESHOLDS: readonly BandThreshold[] = [
-  { band: 'near', fromKm: 0, toKm: 3, horizontalDeg: 1.9, verticalDeg: 1.45 },
-  { band: 'mid', fromKm: 3, toKm: 7, horizontalDeg: 1.4, verticalDeg: 1.3 },
-  { band: 'far', fromKm: 7, toKm: 20, horizontalDeg: 1.3, verticalDeg: 1.3 },
-  { band: 'distant', fromKm: 20, toKm: 45, horizontalDeg: 1.3, verticalDeg: 1.3 },
-  { band: 'horizon', fromKm: 45, toKm: Infinity, horizontalDeg: 1.3, verticalDeg: 1.3 },
+  {
+    band: 'near',
+    fromKm: 0,
+    toKm: 3,
+    budgetDistanceKm: 2,
+    horizontalDeg: 1.9,
+    verticalDeg: 1.45,
+    horizontal3SigmaDeg: 2.85,
+    vertical3SigmaDeg: 2.2,
+  },
+  {
+    band: 'mid',
+    fromKm: 3,
+    toKm: 7,
+    budgetDistanceKm: 5,
+    horizontalDeg: 1.4,
+    verticalDeg: 1.3,
+    horizontal3SigmaDeg: 2.1,
+    vertical3SigmaDeg: 1.95,
+  },
+  {
+    band: 'far',
+    fromKm: 7,
+    toKm: 20,
+    budgetDistanceKm: 10,
+    horizontalDeg: 1.3,
+    verticalDeg: 1.3,
+    horizontal3SigmaDeg: 1.95,
+    vertical3SigmaDeg: 1.95,
+  },
+  {
+    band: 'distant',
+    fromKm: 20,
+    toKm: 45,
+    budgetDistanceKm: 30,
+    horizontalDeg: 1.3,
+    verticalDeg: 1.3,
+    horizontal3SigmaDeg: 1.95,
+    vertical3SigmaDeg: 1.95,
+  },
+  {
+    band: 'horizon',
+    fromKm: 45,
+    toKm: Infinity,
+    budgetDistanceKm: 60,
+    horizontalDeg: 1.3,
+    verticalDeg: 1.3,
+    horizontal3SigmaDeg: 1.95,
+    vertical3SigmaDeg: 1.95,
+  },
 ];
+
+/**
+ * How many summit-axes in one band may sit past 2σ and the band still pass.
+ *
+ * One. At 2σ a correct budget puts 4.55 % of axis draws outside, so "every axis
+ * inside 2σ" passes a correct budget with probability 0.9545^n — 0.225 at the
+ * 32 axis draws two or three captures produce. A gate that a correct budget
+ * fails three times in four measures the sample size. Tolerating one exceedance
+ * while refusing any 3σ excursion passes 0.936 at n = 8 and 0.815 at n = 16
+ * (pre-registration § 2.3).
+ */
+export const MAX_TWO_SIGMA_EXCEEDANCES = 1;
 
 /**
  * Widest apex disagreement between the two annotators that still permits a
@@ -104,8 +180,140 @@ export const PREREGISTERED_THRESHOLDS: readonly BandThreshold[] = [
  */
 export const MAX_TRUTH_DISAGREEMENT_DEG = 0.3;
 
-/** How far a pan may stray from the registered ±20° and still be graded. */
-export const PAN_ENVELOPE_DEG = { min: 15, max: 25 } as const;
+/**
+ * The 1σ terms of § 1.3, in the units the document states them in.
+ *
+ * They are here so a capture that reports its own fix accuracy can be graded
+ * against the budget that accuracy implies, and so the registered table above is
+ * reproducible from the terms rather than only asserted. A test rebuilds § 1.5's
+ * 1σ column from them.
+ */
+export const BUDGET_TERMS = {
+  /** Term 1, Overture cross-release RMS rounded up. */
+  peakPositionM: 20,
+  /** Term 2, RMS against 15 independently cited heights. */
+  summitElevationM: 5.5,
+  /** Term 3a when the capture reports none, from the Railroad Ridge n = 1. */
+  observerPositionM: 15,
+  /** Term 3b under the DEM-ground choice. */
+  observerHeightM: 10,
+  /** The band § 1.1 charges the drag anchor at. */
+  anchorDistanceKm: 10,
+  /** Term 6 at the frame edge, calibrated. */
+  fovHorizontalDeg: 0.275,
+  fovVerticalDeg: 0.039,
+  /** Term 7 at the frame edge, braced. */
+  rollHorizontalDeg: 0.034,
+  rollVerticalDeg: 0.322,
+  /** Term 9, 1 mm of finger. Both axes. */
+  dragDeg: 0.543,
+} as const;
+
+/**
+ * What a reported horizontal accuracy means, and the divisor that follows.
+ *
+ * The W3C position API defines the figure as a horizontal radius at a 95 %
+ * confidence level. For a circular bivariate normal the radius holding 95 % of
+ * draws is `σ·sqrt(−2·ln 0.05)`, about 2.45σ, so the per-axis 1σ is the reported
+ * radius over that. Apple states no confidence level of its own, and iOS Safari
+ * implements the W3C API, so a Safari capture is read under the W3C convention.
+ * See § 1.3 term 3a of the pre-registration for the sources and the sensitivity.
+ */
+export const ACCURACY_CONFIDENCE = 'w3c-95-percent-horizontal-radius';
+
+/** A 95 % circular radius to a per-axis 1σ. */
+export const ACCURACY_SIGMA_DIVISOR = Math.sqrt(-2 * Math.log(0.05));
+
+/** Reported fix accuracy above this refuses the capture, metres (term 3a). */
+export const MAX_OBSERVER_ACCURACY_M = 30;
+
+/** Per-axis 1σ of the observer's horizontal position from a reported radius. */
+export function observerSigmaFromAccuracyM(accuracyM: number): number {
+  return accuracyM / ACCURACY_SIGMA_DIVISOR;
+}
+
+const DEG_PER_RAD = 180 / Math.PI;
+
+/** Rounded up to the next 0.05°, the granularity every registered limit uses. */
+function roundUpToStep(deg: number): number {
+  const steps = Math.ceil(deg / 0.05 - 1e-9);
+  return Math.round(steps * 0.05 * 100) / 100;
+}
+
+function metresAsDeg(metres: number, distanceKm: number): number {
+  return (metres / (distanceKm * 1000)) * DEG_PER_RAD;
+}
+
+/**
+ * The band's per-summit 1σ, on both axes: § 1.5 of the pre-registration.
+ *
+ * Every term is charged at the frame edge, with the anchor's own error charged at
+ * {@link BUDGET_TERMS}.anchorDistanceKm, and they are combined by RSS under the
+ * independence argument of § 1.4.
+ */
+export function bandSigmaFor(
+  threshold: BandThreshold,
+  observerPositionM: number = BUDGET_TERMS.observerPositionM,
+): { readonly horizontalDeg: number; readonly verticalDeg: number } {
+  const t = BUDGET_TERMS;
+  const geodesyHorizontalM = Math.hypot(t.peakPositionM, observerPositionM);
+  const geodesyVerticalM = Math.hypot(t.summitElevationM, t.observerHeightM);
+  return {
+    horizontalDeg: Math.hypot(
+      metresAsDeg(geodesyHorizontalM, threshold.budgetDistanceKm),
+      metresAsDeg(geodesyHorizontalM, t.anchorDistanceKm),
+      t.fovHorizontalDeg,
+      t.rollHorizontalDeg,
+      t.dragDeg,
+    ),
+    verticalDeg: Math.hypot(
+      metresAsDeg(geodesyVerticalM, threshold.budgetDistanceKm),
+      metresAsDeg(geodesyVerticalM, t.anchorDistanceKm),
+      t.fovVerticalDeg,
+      t.rollVerticalDeg,
+      t.dragDeg,
+    ),
+  };
+}
+
+/**
+ * The limits a band is graded against, given what is known about the fix.
+ *
+ * With no reported accuracy this returns the registered row unchanged. With one,
+ * term 3a becomes the fix's own per-axis 1σ, the band's 1σ is recomputed and the
+ * limits follow — but only where that **tightens** them. A measured accuracy can
+ * narrow a tolerance and never widen one, so no field number can buy itself more
+ * room than the pre-registration allowed.
+ */
+export function bandLimitsFor(
+  threshold: BandThreshold,
+  observerAccuracyM?: number,
+): BandLimits {
+  if (observerAccuracyM === undefined) return threshold;
+  const sigma = bandSigmaFor(threshold, observerSigmaFromAccuracyM(observerAccuracyM));
+  const horizontalDeg = Math.min(roundUpToStep(2 * sigma.horizontalDeg), threshold.horizontalDeg);
+  const verticalDeg = Math.min(roundUpToStep(2 * sigma.verticalDeg), threshold.verticalDeg);
+  return {
+    band: threshold.band,
+    horizontalDeg,
+    verticalDeg,
+    horizontal3SigmaDeg: Math.min(
+      roundUpToStep(1.5 * horizontalDeg),
+      threshold.horizontal3SigmaDeg,
+    ),
+    vertical3SigmaDeg: Math.min(roundUpToStep(1.5 * verticalDeg), threshold.vertical3SigmaDeg),
+  };
+}
+
+/**
+ * How far into the half-frame the anchor summit must sit for an F4 pan.
+ *
+ * The registered movement is "pan until the anchor summit is at the frame edge",
+ * which a person can see on screen; 0.8 of the half-frame is what counts as the
+ * edge. At u = 0.8 the field-of-view scale term is 0.253° of the 0.275°
+ * available at u = 1, so the pan exercises 92 % of it.
+ */
+export const PAN_ANCHOR_EDGE_OFFSET = 0.8;
 
 /** How far a tilt may stray from the registered ±10° and still be graded. */
 export const TILT_ENVELOPE_DEG = { min: 5, max: 15 } as const;
@@ -134,18 +342,64 @@ export function bandFor(distanceKm: number): BandThreshold | undefined {
 }
 
 /**
- * Whether a residual is inside a band's tolerance, on both axes.
+ * Whether a residual is inside a band's 2σ band, on both axes.
  *
  * One implementation, called by every criterion that grades a position, so the
  * boundary cannot be `<=` in one place and `<` in another. The comparison is
- * inclusive: a residual exactly at the threshold passes, because the threshold
- * is a stated limit rather than a value the budget excludes.
+ * inclusive: a residual exactly at the limit is inside, because the limit is a
+ * stated bound rather than a value the budget excludes.
  */
-export function withinThreshold(residual: Residual, threshold: BandThreshold): boolean {
+export function withinThreshold(residual: Residual, threshold: BandLimits): boolean {
   return (
     Math.abs(residual.horizontalDeg) <= threshold.horizontalDeg &&
     Math.abs(residual.verticalDeg) <= threshold.verticalDeg
   );
+}
+
+/** One axis of one summit, against the 2σ band and the 3σ limit. */
+export interface AxisExceedance {
+  readonly axis: 'across' | 'up/down';
+  readonly errorDeg: number;
+  readonly twoSigmaDeg: number;
+  readonly threeSigmaDeg: number;
+  readonly overTwoSigma: boolean;
+  readonly overThreeSigma: boolean;
+}
+
+/**
+ * Both axes of one summit, classified.
+ *
+ * The band's verdict counts these: more than {@link MAX_TWO_SIGMA_EXCEEDANCES}
+ * axes past 2σ fails it, and one axis past 3σ fails it alone.
+ */
+export function exceedancesOf(
+  residual: Residual,
+  limits: BandLimits,
+): readonly AxisExceedance[] {
+  const axes: readonly {
+    readonly axis: 'across' | 'up/down';
+    readonly errorDeg: number;
+    readonly twoSigmaDeg: number;
+    readonly threeSigmaDeg: number;
+  }[] = [
+    {
+      axis: 'across',
+      errorDeg: Math.abs(residual.horizontalDeg),
+      twoSigmaDeg: limits.horizontalDeg,
+      threeSigmaDeg: limits.horizontal3SigmaDeg,
+    },
+    {
+      axis: 'up/down',
+      errorDeg: Math.abs(residual.verticalDeg),
+      twoSigmaDeg: limits.verticalDeg,
+      threeSigmaDeg: limits.vertical3SigmaDeg,
+    },
+  ];
+  return axes.map((axis) => ({
+    ...axis,
+    overTwoSigma: axis.errorDeg > axis.twoSigmaDeg,
+    overThreeSigma: axis.errorDeg > axis.threeSigmaDeg,
+  }));
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -297,6 +551,17 @@ export interface Capture {
   readonly movedFromCaptureId?: string;
   readonly panFromReferenceDeg?: number;
   readonly tiltFromReferenceDeg?: number;
+  /**
+   * The platform's own horizontal accuracy for the fix this capture was drawn
+   * at, metres, as reported. Read under the bundle's `accuracyConvention`, which
+   * is required whenever this is present: a radius without its confidence level
+   * is not a σ. Above {@link MAX_OBSERVER_ACCURACY_M} the capture is refused.
+   *
+   * It is a single number and it names no place. The parser still refuses
+   * `accuracy` inside any `coords` or `position` wrapper, which is the shape
+   * that would carry a fix.
+   */
+  readonly horizontalAccuracyM?: number;
   readonly note?: string;
 }
 
@@ -304,6 +569,12 @@ export interface Capture {
 export interface FieldBundle {
   readonly format: typeof BUNDLE_FORMAT;
   readonly timestampBasis: typeof TIMESTAMP_BASIS;
+  /**
+   * What every `horizontalAccuracyM` in this bundle means. Only
+   * {@link ACCURACY_CONFIDENCE} is accepted, so the budget's conversion to 1σ
+   * cannot be applied to a number that meant something else.
+   */
+  readonly accuracyConvention?: typeof ACCURACY_CONFIDENCE;
   /** `navigator.userAgent`, verbatim. Names the browser the verdicts apply to. */
   readonly device: string;
   /** Which committed peak regions the app had loaded. Public identifiers. */
@@ -411,6 +682,10 @@ const FORBIDDEN_KEY_PATTERNS: readonly { readonly pattern: RegExp; readonly why:
   { pattern: /wallclock/i, why: 'a wall clock' },
   // `capturedAt`, `startedAt`, `recordedAt`. Case-sensitive, so `format` is safe.
   { pattern: /At$/, why: 'a wall-clock instant' },
+  {
+    pattern: /^accuracy$/i,
+    why: "a fix's own accuracy field; a capture names its figure horizontalAccuracyM, under the bundle-level convention",
+  },
 ];
 
 /**
@@ -886,6 +1161,7 @@ const CAPTURE_KEYS = [
   'movedFromCaptureId',
   'panFromReferenceDeg',
   'tiltFromReferenceDeg',
+  'horizontalAccuracyM',
   'note',
 ] as const;
 
@@ -947,6 +1223,13 @@ function parseCapture(p: Problems, path: string, value: unknown): Capture | unde
     obj.tiltFromReferenceDeg,
     { min: -90, max: 90 },
   );
+  const horizontalAccuracyM = asOptionalNumber(
+    p,
+    `${path}.horizontalAccuracyM`,
+    'horizontalAccuracyM' in obj,
+    obj.horizontalAccuracyM,
+    { min: 0, max: 100_000 },
+  );
   const note = 'note' in obj ? asString(p, `${path}.note`, obj.note) : undefined;
 
   if (role === 'after-drag' && dragAnchorSummitId === undefined) {
@@ -996,6 +1279,7 @@ function parseCapture(p: Problems, path: string, value: unknown): Capture | unde
     ...(movedFromCaptureId !== undefined ? { movedFromCaptureId } : {}),
     ...(panFromReferenceDeg !== undefined ? { panFromReferenceDeg } : {}),
     ...(tiltFromReferenceDeg !== undefined ? { tiltFromReferenceDeg } : {}),
+    ...(horizontalAccuracyM !== undefined ? { horizontalAccuracyM } : {}),
     ...(note !== undefined ? { note } : {}),
   };
 }
@@ -1006,6 +1290,7 @@ const BUNDLE_KEYS = [
   'device',
   'peakRegions',
   'captures',
+  'accuracyConvention',
   'note',
 ] as const;
 
@@ -1030,6 +1315,10 @@ export function parseFieldBundle(raw: unknown): ParseResult<FieldBundle> {
   }
   const device = asString(p, 'device', obj.device);
   const note = 'note' in obj ? asString(p, 'note', obj.note) : undefined;
+  const hasConvention = 'accuracyConvention' in obj;
+  if (hasConvention && obj.accuracyConvention !== ACCURACY_CONFIDENCE) {
+    p.add('accuracyConvention', `expected exactly "${ACCURACY_CONFIDENCE}"`);
+  }
 
   const rawRegions = asArray(p, 'peakRegions', obj.peakRegions);
   const peakRegions: string[] = [];
@@ -1055,6 +1344,14 @@ export function parseFieldBundle(raw: unknown): ParseResult<FieldBundle> {
     });
   }
 
+  const reportsAccuracy = captures.some((capture) => capture.horizontalAccuracyM !== undefined);
+  if (reportsAccuracy && !hasConvention) {
+    p.add(
+      'accuracyConvention',
+      `required once a capture reports horizontalAccuracyM: a radius without its confidence level is not a σ. Expected "${ACCURACY_CONFIDENCE}"`,
+    );
+  }
+
   if (p.list.length > 0) return { ok: false, problems: p.list };
   if (device === undefined) {
     return { ok: false, problems: [{ path: '', message: 'incomplete bundle' }] };
@@ -1067,6 +1364,7 @@ export function parseFieldBundle(raw: unknown): ParseResult<FieldBundle> {
       device,
       peakRegions,
       captures,
+      ...(hasConvention ? { accuracyConvention: ACCURACY_CONFIDENCE } : {}),
       ...(note !== undefined ? { note } : {}),
     },
   };
@@ -1348,7 +1646,11 @@ export interface GradedSummit {
   /** 0 at the frame centre, 1 at its edge. Separates the scale terms. */
   readonly frameOffset: number;
   readonly truthDisagreementDeg: number;
+  /** Inside the 2σ band on both axes. */
   readonly withinThreshold: boolean;
+  readonly exceedances: readonly AxisExceedance[];
+  readonly axesOverTwoSigma: number;
+  readonly axesOverThreeSigma: number;
 }
 
 /** Everything a run produced, ready to print. */
@@ -1413,6 +1715,10 @@ function isGradable(capture: Capture): string | undefined {
   if (capture.fovSource !== 'calibrated') {
     return `${capture.captureId}: the field of view is a spec-sheet guess, so the scale term is unquantified and the capture is not graded (pre-registration § 1.3 term 6)`;
   }
+  const accuracyM = capture.horizontalAccuracyM;
+  if (accuracyM !== undefined && accuracyM > MAX_OBSERVER_ACCURACY_M) {
+    return `${capture.captureId}: the fix reports ${accuracyM.toFixed(1)} m of horizontal accuracy, over the ${MAX_OBSERVER_ACCURACY_M} m the protocol accepts, so the capture is not graded (pre-registration § 1.3 term 3a)`;
+  }
   return undefined;
 }
 
@@ -1430,6 +1736,37 @@ interface Observation {
   readonly capture: Capture;
   readonly summit: DrawnSummit;
   readonly truth: SummitTruth;
+}
+
+/**
+ * One row of the graded table, or nothing when the summit's distance falls in no
+ * band. The limits come from the capture, because a capture that reported its
+ * own fix accuracy is graded against the budget that accuracy implies.
+ */
+function gradedSummitOf(
+  capture: Capture,
+  summit: DrawnSummit,
+  apexPx: PixelPoint,
+  truthDisagreementDeg: number,
+): GradedSummit | undefined {
+  const threshold = bandFor(summit.distanceKm);
+  if (threshold === undefined) return undefined;
+  const limits = bandLimitsFor(threshold, capture.horizontalAccuracyM);
+  const residual = residualOf(capture, summit.summitPx, apexPx);
+  const exceedances = exceedancesOf(residual, limits);
+  return {
+    captureId: capture.captureId,
+    summitId: summit.summitId,
+    name: summit.name,
+    band: threshold.band,
+    residual,
+    frameOffset: frameOffsetFraction(apexPx.xPx, capture.framePx.widthPx),
+    truthDisagreementDeg,
+    withinThreshold: withinThreshold(residual, limits),
+    exceedances,
+    axesOverTwoSigma: exceedances.filter((axis) => axis.overTwoSigma).length,
+    axesOverThreeSigma: exceedances.filter((axis) => axis.overThreeSigma).length,
+  };
 }
 
 function observationsOf(
@@ -1526,6 +1863,15 @@ function gradeF2(observations: readonly Observation[]): Criterion {
   };
 }
 
+/**
+ * Grade the after-drag residuals of whichever captures `select` picks.
+ *
+ * The verdict is the band's, not the summit's. Every summit is reported against
+ * the 2σ band it was budgeted for, and the band fails only when more than
+ * {@link MAX_TWO_SIGMA_EXCEEDANCES} summit-axes sit past 2σ, or when any one
+ * sits past 3σ. A single 2σ exceedance is what a correct budget produces at this
+ * n, so treating it as a failure would grade the sample size.
+ */
 function gradePositional(
   id: string,
   claim: string,
@@ -1542,38 +1888,37 @@ function gradePositional(
       continue;
     }
     if (truth.kind !== 'located') continue;
-    const threshold = bandFor(summit.distanceKm);
-    if (threshold === undefined) continue;
-    const residual = residualOf(capture, summit.summitPx, truth.apexPx);
-    rows.push({
-      captureId: capture.captureId,
-      summitId: summit.summitId,
-      name: summit.name,
-      band: threshold.band,
-      residual,
-      frameOffset: frameOffsetFraction(truth.apexPx.xPx, capture.framePx.widthPx),
-      truthDisagreementDeg: truth.disagreementDeg,
-      withinThreshold: withinThreshold(residual, threshold),
-    });
+    const row = gradedSummitOf(capture, summit, truth.apexPx, truth.disagreementDeg);
+    if (row !== undefined) rows.push(row);
   }
 
   const criteria: Criterion[] = PREREGISTERED_THRESHOLDS.map((threshold) => {
     const band = rows.filter((row) => row.band === threshold.band);
-    const failures = band.filter((row) => !row.withinThreshold);
-    const evidence = band.map(
-      (row) =>
-        `${row.captureId} ${row.name}: ${Math.abs(row.residual.horizontalDeg).toFixed(3)}° across (limit ${threshold.horizontalDeg}°), ${Math.abs(row.residual.verticalDeg).toFixed(3)}° up/down (limit ${threshold.verticalDeg}°), at ${(row.frameOffset * 100).toFixed(0)}% of the half-frame, truth ±${row.truthDisagreementDeg.toFixed(3)}°${row.withinThreshold ? '' : ' — OUTSIDE'}`,
-    );
+    const overTwoSigma = band.reduce((count, row) => count + row.axesOverTwoSigma, 0);
+    const overThreeSigma = band.reduce((count, row) => count + row.axesOverThreeSigma, 0);
+    const failed = overThreeSigma > 0 || overTwoSigma > MAX_TWO_SIGMA_EXCEEDANCES;
+    const evidence = band.map((row) => {
+      const across = row.exceedances[0];
+      const upDown = row.exceedances[1];
+      const flag =
+        row.axesOverThreeSigma > 0
+          ? ' — OVER 3σ'
+          : row.axesOverTwoSigma > 0
+            ? ' — over 2σ'
+            : '';
+      return `${row.captureId} ${row.name}: ${Math.abs(row.residual.horizontalDeg).toFixed(3)}° across (2σ ${across?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${across?.threeSigmaDeg.toFixed(2) ?? '?'}°), ${Math.abs(row.residual.verticalDeg).toFixed(3)}° up/down (2σ ${upDown?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${upDown?.threeSigmaDeg.toFixed(2) ?? '?'}°), at ${(row.frameOffset * 100).toFixed(0)}% of the half-frame, truth ±${row.truthDisagreementDeg.toFixed(3)}°${flag}`;
+    });
     return {
       id: `${id}.${threshold.band}`,
       claim: `${claim} (${threshold.band}: ${threshold.fromKm}${Number.isFinite(threshold.toKm) ? `–${threshold.toKm}` : '+'} km)`,
-      outcome: band.length === 0 ? 'no-sample' : failures.length === 0 ? 'pass' : 'fail',
+      outcome: band.length === 0 ? 'no-sample' : failed ? 'fail' : 'pass',
       n: band.length,
       evidence:
         band.length === 0
           ? ['no graded summit fell in this band']
           : [
               band.length === 1 ? 'n = 1' : `n = ${band.length}`,
+              `${overTwoSigma} summit-axis/axes past 2σ (${MAX_TWO_SIGMA_EXCEEDANCES} tolerated), ${overThreeSigma} past 3σ (none tolerated)`,
               ...evidence,
             ],
     };
@@ -1591,18 +1936,41 @@ function gradePositional(
   return criteria;
 }
 
+/**
+ * Whether each moved capture performed the registered movement.
+ *
+ * A pan is registered as "pan until the anchor summit sits at the frame edge",
+ * so what is checked is where the anchor was drawn: its normalised horizontal
+ * offset must reach {@link PAN_ANCHOR_EDGE_OFFSET} of the half-frame. The offset
+ * is read from the overlay as drawn, which is the same thing the person saw. The
+ * pan in degrees is recorded in the bundle and not gated: how far the phone had
+ * to turn depends on where the anchor started.
+ */
 function gradeF4Envelope(captures: readonly Capture[]): readonly string[] {
   const problems: string[] = [];
+  const byId = new Map(captures.map((capture) => [capture.captureId, capture]));
   for (const capture of captures) {
     if (capture.role !== 'moved') continue;
     const pan = capture.panFromReferenceDeg;
     const tilt = capture.tiltFromReferenceDeg;
     if (pan !== undefined && pan !== 0) {
-      const size = Math.abs(pan);
-      if (size < PAN_ENVELOPE_DEG.min || size > PAN_ENVELOPE_DEG.max) {
+      const from =
+        capture.movedFromCaptureId === undefined
+          ? undefined
+          : byId.get(capture.movedFromCaptureId);
+      const anchorId = capture.dragAnchorSummitId ?? from?.dragAnchorSummitId;
+      const anchor = capture.overlay.drawn.find((summit) => summit.summitId === anchorId);
+      if (anchor === undefined) {
         problems.push(
-          `${capture.captureId}: panned ${size.toFixed(1)}°, outside the registered ${PAN_ENVELOPE_DEG.min}–${PAN_ENVELOPE_DEG.max}° envelope`,
+          `${capture.captureId}: panned, but the drag anchor is not among the summits this capture drew, so the pan target cannot be read`,
         );
+      } else {
+        const offset = frameOffsetFraction(anchor.summitPx.xPx, capture.overlayPx.widthPx);
+        if (offset < PAN_ANCHOR_EDGE_OFFSET) {
+          problems.push(
+            `${capture.captureId}: panned until the anchor sat at ${offset.toFixed(2)} of the half-frame, short of the registered ${PAN_ANCHOR_EDGE_OFFSET}`,
+          );
+        }
       }
     }
     if (tilt !== undefined && tilt !== 0) {
@@ -1777,7 +2145,8 @@ export function analyseFieldRun(
   if (envelope.length > 0) {
     criteria.push({
       id: 'F4.envelope',
-      claim: 'the movements performed were the registered ±20° pan and ±10° tilt',
+      claim:
+        'the movements performed were the registered pan to the anchor at the frame edge and ±10° tilt',
       outcome: 'fail',
       n: envelope.length,
       evidence: envelope,
@@ -1787,19 +2156,8 @@ export function analyseFieldRun(
   const graded: GradedSummit[] = [];
   for (const { capture, summit, truth: reduced } of observations) {
     if (capture.role === 'before-drag' || reduced.kind !== 'located') continue;
-    const threshold = bandFor(summit.distanceKm);
-    if (threshold === undefined) continue;
-    const residual = residualOf(capture, summit.summitPx, reduced.apexPx);
-    graded.push({
-      captureId: capture.captureId,
-      summitId: summit.summitId,
-      name: summit.name,
-      band: threshold.band,
-      residual,
-      frameOffset: frameOffsetFraction(reduced.apexPx.xPx, capture.framePx.widthPx),
-      truthDisagreementDeg: reduced.disagreementDeg,
-      withinThreshold: withinThreshold(residual, threshold),
-    });
+    const row = gradedSummitOf(capture, summit, reduced.apexPx, reduced.disagreementDeg);
+    if (row !== undefined) graded.push(row);
   }
 
   return {
@@ -1908,11 +2266,14 @@ export interface SynthCapture {
   readonly overlayPx?: { readonly widthPx: number; readonly heightPx: number };
   readonly hFovDeg?: number;
   readonly vFovDeg?: number;
+  readonly horizontalAccuracyM?: number;
 }
 
 export interface SynthSpec {
   readonly device?: string;
   readonly captures: readonly SynthCapture[];
+  /** Emitted when any capture carries an accuracy, which the parser requires. */
+  readonly accuracyConvention?: typeof ACCURACY_CONFIDENCE;
 }
 
 /** The registered frame geometry, as a synthesiser default. */
@@ -2030,6 +2391,9 @@ export function synthesiseFieldBundle(spec: SynthSpec): {
       ...(synth.tiltFromReferenceDeg !== undefined
         ? { tiltFromReferenceDeg: synth.tiltFromReferenceDeg }
         : {}),
+      ...(synth.horizontalAccuracyM !== undefined
+        ? { horizontalAccuracyM: synth.horizontalAccuracyM }
+        : {}),
     });
 
     truthCaptures.push({
@@ -2048,6 +2412,10 @@ export function synthesiseFieldBundle(spec: SynthSpec): {
       device: spec.device ?? 'synthetic/not-a-real-browser',
       peakRegions: ['idaho-bogus-basin'],
       captures,
+      ...(captures.some((capture) => capture.horizontalAccuracyM !== undefined) ||
+      spec.accuracyConvention !== undefined
+        ? { accuracyConvention: ACCURACY_CONFIDENCE }
+        : {}),
     },
     truth: {
       format: TRUTH_FORMAT,

@@ -1128,3 +1128,33 @@ The scene matched the site package's own figures exactly: 720/720 rays, 78 label
 At 30 km the same call labels 32 summits and leaves 132 unmeasured.
 
 The harness lives outside the repository, in the session scratch directory.
+
+## The pre-registration, revised before any field data
+
+The revision history is in docs/FIELD-TEST-PREREGISTRATION.md, and the pre-edit copy is
+archived.
+
+**The F3/F4 gate counts exceedances.** A band fails on more than one summit-axis past 2σ, or on
+any axis past 3σ. The 3σ limit is 1.5 × 2σ, rounded up to 0.05°. A correct budget passes with
+probability p0^n + n·p1·p0^(n−1), where p0 = 0.9545 and p1 = 0.0428. That is 0.936 at n = 8 and
+0.815 at n = 16. The old rule passed with 0.9545^n: 0.475 at 16 and 0.225 at 32.
+
+**F4's pan target is the anchor at u ≥ 0.8** of the half-frame, read from the drawn overlay.
+The pan angle is recorded but not gated.
+
+**Observer accuracy is measured.** A capture may carry `horizontalAccuracyM` under a declared
+`accuracyConvention`. W3C defines it as a 95 % radius, so σ = r/2.4477. Apple states no
+convention, and the W3C one is assumed because Safari serves the W3C API. The recomputed limit
+can only tighten the registered one. Accuracy worse than 30 m refuses the capture.
+
+**Text corrections:**
+- the anchor is 35–57 km out
+- near and mid bands are pre-declared as likely `no-sample`
+- F2 is conditional on calibration
+- the radius decision is stated
+- the site steps are stated
+
+The drag and roll terms are unchanged until the home session measures them.
+
+The suite has 79 tests. Ten mutations are caught. The stray fixture now carries a 3σ
+excursion, 2.223° against 1.95°.

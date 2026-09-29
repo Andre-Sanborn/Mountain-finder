@@ -41,15 +41,15 @@
             {
               "summitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e",
               "apexPx": {
-                "xPx": 521.5,
-                "yPx": 301
+                "xPx": 518.5,
+                "yPx": 299
               }
             },
             {
               "summitId": "overture/daf0b989-7a13-36e1-b4d0-b4ebfecf1e4c",
               "apexPx": {
-                "xPx": 1041.5,
-                "yPx": 371
+                "xPx": 1038.5,
+                "yPx": 369
               }
             },
             {
@@ -59,8 +59,8 @@
             {
               "summitId": "overture/bb7147e9-f16f-3d21-a0cb-a60a47cc8873",
               "apexPx": {
-                "xPx": 1541.5,
-                "yPx": 471
+                "xPx": 1538.5,
+                "yPx": 469
               }
             }
           ]

@@ -42,9 +42,19 @@ The errors injected into `stray-bundle.json`, and the criterion each one breaks:
 
 | injected | criterion |
 |---|---|
-| Far Mountain drawn 40 px off its apex, where the `far` band allows 29 px | `F3.far` |
-| Mid Peak drawn `visible` while both annotators report it absent | `F5a` |
-| Horizon Crag drawn with a verdict from 55 km, beyond the capture's 30 km sweep | `F5c` |
+| Shafer Butte drawn 50 px off its apex, which is 2.223° where the `far` band's 3σ limit is 1.95° | `F3.far` |
+| Mores Mountain drawn `visible` while both annotators report it absent | `F5a` |
+| Trinity Mountain drawn with a verdict from 55 km, beyond the capture's 30 km sweep | `F5c` |
+
+The 50 px is a **3σ** excursion on purpose. A band tolerates one summit-axis past 2σ, so a
+single 2σ exceedance would pass and the fixture would assert nothing. The two-exceedance half
+of the gate is exercised in `src/live/field-analysis.test.ts`, where a capture can hold two
+summits in one band.
+
+`aligned-bundle.json` exercises the rest of the protocol: every summit is inside 2σ, its pan
+capture carries the drag anchor to 0.84 of the half-frame (the registered pan target is 0.8),
+and every capture reports a fix accuracy of 8.4 m under the bundle's declared convention, so
+the bands are graded against the limits that accuracy derives rather than the registered ones.
 
 To regenerate either pair, build a `SynthSpec` and write
 `synthesiseFieldBundle(spec).bundle` and `.truth` as JSON. The synthesiser is
@@ -56,9 +66,14 @@ deterministic and takes no seed, so the files are byte-identical on any machine.
 device, and this directory follows the same rules even though its contents are
 synthetic:
 
-- No geolocation field, no latitude, no longitude, and **no bearings**. A bearing
-  and a distance to a named summit is a position fix, so the schema has nowhere
-  to put one.
+- No geolocation field, no latitude, no longitude, and **no bearings**. The one thing a
+  capture says about its fix is `horizontalAccuracyM`, a single number under the bundle's
+  declared convention: how well the phone knew where it was, never where that was. It is
+  named so that `npm run check:privacy` reads it for what it is — that gate convicts a file
+  holding the `latitude`/`longitude`/`accuracy` key set of a raw position fix, and these
+  files hold none of those keys and are cleared by the rule rather than by the allow-list.
+  A bearing and a distance to a named summit is a position fix, so the schema has nowhere to
+  put one.
 - Timestamps are milliseconds from the start of the session. A wall-clock stamp
   dates a session as precisely as a coordinate places it.
 - The camera frame is referenced by file name. The bytes never enter the bundle,

@@ -40,7 +40,6 @@ after its self-check has run and passed here. The checks are in
 - [ ] Prove the automatic advance on the three-minute stillness step on a real device
 - [x] Build the capture bundle schema and `analyze:field`; bundles never enter the repository
 - [ ] Have the live screen emit a field bundle in the field-bundle@1 shape (no bearings, no wall clock)
-- [ ] Record the phone's coords.accuracy per fix, to replace the n = 1 15 m observer term
 - [x] Write the error budget and pre-register the field pass criteria
 - [ ] Run the headless dress rehearsal on IMG_7270 and railroad-ridge-48mm with injected errors
 - [ ] Write the home-session steps; run the home session with the human
@@ -53,7 +52,10 @@ after its self-check has run and passed here. The checks are in
 - [x] Measure the 60 km live sweep in Chromium under 4-6x CPU throttling; precondition of the field session
 - [ ] Measure the live start on the phone: iOS Cache Storage read of 42.55 MB, permissions, fix, first paint
 - [ ] Fine-drag mode (4x slow) on the live screen; home session records drag and roll spread
-- [ ] Prereg: gate F3/F4 at one 2σ exceedance and no 3σ; F4 pan to frame edge; accuracy confidence; text fixes
+- [x] Prereg: gate F3/F4 at one 2σ exceedance and no 3σ; F4 pan to frame edge; accuracy confidence; text fixes
+- [ ] Emit horizontalAccuracyM and accuracyConvention from the live screen into the capture bundle
+- [ ] Re-derive the drag and roll terms from the home-session measurements; record in the prereg revision history
+- [ ] Make the privacy gate's position-fix message say which key set tripped it; prose 'accuracy' trips it now
 
 ## Other open work
 

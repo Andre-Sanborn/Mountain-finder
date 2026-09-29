@@ -1,7 +1,6 @@
 # The field test: error budget and pre-registered pass criteria
 
-**Written and revised 2026-09-29, before any field number exists.** The revision history at
-the end says what each revision changed. Nothing in this document was
+**Written 2026-09-29, before any field number exists.** Nothing in this document was
 derived from a field measurement, because there are none. Every figure is either
 arithmetic from a term this repository has already measured, or a stated assumption with
 its sensitivity attached.
@@ -50,14 +49,8 @@ anchored on summit *a* is therefore `(e_i − e_a) + (drag precision)`, and the 
 error enters every row of the table. **The protocol fixes the anchor rule**: the drag is
 anchored on the most prominent summit the user can positively identify, and the bundle
 records which one (`dragAnchorSummitId`). The table below charges the anchor at the 7–20 km
-band.
-
-At the proposed site the anchor will in practice be farther out than that. The summits a
-person can positively identify there are the prominent ones, and they are 35–57 km away:
-Trinity Mountain 56.4 km, Freeman Peak 36.5 km, Pilot Peak 38.4 km. **Charging the anchor
-at 7–20 km is therefore conservative**, because a farther anchor carries a smaller angular
-error: 25 m of horizontal geodesy is 0.143° at 10 km and 0.026° at 55 km. The charge stays
-at 7–20 km so that the table holds for a session that anchors on something nearer.
+band, because that is where a prominent, positively identifiable summit sits at the
+proposed site.
 
 ### 1.2 The frame the budget is computed on
 
@@ -116,36 +109,18 @@ reported, not resolved"): 13 agree exactly or within 2 m, Mount Hamilton is −2
 one is ambiguous. RMS charging the 13 at 1 m:
 `sqrt((21² + 13 × 1² + 2²) / 15) = 5.5 m`, n = 15.
 
-#### Term 3a — Observer horizontal position: the fix's own accuracy, or 15 m
+#### Term 3a — Observer horizontal position: 15 m
 
-**When the capture reports an accuracy, the budget uses it.** The W3C Geolocation API
-defines `GeolocationCoordinates.accuracy` as the horizontal radius of the fix at a **95 %
-confidence level** ([W3C Geolocation API, `accuracy`](https://www.w3.org/TR/geolocation/)),
-and the phone reports it at every fix. For a circular bivariate normal the radius holding
-95 % of draws is `σ·sqrt(−2·ln 0.05) = 2.4477σ`, so the **per-axis 1σ is the reported radius
-over 2.4477**. A 10 m accuracy is 4.09 m of 1σ per axis; a 30 m accuracy is 12.26 m.
+The repository's one direct comparison: at the Railroad Ridge viewpoint the photographer's
+hand-read coordinate and the phone's GPS fix differ by **14.3 m**
+([docs/NEAR-FIELD.md](NEAR-FIELD.md)), n = 1. Rounded to 15 m.
 
-**Apple states no confidence level for `CLLocation.horizontalAccuracy`.** iOS Safari serves
-the W3C API, so a capture from it is read under the W3C convention, and the bundle records
-which convention it was read under (`accuracyConvention`) beside the raw number
-(`horizontalAccuracyM`) rather than leaving it to be inferred. The sensitivity is small and
-one-sided: reading a 10 m figure as 1σ instead of a 95 % radius would raise the near band's
-horizontal 1σ from 0.853° to 0.894°, which moves its limit from 1.75° to 1.80°. Every other
-band moves less, because the observer term is smaller than the drag beyond 3 km.
-
-**When the capture reports no accuracy, the term is 15 m.** The repository's one direct
-comparison: at the Railroad Ridge viewpoint the photographer's hand-read coordinate and the
-phone's GPS fix differ by **14.3 m** ([docs/NEAR-FIELD.md](NEAR-FIELD.md)), n = 1. Rounded
-to 15 m. It is the weakest-sourced term in the budget, which is why the measured figure
-replaces it wherever there is one.
-
-**A reported accuracy worse than 30 m fails the fix.** The session re-acquires before
-capturing, and a capture that carries a worse figure anyway is refused rather than graded.
-
-The recomputation can only **tighten** a limit. The effective limit is the tighter of the
-registered figure in § 2.3 and the figure the reported accuracy derives, so a good fix
-narrows the tolerance and a poor one never widens it. § 2.3 gives the derived table for a
-10 m fix.
+This is the weakest-sourced term in the budget, and there is a better instrument available
+for free: the W3C Geolocation API's `GeolocationCoordinates.accuracy` is the fix's own 95 %
+horizontal radius, and the phone reports it at every fix. **The protocol records it**, as a
+number only, so the next revision of this budget replaces 15 m with the session's own
+figure. A reported accuracy worse than 30 m fails the fix and the session re-acquires
+before capturing.
 
 #### Term 3b — Observer height: 10 m, or 50 m under the wrong choice
 
@@ -219,10 +194,10 @@ A label at fractional frame offset `u` (1 = the frame edge) sits at
 
 which is 0 at the centre and `(ε/2)·sin F` at the edge. At hFOV 73.74°:
 
-| ε | u = 0.3 | u = 0.7 | u = 0.8 (the F4 pan target) | u = 1.0 (edge) |
+| ε | u = 0.3 | u = 0.485 (a ±20° pan) | u = 0.7 | u = 1.0 (edge) |
 |---|---|---|---|---|
-| 1 % | 0.123° | 0.236° | 0.253° | 0.275° |
-| 10 % | 1.227° | 2.358° | 2.528° | 2.750° |
+| 1 % | 0.123° | 0.184° | 0.236° | 0.275° |
+| 10 % | 1.227° | 1.841° | 2.358° | 2.750° |
 
 Vertically, summit labels sit near the horizon, so the vertical offset is small: at 20 % of
 the half-height, ε = 1 % gives 0.039°.
@@ -238,10 +213,9 @@ blunders rather than calibration residuals, but they set the scale of what an un
 assumption costs. At ε = 10 % the edge term alone is 2.75°, which exceeds every tolerance
 in the table.
 
-**So F2, F3 and F4 are conditional on the field-of-view calibration passing first.** An
-uncalibrated capture is not graded, by any of the three. The analyzer refuses it rather than
-scoring it, because scoring it would report the calibration's failure as a geometry failure —
-and for F2 it would report a scale error as the app understating its own band.
+**So F3 and F4 are conditional on the field-of-view calibration passing first.** An
+uncalibrated capture is not graded. The analyzer refuses it rather than scoring it, because
+scoring it would report the calibration's failure as a geometry failure.
 
 #### Term 7 — Roll: 0.5°, and it lands in the vertical
 
@@ -254,7 +228,6 @@ horizontally, so **the displacement is almost entirely vertical**:
 |---|---|---|---|
 | 0.485 | 19.99° | 0.174° | 0.349° |
 | 0.7 | 27.70° | 0.242° | 0.483° |
-| 0.8 | 30.96° | 0.270° | 0.540° |
 | 1.0 | 36.87° | 0.322° | 0.644° |
 
 The horizontal counterpart uses the vertical offset, which for a near-horizon label is
@@ -286,7 +259,7 @@ the trace's own heading spread over the capture second is recorded as the eviden
 hold happened. CLHeading is itself filtered and lags attitude by an unmeasured amount
 (IMPLEMENTATION.md § "The field pose is landscape"), which the same 2 s hold covers. With
 the hold, heading lag enters the RSS at under 0.06° and is dropped. Without it, F4 is
-unmeasurable: a capture taken mid-pan at 20 °/s carries 8° of lag.
+unmeasurable: a pan of ±20° taken mid-motion carries 8° of lag.
 
 #### Term 9 — Drag precision: 0.543°
 
@@ -340,15 +313,13 @@ Per-summit 1σ, at the frame edge (u = 1.0, the worst position in the frame), an
 | D | peak+obs, H | peak+obs, V | anchor H | anchor V | FOV H | FOV V | roll H | roll V | drag | **1σ H** | **1σ V** |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | 2 km | 0.716° | 0.327° | 0.143° | 0.065° | 0.275° | 0.039° | 0.034° | 0.322° | 0.543° | **0.951°** | **0.715°** |
-| 5 km | 0.286° | 0.131° | 0.143° | 0.065° | 0.275° | 0.039° | 0.034° | 0.322° | 0.543° | **0.689°** | **0.649°** |
+| 5 km | 0.287° | 0.131° | 0.143° | 0.065° | 0.275° | 0.039° | 0.034° | 0.322° | 0.543° | **0.688°** | **0.649°** |
 | 10 km | 0.143° | 0.065° | 0.143° | 0.065° | 0.275° | 0.039° | 0.034° | 0.322° | 0.543° | **0.642°** | **0.639°** |
 | 30 km | 0.048° | 0.022° | 0.143° | 0.065° | 0.275° | 0.039° | 0.034° | 0.322° | 0.543° | **0.628°** | **0.636°** |
-| 60 km | 0.024° | 0.011° | 0.143° | 0.065° | 0.275° | 0.039° | 0.034° | 0.322° | 0.543° | **0.627°** | **0.636°** |
+| 60 km | 0.024° | 0.011° | 0.143° | 0.065° | 0.275° | 0.039° | 0.034° | 0.322° | 0.543° | **0.626°** | **0.636°** |
 
 Horizontal geodesy is `sqrt(20² + 15²) = 25 m` over D; vertical is
-`sqrt(5.5² + 10²) = 11.41 m` over D. When a capture reports its own fix accuracy, the 15 m
-becomes that fix's per-axis 1σ by term 3a and the row is recomputed for that capture; § 2.3
-gives the recomputed limits for a 10 m fix.
+`sqrt(5.5² + 10²) = 11.41 m` over D.
 
 **The headline.** Beyond about 3 km the budget is flat, because the drag, the roll and the
 field-of-view scale do not care how far away a summit is, and together they are 0.62°.
@@ -356,30 +327,6 @@ The geodesy only matters in the near band: at 2 km it is 0.716° horizontally, l
 everything else combined; at 10 km it is 0.143°, a fifth of the total; at 60 km it is
 0.024°, invisible. **So a 60 km summit is no harder to label than a 10 km one**, which is
 worth knowing before anyone budgets a 42 MB terrain mosaic to reach one.
-
-### 1.6 The two terms that are measured before the session
-
-Two of the terms above are judgements rather than measurements, and they are the two largest
-beyond 3 km. **Both are measured in the home session, and the limits are re-derived from
-those measurements before the field session** — not from a second judgement.
-
-- **Drag precision (term 9), assumed 0.543°.** The home session records three repeated drags
-  onto the same reference, in the normal drag mode and again in the 4× fine mode the screen
-  now offers. The measurement is the spread of the trims those drags produce, per axis, in
-  degrees. Two figures come out of it: the spread in normal mode, which replaces the 1 mm
-  finger-placement assumption, and the spread in fine mode, which says what the fine mode is
-  worth. Whether the field session drags in fine mode is decided by that second figure.
-- **Roll (term 7), assumed 0.5°.** The home session records the gravity-vector roll spread
-  over a braced still hold, which is the assumption term 7 makes. The field captures record
-  their own roll spread too, so the assumption is checked twice: once before the session at
-  leisure, once per capture.
-
-**The numbers in § 1.3 and § 2.3 are not changed by this document.** They stand as written
-until the home session produces the measurements, and the re-derivation is then recorded in
-the revision history at the end of this document, with the measurements, the recomputed 1σ
-column and the limits that follow. A limit that the measurement *widens* is a limit that was
-too tight, and it is widened before the field data exists or not at all — the rule at the top
-of this document is about a threshold moved after a run, and that rule is not relaxed.
 
 ---
 
@@ -426,21 +373,6 @@ n = 1 in the result, per `AGENTS.md`. **This session can refute the budget. It c
 confirm it.** A pass means "nothing here contradicts the budget at this n", and any
 sentence that upgrades that is wrong.
 
-**The near and mid bands are pre-declared as likely `no-sample`.** The site package holds 5
-summits inside 3 km of the viewpoint, 4 more between 3 and 7 km and 15 between 7 and 20 km.
-From the viewpoint on Shafer Butte every one of them sits **below** horizontal: 2.8 to 7.6°
-down in the near band, 3.0 to 5.7° in the mid band, 1.7 to 5.0° in the far band, computed
-with a 1.6 m eye height and the k = 0.13 sightline. A capture framed on the skyline does not
-hold them, and the person is not asked to point the phone at the ground to manufacture a
-sample. So the `near` and `mid` rows of § 2.3 are expected to
-report `no-sample`, which is said here rather than after the run, because "the tightest band
-was never tested" reads very differently when it was predicted.
-
-**That is where the observer terms live.** The geodesy and the observer height only matter
-inside 3 km (§ 1.5), so a session that grades only the `far`, `distant` and `horizon` bands
-tests the drag, the roll and the field-of-view scale, and barely tests the geodesy at all.
-A run that passes every graded band has said nothing about term 3a or term 3b.
-
 ### 2.1 F1 — Offline start and frame rate
 
 **Claim.** The app starts and draws labels with no network, within 15 s, and sustains a
@@ -479,18 +411,10 @@ F1 measures whether that mechanism works on the phone, which nothing headless ca
 Two sizing risks remain, and they are the ones to check before the session rather than
 after it. The 60 km mosaic is 20.78 MB gzipped and 42.55 MB raw, and GitHub Pages serves no
 `gzip_static`, so the phone may fetch the full 42.55 MB and must then keep it inside its own
-storage quota. Cutting the site package to a smaller radius would remove both risks at once:
-20 km is 4.90 MB and 40 km is 19.07 MB.
-
-**The session carries the 60 km terrain, and the live sweep takes its range from the served
-site rather than from the app's 30 km default.** At the proposed site, 63 of the 104 summits
-within 60 km lie beyond 30 km, and the ten highest by apparent height are all 34–58 km out
-(Trinity 56.4 km, Freeman 36.5 km, Pilot 38.4 km). A 30 km sweep would report every one of
-them `unmeasured`, so F5b would be graded on whatever was left and the answer would be about
-the sweep radius rather than about the labels. A 40 km cut drops the most prominent summit
-and half of that top ten, which is why the 19.07 MB is not the saving it looks like. The
-bytes are spent instead, and the two risks above become checks to run before the drive: the
-fetched size on the phone, and whether the sweep finishes at 60 km on its throttled CPU.
+storage quota. Cutting the site package to a smaller radius removes both risks at once —
+20 km is 4.90 MB and 40 km is 19.07 MB — and costs only the summits between that radius and
+60 km, which the budget says are no harder to label than the near ones. **Which radius the
+field session carries is a decision to take before the drive, not at the trailhead.**
 
 ### 2.2 F2 — Raw error is recorded, and gated only on the displayed band
 
@@ -509,10 +433,6 @@ frame-angle offset between the marker as drawn and the truth apex, on both axes,
 and pixels. The band is the app's own `measuredDeg`, as drawn, carried in the bundle.
 
 **Sample.** Every graded summit in every before-drag capture: 8 to 16 summit-observations.
-
-**Precondition.** F2 is conditional on the field-of-view calibration, exactly as F3 and F4
-are (term 6). An uncalibrated capture is refused rather than graded: with an unquantified
-scale error, a raw error outside the band says nothing about whether the band was honest.
 
 **The gate.** `|raw error| ≤ band half-width` on each axis, for every graded summit, **on
 any axis whose band carries no unquantified term**. An axis whose band carries an
@@ -535,83 +455,30 @@ are the tangent-plane angles about the optical axis, which is exactly what the d
 
 **Sample.** Every graded summit in every after-drag capture, binned by distance.
 
-**Limits — 2σ of the budget in §1.5 rounded to 0.05°, and 3σ at 1.5 × that, rounded up:**
+**Thresholds — 2σ of the budget in §1.5, rounded up to 0.05°:**
 
-| band | distance | 2σ H | 2σ V | 3σ H | 3σ V | 2σ at a 1920 px frame |
-|---|---|---|---|---|---|---|
-| `near` | 0 to under 3 km | **1.90°** | **1.45°** | 2.85° | 2.20° | 42.4 px / 32.4 px |
-| `mid` | 3 to under 7 km | **1.40°** | **1.30°** | 2.10° | 1.95° | 31.3 px / 29.0 px |
-| `far` | 7 to under 20 km | **1.30°** | **1.30°** | 1.95° | 1.95° | 29.0 px / 29.0 px |
-| `distant` | 20 to under 45 km | **1.30°** | **1.30°** | 1.95° | 1.95° | 29.0 px / 29.0 px |
-| `horizon` | 45 km and beyond | **1.30°** | **1.30°** | 1.95° | 1.95° | 29.0 px / 29.0 px |
+| band | distance | horizontal | vertical | at 1920 px frame |
+|---|---|---|---|---|
+| `near` | 0 to under 3 km | **1.90°** | **1.45°** | 42.4 px / 32.4 px |
+| `mid` | 3 to under 7 km | **1.40°** | **1.30°** | 31.3 px / 29.0 px |
+| `far` | 7 to under 20 km | **1.30°** | **1.30°** | 29.0 px / 29.0 px |
+| `distant` | 20 to under 45 km | **1.30°** | **1.30°** | 29.0 px / 29.0 px |
+| `horizon` | 45 km and beyond | **1.30°** | **1.30°** | 29.0 px / 29.0 px |
 
 A band's lower bound is inclusive and its upper bound exclusive, so a summit exactly 3 km
-away is graded against `mid`. A boundary goes to the tighter of the two bands. The last
-three bands are identical because the budget is flat beyond 7 km, and collapsing them would
-hide that; they are listed separately so the result reports n per band.
+away is graded against `mid`. A boundary goes to the tighter of the two bands.
 
-**Every summit is reported against the 2σ band.** Its residual, its axis, its frame offset
-and its truth disagreement are printed whether it is inside or outside.
+2σ is the tolerance because the budget's terms are 1σ and a single summit is one draw; at
+2σ a correct budget puts about 5 % of summits outside, which at n ≤ 16 is under one summit.
+The last three bands are identical because the budget is flat beyond 7 km, and collapsing
+them would hide that; they are listed separately so the result reports n per band.
 
-**The band's verdict counts exceedances:**
-
-- **More than one summit-axis past 2σ in a band fails it.** The two axes of one summit count
-  separately, because they are two draws.
-- **Any summit-axis past 3σ fails the band on its own**, whatever else is in it.
-
-**Why one exceedance is tolerated, with the arithmetic.** The budget's terms are 1σ and each
-summit-axis is one draw, so a *correct* budget puts draws outside 2σ at the normal rate:
-
-```
-P(|z| > 2) = 0.04550        P(|z| > 3) = 0.00270
-p0 = P(inside 2σ)     = 0.95450
-p1 = P(between 2σ, 3σ) = 0.04550 − 0.00270 = 0.04280
-```
-
-A gate of "every axis inside 2σ" passes a correct budget with probability `p0^n`:
-
-```
-n = 8 :  0.95450^8  = 0.689
-n = 16:  0.95450^16 = 0.475
-n = 32:  0.95450^32 = 0.225
-```
-
-At the 16 to 32 axis draws two or three captures produce, a correct budget would fail such a
-gate between half and three quarters of the time. That gate measures the sample size rather
-than the app. **Tolerating one 2σ exceedance and refusing any 3σ excursion** passes with
-`p0^n + n·p1·p0^(n−1)`:
-
-```
-n = 8 :  0.689 + 8 × 0.04280 × 0.95450^7  = 0.689 + 0.247 = 0.936
-n = 16:  0.475 + 16 × 0.04280 × 0.95450^15 = 0.475 + 0.341 = 0.815
-```
-
-So a correct budget passes a band at n = 8 with probability 0.936 and at n = 16 with 0.815,
-and the gate still catches a budget that is wrong by a factor: two axes past 2σ, or one past
-3σ, is what a 1.5× understated term looks like at this n. 2σ stays the band the app displays
-and the figure every summit is reported against; 3σ is a limit no single draw should reach.
-
-**When the capture reports a fix accuracy, the limits are recomputed from it** (term 3a), and
-the tighter of the registered and the recomputed figure applies. For a 10 m accuracy, which
-is 4.09 m of 1σ per axis:
-
-| band | 2σ H | 2σ V | 3σ H | 3σ V |
-|---|---|---|---|---|
-| `near` | 1.75° | 1.45° | 2.65° | 2.20° |
-| `mid` | 1.35° | 1.30° | 2.05° | 1.95° |
-| `far` | 1.30° | 1.30° | 1.95° | 1.95° |
-| `distant` | 1.25° | 1.30° | 1.90° | 1.95° |
-| `horizon` | 1.25° | 1.30° | 1.90° | 1.95° |
-
-The vertical column does not move, because the observer's height comes from the DEM rather
-than from the fix. The near band moves most, which is where the observer term lives.
-
-**Failure.** A band that fails the count above. **What happens then:** the residual is
-decomposed against §1.3 — is it one summit (check the cross-release diff and the truth
-disagreement), one axis (roll, or the observer-height choice), or a scale (field-of-view
-calibration, which is distance-independent and grows with frame offset)? The budget is
-corrected with evidence and the criterion is re-graded against the corrected figure in a
-later session. The limit is not moved.
+**Failure.** Any graded summit outside its band's threshold. **What happens then:** the
+residual is decomposed against §1.3 — is it one summit (check the cross-release diff and
+the truth disagreement), one axis (roll, or the observer-height choice), or a scale
+(field-of-view calibration, which is distance-independent and grows with frame offset)? The
+budget is corrected with evidence and the criterion is re-graded against the corrected
+figure in a later session. The threshold is not moved.
 
 **Preconditions, both refusals rather than adjustments.** A capture whose field of view is
 the spec-sheet guess is not graded (term 6). A capture whose frame geometry differs from
@@ -623,37 +490,26 @@ roll and field-of-view terms were computed on §1.2's frame.
 **Claim.** The drag holds when the phone moves. A trim that only works at the pose it was
 set at is a coincidence.
 
-**The exact measurement.** From an after-drag capture, **pan until the anchor summit sits at
-the frame edge** — left, then right — and tilt by ±10°. Hold 2 s each time and capture again
-without re-dragging. Grade exactly as F3, against the same limits. Four movements per anchor
-capture: anchor to the left edge, anchor to the right edge, +10° tilt, −10° tilt.
-
-**"At the frame edge" is a number, read from the overlay as drawn.** The anchor summit's
-marker must sit at a normalised horizontal offset **u ≥ 0.8** of the half-frame, where u = 0
-is the frame centre and u = 1 the edge. On the 956 px landscape viewport that is 382 px or
-more from the centre; on a 1920 px stored frame, 768 px. The offset is read from the drawn
-overlay in the bundle, which is the same marker the person was looking at while panning. **How
-far the phone turned is recorded and not gated**, because the turn needed depends on where
-the anchor started: from the frame centre it is about 30°, from u = 0.5 about 10°.
-
-The target is a pan the person can see themselves reach, rather than an angle they have to
-estimate. Gating on the pan angle in the pose would gate the sensor's account of the motion
-as well, inside a criterion whose subject is the drag.
+**The exact measurement.** From an after-drag capture, pan by ±20° and tilt by ±10°,
+hold 2 s, capture again without re-dragging. Grade exactly as F3, against the same
+thresholds. Four movements per anchor capture: +20°, −20° pan; +10°, −10° tilt.
 
 **Sample.** Four movement captures per after-drag capture; the same graded summits, minus
-any the movement pushed out of frame. A capture whose anchor did not reach u = 0.8, or whose
-anchor the overlay did not draw at all, is reported off-protocol and not graded. A tilt must
-still be within 5–15°, read from the pose.
+any the movement pushed out of frame.
 
-**Failure.** A band that fails F3's count, on the moved captures. Distinguishing F4 from F3
-is the point: a residual that appears only after the movement implicates the sensors or the
-roll, while one present in both is geometry.
+**Thresholds.** F3's table, unchanged. Plus: the movement actually performed must be within
+15–25° of pan or 5–15° of tilt, read from the pose recorded in the bundle, or the capture is
+reported as off-protocol and not graded.
 
-**What the pan exercises.** At hFOV 73.74°, u = 0.8 puts the field-of-view scale term at
-0.253° of the 0.275° available at the edge, so the pan probes 92 % of that term. It also
-carries the anchor itself to 31° off the optical axis,
-where a 0.5° roll displaces it by 0.270° vertically. The result reports each graded summit's
-frame offset u, so an edge effect can be told from a whole-frame one.
+**Failure.** Any graded summit outside its band. Distinguishing F4 from F3 is the point: a
+residual that appears only after the movement implicates the sensors or the roll, while one
+present in both is geometry.
+
+**What ±20° does and does not exercise.** At hFOV 73.74°, a ±20° pan moves a centre summit
+to u = 0.485, where the field-of-view scale term is 0.184° of the 0.275° available at the
+edge. So F4 probes two thirds of that term. The edge itself is exercised by grading the
+summits that already sit near the frame edge in the F3 captures, and the result reports each
+graded summit's frame offset u so the two can be told apart.
 
 ### 2.5 F5 — What the labels claim
 
@@ -702,34 +558,12 @@ the step that consumed the time is named, and the protocol is cut before a secon
 rather than the human being asked to be quicker. A second field session is a scope question
 for the human, not a decision for the agents.
 
-### 2.7 The steps on site
-
-The order the session is run in, because several criteria depend on it.
-
-1. **Stand within a few hundred metres of the site coordinate.** The terrain package is cut
-   for that disc with 0.5 km of margin (`terrainMarginKm`), so a viewpoint inside a few
-   hundred metres of it is still covered to the full sweep radius in every direction. A walk
-   further than that reaches ground the cut does not hold, and the sweep then reports a
-   summit as visible that a wider cut would show hidden.
-2. Open the page in airplane mode and time three cold starts (F1).
-3. Calibrate the field of view from two taps (term 6). Nothing after this is graded without
-   it.
-4. Let the fix settle, and check the accuracy the screen reports. Above 30 m, wait and
-   re-acquire (term 3a).
-5. Brace: two hands, elbows on a rail or a knee (term 7).
-6. Capture before the drag (F2), hold still for 2 s first (term 8).
-7. Drag onto the most prominent summit you can positively identify, and capture again (F3).
-8. Without re-dragging: pan until that anchor summit sits at the frame edge, left and then
-   right, and tilt ±10°. Hold 2 s and capture each time (F4).
-9. Repeat the drag onto the same summit three times, so its spread is recorded (§ 1.6).
-10. Note the minutes each step took (F6).
-
 ---
 
 ## Part 3 — How a run is graded
 
-`src/live/field-analysis.ts` holds the schema, the parser, the limits above as data, the
-budget terms § 2.3's recomputation needs, and the F2–F5 arithmetic. `npm run analyze:field -- <bundle> <truth>` prints the verdicts.
+`src/live/field-analysis.ts` holds the schema, the parser, the thresholds above as data,
+and the F2–F5 arithmetic. `npm run analyze:field -- <bundle> <truth>` prints the verdicts.
 F1 and F6 are stopwatch numbers recorded by the person on site and are not computed from a
 bundle.
 
@@ -750,54 +584,5 @@ identifier, or embedded image bytes. Timestamps are milliseconds from the start 
 capture session. The camera frame is referenced by file name; the bytes stay beside the
 bundle and never inside it.
 
-**What it does carry about the fix is one number per capture**: `horizontalAccuracyM`, the
-platform's own horizontal accuracy, under a bundle-level `accuracyConvention` that names what
-the number means. A radius is not a position: it says how well the phone knew where it was,
-not where that was. A bare `accuracy` key, which is the shape a whole fix arrives in, is
-refused.
-
 `fixtures/field/` holds synthetic bundles with known injected errors, and nothing recorded
 from a phone.
-
----
-
-## Revision history
-
-Every revision of this document is dated, and says what changed and why. A revision after
-the field data exists must also say what it would have done to the run already graded.
-
-### 2026-09-29 — written
-
-The budget and criteria F1–F6, before any field number existed.
-
-### 2026-09-29 — the error-budget review
-
-Six changes, all still before any field number exists, from a review of the budget against
-the site package and the app as built.
-
-- **The F3/F4 gate counts exceedances (§ 2.3).** "Every summit inside 2σ" passes a correct
-  budget with probability 0.225 at 32 axis draws, so it measured the sample size. A band now
-  fails on more than one summit-axis past 2σ, or on any axis past 3σ. 2σ stays the band every
-  summit is reported against, and a 3σ column is added at 1.5 × the 2σ figure.
-- **F4's pan becomes "until the anchor summit sits at the frame edge" (§ 2.4)**, defined as
-  the anchor's drawn offset reaching u = 0.8 of the half-frame, replacing a ±20° envelope read
-  from the pose. The target is one the person can see, and it exercises 92 % of the
-  field-of-view scale term instead of 67 %.
-- **The observer's position term is measured, not assumed (§ 1.3 term 3a, § 2.3).** Each
-  capture records the platform's horizontal accuracy and the convention it is read under; the
-  budget converts it to a per-axis 1σ at r/2.4477 and recomputes the band's limits, but only
-  where that tightens them. The 30 m refusal stands, and the 15 m n = 1 figure remains the
-  fallback when no accuracy was reported.
-- **The drag and roll terms are scheduled for measurement (§ 1.6).** The home session measures
-  the drag spread in normal and 4× fine mode and the braced roll spread; the limits are
-  re-derived from those measurements before the field session, and the re-derivation is
-  recorded here.
-- **The site radius is decided (§ 2.1).** The session carries the 60 km terrain and the live
-  sweep takes its range from the served site, because 63 of the 104 summits within 60 km lie
-  beyond the app's 30 km default and the ten highest by apparent height are all 34–58 km out.
-- **Text corrections.** The anchor at the proposed site is 35–57 km away, not 7–20 km, and the
-  7–20 km charge is now labelled as the conservative choice it is (§ 1.1). The `near` and `mid`
-  bands are pre-declared as likely `no-sample` (§ 2.0). F2 is conditional on the field-of-view
-  calibration, as F3 and F4 already were (§ 2.2). The steps on site are written down, starting
-  with standing within a few hundred metres of the site coordinate (§ 2.7). Three cells of
-  § 1.5 were rounded the wrong way and now read 0.286°, 0.689° and 0.627°.

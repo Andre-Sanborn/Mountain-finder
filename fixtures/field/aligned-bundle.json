@@ -76,8 +76,8 @@
             "altitudeDeg": 5.2,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 437.17083333333335,
-              "yPx": 174.20814479638008
+              "xPx": 438.1666666666667,
+              "yPx": 173.21266968325793
             },
             "labelled": true
           },
@@ -89,8 +89,8 @@
             "altitudeDeg": 4.1,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 568.6208333333334,
-              "yPx": 192.1266968325792
+              "xPx": 567.625,
+              "yPx": 193.12217194570135
             },
             "labelled": true
           },
@@ -102,8 +102,8 @@
             "altitudeDeg": 2.8,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 701.5645833333333,
-              "yPx": 214.52488687782807
+              "xPx": 702.0625,
+              "yPx": 213.0316742081448
             },
             "labelled": true
           },
@@ -115,14 +115,15 @@
             "altitudeDeg": 1.2,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 817.0812500000001,
-              "yPx": 243.39366515837105
+              "xPx": 816.5833333333334,
+              "yPx": 242.89592760180994
             },
             "labelled": true
           }
         ],
         "withheld": []
-      }
+      },
+      "horizontalAccuracyM": 8.4
     },
     {
       "captureId": "c2",
@@ -181,7 +182,7 @@
             "altitudeDeg": 6.1,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 263.3979166666667,
+              "xPx": 263.1489583333333,
               "yPx": 151.31221719457014
             },
             "labelled": true
@@ -194,8 +195,8 @@
             "altitudeDeg": 5.2,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 382.4,
-              "yPx": 167.73755656108597
+              "xPx": 380.65729166666665,
+              "yPx": 167.2398190045249
             },
             "labelled": true
           },
@@ -207,8 +208,8 @@
             "altitudeDeg": 4.1,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 528.7875,
-              "yPx": 180.18099547511312
+              "xPx": 526.0489583333333,
+              "yPx": 179.18552036199094
             },
             "labelled": true
           },
@@ -220,7 +221,7 @@
             "altitudeDeg": 2.8,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 643.3083333333334,
+              "xPx": 647.0427083333334,
               "yPx": 209.5475113122172
             },
             "labelled": true
@@ -233,8 +234,8 @@
             "altitudeDeg": 1.2,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 784.21875,
-              "yPx": 221.99095022624434
+              "xPx": 776.9989583333333,
+              "yPx": 225.47511312217196
             },
             "labelled": true
           }
@@ -254,7 +255,8 @@
           }
         ]
       },
-      "dragAnchorSummitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e"
+      "dragAnchorSummitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e",
+      "horizontalAccuracyM": 8.4
     },
     {
       "captureId": "c3",
@@ -313,8 +315,8 @@
             "altitudeDeg": 6.1,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 101.575,
-              "yPx": 154.79638009049773
+              "xPx": 55.766666666666666,
+              "yPx": 154.29864253393666
             },
             "labelled": true
           },
@@ -326,8 +328,8 @@
             "altitudeDeg": 5.2,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 218.58541666666667,
-              "yPx": 171.71945701357467
+              "xPx": 197.67291666666668,
+              "yPx": 163.2579185520362
             },
             "labelled": true
           },
@@ -339,8 +341,8 @@
             "altitudeDeg": 4.1,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 371.4458333333333,
-              "yPx": 181.67420814479638
+              "xPx": 316.1770833333333,
+              "yPx": 190.63348416289594
             },
             "labelled": true
           }
@@ -349,7 +351,8 @@
       },
       "dragAnchorSummitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e",
       "movedFromCaptureId": "c2",
-      "panFromReferenceDeg": 20
+      "panFromReferenceDeg": 26,
+      "horizontalAccuracyM": 8.4
     },
     {
       "captureId": "c4",
@@ -408,7 +411,7 @@
             "altitudeDeg": 4.1,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 527.29375,
+              "xPx": 521.5677083333334,
               "yPx": 71.17647058823529
             },
             "labelled": true
@@ -421,8 +424,8 @@
             "altitudeDeg": 2.8,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 641.8145833333333,
-              "yPx": 76.15384615384616
+              "xPx": 645.5489583333333,
+              "yPx": 87.10407239819004
             },
             "labelled": true
           },
@@ -434,8 +437,8 @@
             "altitudeDeg": 1.2,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 781.7291666666666,
-              "yPx": 125.42986425339367
+              "xPx": 774.0114583333334,
+              "yPx": 106.5158371040724
             },
             "labelled": true
           }
@@ -444,7 +447,9 @@
       },
       "dragAnchorSummitId": "overture/daf0b989-7a13-36e1-b4d0-b4ebfecf1e4c",
       "movedFromCaptureId": "c2",
-      "tiltFromReferenceDeg": -10
+      "tiltFromReferenceDeg": -10,
+      "horizontalAccuracyM": 8.4
     }
-  ]
+  ],
+  "accuracyConvention": "w3c-95-percent-horizontal-radius"
 }

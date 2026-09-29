@@ -11,6 +11,11 @@
  * peak dataset, hands them over, and formats the answer. It takes no threshold
  * argument, so a run cannot be graded against anything but the pre-registration.
  *
+ * Every graded summit is reported against its band's 2σ figure. A band fails
+ * when more than one of its summit-axes sits past 2σ, or when any one sits past
+ * 3σ. A capture that reports its own fix accuracy is graded against the limits
+ * that accuracy implies, which can only be tighter than the registered ones.
+ *
  * F1 (offline start and frame rate) and F6 (human time on site) are stopwatch
  * numbers recorded by the person on site. They are not computed from a bundle
  * and this script says nothing about them.
