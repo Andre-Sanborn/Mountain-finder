@@ -1547,8 +1547,8 @@ n = 3`. All three observations were Deer Point, the anchor, at 0.215° across.
 - They answered `cannotIdentify` for all 37 other summits and used `absent` for none.
 
 With the anchor excluded, the rehearsal grades nothing positional, which is the honest result.
-So agent annotators on a bare frame can place landmark summits only. Whether a top-down map
-changes that is being tested.
+So agent annotators on a bare frame can place landmark summits only. A top-down map did not
+change the graded result; see "Annotators with a map" below.
 
 F4 on the rehearsal is not a measurement, because the fake camera is still.
 
@@ -1562,4 +1562,28 @@ and the named summits from the site's peak region with their tagged heights.
 The sheets carry no camera heading, field of view, pose or overlay. An annotator using
 method `frame-and-map` must place summits from terrain shape and bearings alone, so the
 map cannot leak the answer the grader checks.
+
+## Annotators with a map (rehearsal frame, n = 1)
+
+Two fresh agent annotators, E and F, worked alone on the rehearsal frame with both annotator
+maps, method `frame-and-map`. Their answers were applied to c1, c2, c7 and c8, the captures
+drawn at the photograph's own pose. The moved captures c3 to c6 carry no truth, because the
+frame is static and cannot follow them.
+
+- Both placed Deer Point, the anchor: (1340, 536) and (1341, 535).
+- Both placed Doe Point, 0.656° apart at (1150, 536) and (1165, 536). That is over the
+  pre-registered 0.3° limit, so it is disputed and ungraded. Its crest is flat, with a small
+  tower and a building, and neither annotator had a rule for which point to pick.
+- E placed Lucky Peak, Eagleson Summit and Little Deer Point; F marked Lucky Peak
+  `foreground-blocked` and the other two `cannotIdentify`.
+- Both left every valley butte `cannotIdentify`: 20 to 59 km out in midday haze, none shows
+  as a separate bump. A person in the frame covers about 170° to 183°.
+
+The grade: 0 summit observations graded. F3 has no sample in any band. The agreement limit
+was not loosened after seeing this, because a limit changed to fit its first data no longer
+tests anything.
+
+Both annotators fitted a focal length on Deer Point and predicted the others from map
+bearings before looking for a feature. That is their own model, not the app's projection,
+but it shares the idea of a pinhole camera over the same bearings.
 
