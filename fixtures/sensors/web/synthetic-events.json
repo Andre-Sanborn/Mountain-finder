@@ -1,0 +1,95 @@
+{
+  "note": "Synthetic. Every field is derived by hand from the W3C rotation matrix; nothing here was recorded from a phone or produced by running the adapter. See README.md.",
+  "timestampBasis": "milliseconds since the start of the capture",
+  "events": [
+    {
+      "kind": "orientation",
+      "tMs": 0,
+      "screenAngleDeg": 0,
+      "comment": "Chromium deviceorientationabsolute. Flat, face up, top edge at magnetic north. Gravity (0,0,-1); the rear camera points at the floor, so its bearing is refused.",
+      "event": { "alpha": 0, "beta": 0, "gamma": 0, "absolute": true }
+    },
+    {
+      "kind": "motion",
+      "tMs": 100,
+      "comment": "Chromium devicemotion for the same pose, W3C specific force (points UP), plus a linear acceleration of (0.1, -0.2, 0.05) m/s^2.",
+      "event": {
+        "acceleration": { "x": 0.1, "y": -0.2, "z": 0.05 },
+        "accelerationIncludingGravity": { "x": 0.1, "y": -0.2, "z": 9.85665 },
+        "interval": 16
+      }
+    },
+    {
+      "kind": "orientation",
+      "tMs": 200,
+      "screenAngleDeg": 0,
+      "comment": "Chromium deviceorientationabsolute. Upright portrait, rear camera facing magnetic east. Gravity (0,-1,0); camera bearing 90.",
+      "event": { "alpha": 270, "beta": 90, "gamma": 0, "absolute": true }
+    },
+    {
+      "kind": "orientation",
+      "tMs": 300,
+      "screenAngleDeg": 0,
+      "comment": "iOS Safari. Flat, face up, top edge at 40 magnetic. alpha is relative and carries an arbitrary zero. The camera points at the floor, so its bearing is refused even though the compass reads well.",
+      "event": {
+        "alpha": 12.5,
+        "beta": 0,
+        "gamma": 0,
+        "webkitCompassHeading": 40,
+        "webkitCompassAccuracy": 15
+      }
+    },
+    {
+      "kind": "orientation",
+      "tMs": 400,
+      "screenAngleDeg": 0,
+      "comment": "iOS Safari. Tilted 60 degrees back from flat, gamma 0. Top edge still 40 magnetic; the camera shares that bearing because both axes lie in the device's vertical y-z plane. cos 60 = 0.5, so the reported 15-degree accuracy inflates to 30.",
+      "event": {
+        "alpha": 12.5,
+        "beta": 60,
+        "gamma": 0,
+        "webkitCompassHeading": 40,
+        "webkitCompassAccuracy": 15
+      }
+    },
+    {
+      "kind": "motion",
+      "tMs": 450,
+      "comment": "iOS Safari devicemotion, upright portrait, CoreMotion convention (points DOWN), with a user acceleration of (0.02, 0.01, -0.03) g.",
+      "event": {
+        "acceleration": { "x": 0.196133, "y": 0.0980665, "z": -0.2941995 },
+        "accelerationIncludingGravity": { "x": 0.196133, "y": -9.7085835, "z": -0.2941995 },
+        "interval": 16
+      }
+    },
+    {
+      "kind": "orientation",
+      "tMs": 500,
+      "screenAngleDeg": 0,
+      "comment": "Permission not granted, or no sensor: the spec says to fire the event with alpha, beta and gamma null.",
+      "event": { "alpha": null, "beta": null, "gamma": null, "absolute": false }
+    },
+    {
+      "kind": "motion",
+      "tMs": 600,
+      "comment": "Chromium with no accelerometer behind the channel. It publishes NaN components, which JSON cannot hold, so they are null here and refuse the same way.",
+      "event": {
+        "acceleration": { "x": null, "y": null, "z": null },
+        "accelerationIncludingGravity": { "x": null, "y": null, "z": null }
+      }
+    },
+    {
+      "kind": "orientation",
+      "tMs": 700,
+      "screenAngleDeg": 90,
+      "comment": "iOS Safari with no compass: WebKit publishes heading 0 and accuracy -1 together, so the accuracy is the only thing separating this from a phone pointing north. Landscape, to exercise the screen angle.",
+      "event": {
+        "alpha": 12.5,
+        "beta": 90,
+        "gamma": 0,
+        "webkitCompassHeading": 0,
+        "webkitCompassAccuracy": -1
+      }
+    }
+  ]
+}

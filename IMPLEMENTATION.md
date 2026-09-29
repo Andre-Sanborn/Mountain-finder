@@ -612,3 +612,49 @@ tests; negating only the application, leaving the reported figure intact, also f
 **Limits.** Nothing in `mobile/` has tests: the wiring is held by typecheck, lint and the bundle
 only. The first fix flips the readout by the local declination, about 12° at Bogus Basin, and
 the trim is not carried across the flip.
+
+## The web sensor adapter, `src/live/web-sensors.ts`
+
+The adapter is a pure function of raw browser event objects. It produces the same
+`GravitySample` and `HeadingSample` types as the Expo path, so the loop, `fuseSensorPose` and
+the four-hold calibration are shared. The primary sources were read through reachable mirrors:
+the W3C Device Orientation Editor's Draft of 2025-02-12, the W3C Orientation Sensor spec,
+WebKit's `WebCoreMotionManager.mm` and `DeviceOrientationEvent.idl`, Chromium's
+device-orientation pumps, and Apple's DocC JSON.
+
+**`accelerationIncludingGravity` has opposite signs in the two browsers.** The W3C spec, and
+Chromium with it, points it UP for a resting phone: z = +9.8 flat and face up. WebKit publishes
+`(userAcceleration + CMDeviceMotion.gravity) × 9.80665`, which points DOWN. So the convention is
+a required argument, and `detectMotionGravityConvention` decides it from a simultaneous
+orientation event, never from the user-agent string. Gravity itself is read from the orientation
+event, `ĝ = (cos β·sin γ, −sin β, −cos β·cos γ)`. alpha cancels out of that, so it works with
+iOS's relative alpha, and it reproduces `calibration.ts`'s four hold vectors exactly.
+
+**Facts about iOS, taken from WebKit's source:**
+- `webkitCompassHeading` is `CLHeading.magneticHeading`, and `webkitCompassAccuracy` is
+  `headingAccuracy`. With no compass they are a literal 0 and −1, so accuracy is checked first.
+- alpha is relative, because no reference frame is requested.
+- `headingOrientation` is never set, so the heading's reference is the portrait top edge.
+- Safari does not implement `deviceorientationabsolute`.
+- `screen.orientation.angle` does not move the device frame. It is carried for the UI, not
+  applied.
+
+**Open question for an upright phone.** Held up to a horizon, the documented reference edge
+points at the sky, and no reachable source says what CoreLocation reports then. Both readings
+are implemented as `CompassReferenceHypothesis`:
+- `device-top-edge`: the documented reading. It inflates the reported accuracy by `1/|cos β|`
+  and refuses past 90°.
+- `rear-camera-axis`: undocumented. It treats the reading as the camera's own bearing.
+
+A test asserts the two disagree on the same event. The route that works upright regardless is a
+stored alpha offset (`rearCameraHeadingFromRelativeAlpha`). It is sampled while the phone is
+tilted and held as it is raised, which is stateful work for the live loop. Until the home
+recording settles the question, an upright iOS phone with no stored offset draws no heading.
+
+The adapter has 53 tests. Six single sign or ordering mutations each fail between 2 and 10 of
+them. Every expectation comes from the specs, WebKit's or Chromium's own arithmetic, or the
+calibration vectors, so the suite proves the reading of the specs, not the hardware.
+
+**The home recording's ten questions** are listed in the adapter's module header. The first is
+what `webkitCompassHeading` bears when the phone is upright, and it decides the iOS heading
+path.
