@@ -551,3 +551,37 @@ the EXIF module back a private copy fails 5. The re-derived drag test expects 10
 That matches the CIPA diagonal convention (118.0°), not the long side (108.3°). On a 4:3 frame the
 two conventions differ by about 2°, or 3 % of scale. This is to be settled against the solved
 Railroad Ridge pose, and the convention is unchanged until then.
+
+## Sun and moon position, `src/core/celestial.ts`
+
+This is the bench-test instrument. The app draws the Sun or Moon where this module says it is,
+and any heading, pitch or field-of-view error shows up as a gap between the drawn disc and the
+real one.
+- **Sun:** Meeus, *Astronomical Algorithms*, chapter 25, the low-accuracy method NOAA's
+  calculator uses. The stated accuracy is 0.01°.
+- **Moon:** Meeus chapter 47, the truncated ELP-2000/82 series. The stated accuracy is 10″ in
+  longitude and 4″ in latitude.
+- **Nutation:** the abridged series from chapter 22.
+- **Parallax:** vector subtraction from the WGS-84 observer. This also gives the topocentric
+  distance that the disc size needs.
+- **Refraction:** Sæmundsson, off by default. Bennett is exported as an independent check.
+- **ΔT:** the Espenak–Meeus polynomials, with an override.
+
+**Measured against the book.** The worst residual across Meeus Examples 12.a, 12.b, 13.b,
+22.a, 25.a and 47.a is 0.115″ (0.00003°), on the Moon's right ascension, from the abridged
+nutation. Other expectations are closed-form identities: transit azimuths, rise azimuths, polar
+day and night bounds, and the WGS-84 meridian-ellipse identities.
+
+All 18 single mutations fail. Three survived the first round, and each exposed a hole in the
+tests rather than a fault in the code:
+- feeding TT to sidereal time, a 0.29° azimuth error
+- refraction with its sign flipped, where the test had used an instant below −1°
+- dropping the flattening, where the test had used only an equatorial observer
+
+The general lesson: an identity that relates a module's outputs to each other cannot catch an
+error that shifts them all together.
+
+**Not covered.** NOAA, USNO and JPL Horizons are blocked here, so there is no third ephemeris
+in the suite. Each transcribed book value was re-derived from its own example's inputs instead.
+UTC is treated as UT1 (up to 0.5″ of lunar motion). Lunar light-time is ignored (about 0.7″).
+The horizon is taken as normal to the ellipsoid, not the plumb line.

@@ -10,7 +10,8 @@ after its self-check has run and passed here. The checks are in
 - [ ] Settle long-side vs CIPA-diagonal 35 mm equivalence against the solved Railroad Ridge pose (~2°, 3% scale)
 - [x] Build WMM2025 declination in src/core; reproduce NOAA's test values to 0.05°; cross-check a second source
 - [ ] Wire src/core/declination into the live heading policy, labelled "true (model)"
-- [ ] Build sun and moon position in src/core against Meeus worked examples
+- [x] Build sun and moon position in src/core against Meeus worked examples
+- [ ] Draw the sun and moon discs in the AR screen; bench-test heading, pitch and FOV against them
 - [x] Deploy the web app to GitHub Pages from Actions, gated on test:deploy and a no-GPS privacy check
 - [ ] Confirm the first Pages run on GitHub; if enablement fails, the human sets Source to GitHub Actions
 - [ ] Measure what the phone downloads from Pages; drop --gzip if the .gz siblings go unread
@@ -44,5 +45,6 @@ after its self-check has run and passed here. The checks are in
 
 ## Blocked on network egress, not on code
 
+- [ ] Cross-check src/core/celestial against a third ephemeris; NOAA, USNO and JPL Horizons all 403 at the proxy.
 - [ ] P2.4: record `fixtures/api/**` from live OpenTopoData and Overpass — both 403 at the proxy.
 - [ ] P6.2: re-verify the four ground-truth case coordinates against live sources — Wikipedia, parks.ca.gov, seattle.gov all 403.

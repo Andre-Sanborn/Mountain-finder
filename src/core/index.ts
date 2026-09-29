@@ -14,3 +14,4 @@ export * from './sightline';
 export * from './horizon';
 export * from './projection';
 export * from './visibility';
+export * from './celestial';
