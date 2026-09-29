@@ -844,3 +844,64 @@ matrix at more than 100 attitudes. The suite has 62 tests, and six mutations eac
 **Limits.** A portrait-only recording cannot separate the hypotheses, and returns inconclusive
 by design. The drift figure while handling is an upper bound, because of compass lag. The
 screen-angle values in the fixtures are synthetic.
+
+## The web AR screen, `live.html` and `src/app/live/`
+
+This is the page the phone opens in Safari. It draws the still app's overlay, with the same
+`layoutOverlay`, D8 styling and D10's "may be hidden", over a live rear-camera preview, at a
+pose read from the phone's sensors. It is a second Vite entry in `rollupOptions.input`, not a
+route: the still app's EXIF, CV and compositor code never reaches the phone.
+
+**Landscape only.** A portrait viewport draws nothing and says "Turn the phone sideways".
+
+**The `object-fit: cover` crop.** `video-box.ts` computes the crop with the tangent relation,
+and places the principal point at the element box's centre. The notch is a label keep-out
+margin, not an inset of the overlay box, because an inset box would move the optical axis off
+centre. Dropping the crop fails 4 e2e tests.
+
+**One 360° sweep at the fix.** The sweep is 720 rays to 30 km at 90 m steps, with
+`nearFieldRadiusM` 150, and it is re-projected per tick with no re-sweep. At Gornergrat it took
+811 ms in Node and 1.3–2.4 s in headless Chromium, with all 720 rays carrying terrain.
+
+**One lens.** `chooseRearCamera` refuses dual, triple, virtual and composite devices, prefers
+"Back Camera", and reopens the stream on `deviceId: { exact }`. `getSettings()` is read every
+second, and a change of `deviceId`, `width` or `height` is reported as a lens change.
+
+**Field of view.** The screen uses either a calibration stored against the track settings, or
+a spec-sheet guess labelled "uncalibrated FOV". The phone model is a picker, defaulting to the
+iPhone 17 Pro Max, because iOS Safari's user-agent carries no model.
+
+**The live uncertainty band** uses the terms a sensor stream actually has: WMM2025's 0.5°, the
+compass's reported accuracy, the trace's own scatter, and an unquantified term while the field
+of view is uncalibrated. The photo band's fixed pitch term is left out, because live pitch is
+sensed. The Sun and Moon are drawn at their true angular size, with refraction on.
+
+**What the headless suite proves.** `tests/e2e/live.spec.ts` has 11 tests. They run against a
+fake camera made from a landscape photo, dispatched sensor events and the Gornergrat tile:
+- The Matterhorn lands within 8 px (1 % of the frame width) of a position derived twice from
+  the coordinates: 265.4227°, 9.5827 km, +8.20145°.
+- A 10° turn moves the labels by the tangent answer, and nothing is re-swept.
+- Portrait refuses.
+- A silent `applyConstraints` lens change is flagged.
+
+Sensor injection was measured in Chromium 141. The CDP orientation and sensor overrides deliver
+null or relative angles, so they are unusable. Dispatching real `DeviceOrientationEvent` and
+`DeviceMotionEvent` objects in the page works, including the webkit fields, and that is what
+the suite uses. Three mutations fail 4, 1 and 4 tests. `test:deploy` adds a test that
+`live.html` works under the Pages subpath.
+
+**Only the phone can prove:**
+- the values real sensors emit
+- the device-roll to screen-roll sign. The screen has a flip button, and a wrong choice shows as
+  plainly upside down.
+- `webkitCompassHeading`'s reference in landscape. The default is `device-top-edge`.
+- real lens labels and switching
+- the real field of view of a Safari stream
+- whether permissions survive a reload and airplane mode
+
+**Limits.**
+- There is no service worker yet.
+- Eye height is 1.6 m.
+- GPS altitude is treated as ellipsoidal. CoreLocation reports altitude above the geoid, and the
+  gap reaches about 50 m (0.29° on a summit 10 km away). Preferring the DEM's ground at the fix
+  is the planned fix.

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      `viewport-fit=cover` is what makes `env(safe-area-inset-*)` report the
+      notch and the home indicator instead of reporting zero. The layout spans
+      the whole screen and keeps the labels clear of both — see video-box.ts for
+      why the overlay is not inset itself.
+      `user-scalable=no` because a pinch on this screen means "line the labels
+      up", not "zoom the page": a zoomed viewport would put the overlay and the
+      camera image at different scales.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#000000" />
+    <title>Mountain Finder — live</title>
+  </head>
+  <body class="live-body">
+    <div id="root"></div>
+    <script type="module" src="/src/app/live-main.tsx"></script>
+  </body>
+</html>

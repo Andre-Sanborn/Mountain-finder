@@ -1,0 +1,359 @@
+/*
+ * The live AR screen's layout — landscape, edge to edge, chrome inset.
+ *
+ * Three rules carry the whole thing:
+ *
+ *   1. The video and the overlay span the SAME box, pixel for pixel. The
+ *      overlay's projection puts the optical axis at the centre of its own
+ *      frame, so a different box would offset every label by half the
+ *      difference. `video-box.ts` says why the safe area is a label margin
+ *      rather than an inset on this box.
+ *   2. `object-fit: cover` with the default centred `object-position`. Any
+ *      other position would move the principal point away from the box centre.
+ *   3. The chrome is a separate layer, inset by `env(safe-area-inset-*)`, so
+ *      nothing readable hides under the notch or the home indicator.
+ */
+
+.live-body {
+  margin: 0;
+  background: #000;
+  color: #fff;
+  overflow: hidden;
+  /* A drag on this screen nudges the overlay. Letting the browser treat it as a
+     scroll or a pull-to-refresh would steal the gesture mid-alignment. */
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+.live {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* The element the safe-area insets are measured off. Zero-sized and invisible;
+   only its computed padding is read. */
+.live__inset-probe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.live__video,
+.live__layer,
+.live__drag {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.live__video {
+  object-fit: cover;
+  object-position: center center;
+  background: #111;
+}
+
+.live__layer {
+  pointer-events: none;
+}
+
+.live__layer svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The drag surface sits above the overlay and below the chrome, so a finger
+   anywhere on the picture nudges the labels (D9) while a button still works. */
+.live__drag {
+  touch-action: none;
+  cursor: grab;
+}
+
+.live__band {
+  fill: #ffd166;
+  opacity: 0.12;
+}
+
+.live__crosshair {
+  stroke: #ffffff;
+  stroke-width: 1;
+  opacity: 0.5;
+}
+
+.live__disc {
+  fill: none;
+  stroke-width: 2;
+}
+
+.live__disc--sun {
+  stroke: #ffd166;
+}
+
+.live__disc--moon {
+  stroke: #cfd8ff;
+}
+
+/*
+ * Two strips, pinned to the top and bottom edges, with the middle left clear.
+ * A landscape phone screen is about 400 px tall; one column of readouts fills
+ * it and hides the horizon the labels are drawn on. The bottom strip is capped
+ * at 45 % of the screen and scrolls if its contents exceed that, so a long
+ * warning never grows over the view.
+ */
+.live__chrome {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0 calc(env(safe-area-inset-right, 0px) + 0.75rem) 0
+    calc(env(safe-area-inset-left, 0px) + 0.75rem);
+  font:
+    13px/1.3 -apple-system,
+    BlinkMacSystemFont,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+  /* The chrome must not swallow a drag aimed at the picture behind it. Its own
+     controls re-enable pointer events one by one. */
+  pointer-events: none;
+}
+
+.live__chrome--top {
+  top: 0;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 0.4rem);
+  max-height: 60%;
+  overflow-y: auto;
+}
+
+.live__chrome--bottom {
+  bottom: 0;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.4rem);
+  max-height: 45%;
+  overflow-y: auto;
+}
+
+/*
+ * No `justify-content: flex-end` here. The strip is already pinned to the
+ * bottom edge and sizes to its content, and in a scrolling flex container that
+ * value pushes overflow out of the TOP, where no scrollbar can reach it.
+ */
+.live__chrome--bottom > * {
+  flex: 0 0 auto;
+}
+
+/* One line: bearing, where north came from, tilt, field of view. */
+.live__status {
+  font-size: 0.95rem;
+}
+
+.live__basis {
+  padding: 0.05rem 0.35rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: rgb(255 255 255 / 18%);
+}
+
+/* D9's magnetic case, per the decision: amber, and named. */
+.live__basis--magnetic {
+  background: #f0b429;
+  color: #1b1b1b;
+}
+
+.live__band-note {
+  font-size: 0.8rem;
+  opacity: 0.92;
+}
+
+.live__why,
+.live__settings {
+  pointer-events: auto;
+  font-size: 0.8rem;
+}
+
+.live__why[open],
+.live__settings[open] {
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.live__why summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.live__labels {
+  font-size: 0.78rem;
+  max-height: 2.6rem;
+  overflow-y: auto;
+}
+
+.live__nudge {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+}
+
+.live__nudge button {
+  min-height: 34px;
+  font-size: 0.78rem;
+}
+
+/*
+ * Diagnostics: present in the document so a field report and the headless
+ * suite can read them, and off screen so they do not cost a user any of a
+ * 400 px-tall view. Not `display: none` — that would take them out of the
+ * accessibility tree and out of a screen reader's reach as well.
+ */
+.live__hidden-note {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.live__chrome button,
+.live__chrome select,
+.live__chrome summary,
+.live__chrome a {
+  pointer-events: auto;
+}
+
+.live__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.live__header h1 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 80%);
+}
+
+.live__chrome button {
+  min-height: 44px;
+  padding: 0 1rem;
+  border: 1px solid rgb(255 255 255 / 45%);
+  border-radius: 10px;
+  background: rgb(0 0 0 / 60%);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+}
+
+.live__chrome button:disabled {
+  opacity: 0.45;
+}
+
+[data-testid='live-start'] {
+  min-width: 7rem;
+  background: #ffd166;
+  color: #1b1b1b;
+  border-color: #ffd166;
+}
+
+.live__refusal,
+.live__warn,
+.live__readout,
+.live__steps,
+.live__settings,
+.live__chrome > p:not(.live__hidden-note) {
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+  border-radius: 10px;
+  background: rgb(0 0 0 / 68%);
+  backdrop-filter: blur(2px);
+}
+
+.live__readout p,
+.live__why p {
+  margin: 0.2rem 0;
+}
+
+.live__refusal {
+  border-left: 4px solid #ffd166;
+  max-width: 34rem;
+}
+
+.live__refusal--stop {
+  border-left-color: #ff6b6b;
+}
+
+.live__refusal h2 {
+  margin: 0 0 0.2rem;
+  font-size: 1rem;
+}
+
+.live__refusal p {
+  margin: 0.15rem 0;
+}
+
+.live__warn {
+  border-left: 4px solid #f0b429;
+  max-width: 34rem;
+}
+
+.live__detail {
+  opacity: 0.55;
+  font-size: 0.72rem;
+}
+
+.live__steps {
+  padding-left: 1.6rem;
+  max-width: 30rem;
+}
+
+.live__settings {
+  pointer-events: auto;
+  max-width: 24rem;
+}
+
+.live__settings summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.live__settings label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.45rem 0;
+}
+
+.live__settings select {
+  flex: 1;
+  min-height: 34px;
+  background: rgb(0 0 0 / 60%);
+  color: #fff;
+  border: 1px solid rgb(255 255 255 / 35%);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.live__settings button {
+  display: block;
+  width: 100%;
+  margin: 0.4rem 0;
+  text-align: left;
+}

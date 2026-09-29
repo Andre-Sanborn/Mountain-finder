@@ -254,6 +254,40 @@ test('the packaged peak cells are served in the layout TiledPeakStore expects', 
   expect(body.peaks.length).toBe(cell.peaks);
 });
 
+test('the live AR page is published, and asks for its assets under the subpath', async ({
+  page,
+}) => {
+  // `live.html` is the page the phone opens in Safari, and the one thing it
+  // cannot survive is the bug `base-path.ts` was written for: a URL written
+  // root-relative in application code, asking the domain root from a project
+  // site served under /Mountain-finder/. So both halves are checked on the
+  // PACKAGED build — that the page is there at all, and that every URL it names
+  // carries the prefix.
+  const response = await page.request.get(servedUrl('/live.html'));
+  expect(response.status()).toBe(200);
+  const html = await response.text();
+  expect(html).not.toContain('/@vite/client');
+
+  const basePattern = BASE_PATH.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  expect(html).toMatch(new RegExp(`${basePattern}assets/live-[A-Za-z0-9_-]+\\.js`));
+  // No absolute URL may point above the prefix. At a root deployment the prefix
+  // is "/" and this is trivially true, which is the point: one assertion covers
+  // both layouts.
+  for (const [, url] of html.matchAll(/(?:src|href)="(\/[^"]*)"/g)) {
+    expect(url, `${url} does not start with ${BASE_PATH}`).toContain(BASE_PATH);
+  }
+
+  await page.goto(servedUrl('/live.html'));
+  await expect(page.getByTestId('live-title')).toHaveText('Mountain Finder — live');
+  // Headless Chromium here has no camera, no sensors and no fix, so the screen
+  // must be at its first refusal rather than blank or broken.
+  await expect(page.getByTestId('live-refusal')).toHaveAttribute(
+    'data-refusal-code',
+    'not-started',
+  );
+  await expect(page.getByTestId('live-steps')).toBeVisible();
+});
+
 test('the deployed page displays the ODbL notice, and it matches ATTRIBUTION.txt', async ({
   page,
 }) => {

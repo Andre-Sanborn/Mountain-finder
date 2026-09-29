@@ -1,3 +1,6 @@
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
@@ -12,6 +15,19 @@ export default defineConfig({
   // from fixtures/peaks/regions/ (Q8) — in production both are staged as
   // static files by `npm run package:deploy`.
   plugins: [react(), terrainServerPlugin(), peaksServerPlugin()],
+  build: {
+    rollupOptions: {
+      // Two pages, two bundles. `index.html` is the still-photo app;
+      // `live.html` is the AR screen the phone opens (src/app/live-main.tsx
+      // says why it is a separate entry rather than a route). Naming them here
+      // is what makes `vite build` emit both, and both are rewritten for
+      // `--base=/Mountain-finder/` so the Pages subpath works unchanged.
+      input: {
+        index: resolve(dirname(fileURLToPath(import.meta.url)), 'index.html'),
+        live: resolve(dirname(fileURLToPath(import.meta.url)), 'live.html'),
+      },
+    },
+  },
   test: {
     // Unit + integration tests. Acceptance tests run from their own config
     // (vitest.acceptance.config.ts) so `npm run check` stays fast.

@@ -22,8 +22,7 @@ after its self-check has run and passed here. The checks are in
 - [x] Build the web sensor adapter as a pure function of raw Safari and Chromium events
 - [ ] Settle webkitCompassHeading's reference axis for an upright phone from the home recording
 - [x] Build a recording schema and `analyze:recording` that scores the compass hypotheses automatically
-- [ ] Add `analyze:recording` and `site:package` to package.json
-- [ ] Wire the recording schema into the web app so the home session can save a capture bundle
+- [ ] Wire the recording schema to LiveScreen's rawEventSink so the home session can save a capture bundle
 - [ ] Only if landscape fails: the iOS alpha-offset hold, re-anchored continuously, invalidated on re-base
 - [ ] Settle the device-roll to screen-roll sign from the home recording
 - [x] Give suggestPoseTrim tests a timeout that holds under parallel load (1.8 s alone, >5 s at load 13)
@@ -31,8 +30,11 @@ after its self-check has run and passed here. The checks are in
 - [x] Import a new Overture peak region covering Bogus Basin's 60 km disc; keep idaho-central unchanged
 - [ ] Decide fetch-peaks' default release now that 2026-06-17.0 is deleted upstream; pin --release in regenerate commands
 - [ ] Stage site packages from package:deploy and publish Bogus Basin from pages.yml
-- [ ] Measure the 360° annotateScene under phone-class CPU throttling (Node: 0.98–1.87 s on 4-core Xeon)
-- [ ] Build the web AR screen in landscape: single-lens camera, live loop, drag, band, sun marker, offline worker
+- [ ] Measure the 360° annotateScene under phone-class CPU throttling (unthrottled: 1.3–2.4 s in Chromium)
+- [x] Build the web AR screen in landscape: single-lens camera, live loop, drag, band, sun and moon discs
+- [ ] Add a service worker to live.html, so the AR screen opens with no network after one visit
+- [ ] Prefer the DEM's ground at the fix over GPS altitude on the live screen; the geoid gap reaches ~50 m
+- [ ] Calibrate the live field of view against the sun or a landmark at the home session, and store it
 - [ ] Build the capture bundle and `analyze:field`; bundles never enter the repository
 - [ ] Write the error budget and pre-register the field pass criteria
 - [ ] Run the headless dress rehearsal on IMG_7270 and railroad-ridge-48mm with injected errors

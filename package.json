@@ -29,7 +29,9 @@
     "fixtures:case-tiles": "tsx scripts/make-case-tile-fixtures.ts",
     "fetch:peaks": "tsx scripts/fetch-peaks.ts",
     "fixtures:peak-parquet": "tsx scripts/make-peak-parquet-fixture.ts",
-    "annotate": "tsx scripts/annotate-photo.ts"
+    "annotate": "tsx scripts/annotate-photo.ts",
+    "analyze:recording": "tsx scripts/analyze-recording.ts",
+    "site:package": "tsx scripts/make-site-package.ts"
   },
   "dependencies": {
     "exifr": "^7.1.3",

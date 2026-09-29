@@ -1,0 +1,227 @@
+/**
+ * How wrong the live labels might be — D9's band, with the terms a sensor
+ * stream actually has.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * WHY NOT `poseUncertainty` UNCHANGED
+ * ═══════════════════════════════════════════════════════════════════════════
+ * `uncertainty.ts` builds the band for a PHOTOGRAPH, and its two terms are
+ * photograph terms: the compass reading EXIF carried, and a camera tilt no
+ * photograph records at all. That second term is the big one — 3.52°, measured
+ * on the one solved frame — and it exists because the still path has to ASSUME
+ * level.
+ *
+ * Live, the tilt is sensed. Carrying the 3.52° assumed-pitch term into a screen
+ * that reads gravity forty times a second would report an error the app is not
+ * making, which is the same kind of dishonesty as under-reporting one.
+ *
+ * So the terms are re-derived for this path, and every primitive is reused
+ * unchanged: `frameFractionOf`, `pixelsPerDegreeAtCentre` and `summarise` all
+ * come from `uncertainty.ts`, so the live band means exactly what the photo
+ * band means and reads in the same voice.
+ *
+ * ── WHERE EACH LIVE TERM COMES FROM ────────────────────────────────────────
+ *   heading, basis `true-model`   the WMM2025 model's own 0.5° RMS, which NOAA
+ *                                 states, plus the compass's reported accuracy
+ *   heading, basis `magnetic`     unquantified: the error IS the local
+ *                                 declination and the app has no position to
+ *                                 evaluate it at
+ *   heading, basis `true`         the platform resolved north itself and
+ *                                 publishes no figure — unquantified
+ *   compass scatter               measured from the trace this second
+ *   pitch scatter                 measured from the trace this second
+ *   field of view                 unquantified while uncalibrated, because a
+ *                                 browser stream's field is not the published
+ *                                 one and the size of the gap is unmeasured
+ *
+ * The scatter terms are the only ones with a sample count above 1, and they are
+ * measurements of the noise rather than of the bias. Saying so matters: a still
+ * phone has almost no scatter and can still be pointing 12° wrong.
+ *
+ * Pure: a heading decision, two spreads and a pose in, a statement out.
+ */
+
+import type { CameraPose } from '../../core/types';
+import { MODEL_DECLINATION_RMS_DEG, type DrawableHeading } from '../../live/heading-policy';
+import {
+  frameFractionOf,
+  pixelsPerDegreeAtCentre,
+  summarise,
+  type PoseUncertainty,
+  type UncertaintyTerm,
+} from '../uncertainty';
+import type { FovSource } from './fov-choice';
+
+export interface LiveUncertaintyInput {
+  readonly heading: DrawableHeading;
+  /** Platform-reported compass accuracy, degrees, when the platform gave one. */
+  readonly compassAccuracyDeg?: number | undefined;
+  readonly pitchSpreadDeg?: number | undefined;
+  readonly fovSource: FovSource;
+  readonly pose: CameraPose;
+  readonly framePx: { readonly widthPx: number; readonly heightPx: number };
+}
+
+function headingTerms(input: LiveUncertaintyInput): readonly UncertaintyTerm[] {
+  const terms: UncertaintyTerm[] = [];
+  const { heading } = input;
+
+  if (heading.basis === 'true-model') {
+    const declination = heading.model?.declinationDeg ?? 0;
+    terms.push({
+      axis: 'horizontal',
+      label: 'True north from a model',
+      basis: {
+        kind: 'measured',
+        deg: MODEL_DECLINATION_RMS_DEG,
+        sampleCount: 1,
+        note:
+          'Your phone gave a magnetic bearing and the app added the ' +
+          `${declination.toFixed(1)}° of local declination its magnetic model computes. ` +
+          `The model is good to about ${MODEL_DECLINATION_RMS_DEG}° on average, and iron-rich ` +
+          'rock underfoot can bend the field several degrees more than that.',
+      },
+    });
+  } else if (heading.basis === 'magnetic') {
+    terms.push({
+      axis: 'horizontal',
+      label: 'Magnetic north, not true north',
+      basis: {
+        kind: 'unquantified',
+        note:
+          'The app has no position, so it cannot work out how far magnetic north is ' +
+          'from true north here. In the mountains of the western United States that ' +
+          'is usually ten degrees or more. Drag the labels sideways to correct it.',
+      },
+    });
+  } else {
+    terms.push({
+      axis: 'horizontal',
+      label: 'Your phone resolved north itself',
+      basis: {
+        kind: 'unquantified',
+        note:
+          'The phone reported true north directly and publishes no figure for how ' +
+          'accurate that is, so the app states none.',
+      },
+    });
+  }
+
+  if (input.compassAccuracyDeg !== undefined && input.compassAccuracyDeg > 0) {
+    terms.push({
+      axis: 'horizontal',
+      label: "Compass's own reported accuracy",
+      basis: {
+        kind: 'measured',
+        deg: input.compassAccuracyDeg,
+        sampleCount: 1,
+        note:
+          'Your phone says its compass reading is good to about this much right now. ' +
+          'Waving the phone in a figure 8 usually improves it.',
+      },
+    });
+  }
+
+  if (heading.spreadDeg !== undefined && heading.spreadDeg > 0) {
+    terms.push({
+      axis: 'horizontal',
+      label: 'Compass wobble this second',
+      basis: {
+        kind: 'measured',
+        deg: heading.spreadDeg,
+        sampleCount: heading.sampleCount,
+        note:
+          'How much the compass readings disagreed with each other over the last ' +
+          'second. This measures the shake in your hands, not how far off north the ' +
+          'compass is.',
+      },
+    });
+  }
+
+  return terms;
+}
+
+function verticalTerms(input: LiveUncertaintyInput): readonly UncertaintyTerm[] {
+  const terms: UncertaintyTerm[] = [];
+  if (input.pitchSpreadDeg !== undefined && input.pitchSpreadDeg > 0) {
+    terms.push({
+      axis: 'vertical',
+      label: 'Tilt wobble this second',
+      basis: {
+        kind: 'measured',
+        deg: input.pitchSpreadDeg,
+        sampleCount: 1,
+        note:
+          'How much the tilt readings disagreed over the last second. Unlike a ' +
+          'photograph, the app is measuring the tilt rather than assuming the camera ' +
+          'is level, so there is no guessed tilt error here.',
+      },
+    });
+  }
+  if (input.fovSource === 'spec-sheet-guess') {
+    terms.push({
+      axis: 'vertical',
+      label: 'Field of view not yet calibrated',
+      basis: {
+        kind: 'unquantified',
+        note:
+          'The app is guessing how wide the camera sees from the phone’s published ' +
+          'lens figures. A video preview is a crop of the photo frame, so the real ' +
+          'figure differs by an amount nobody has measured yet. This stretches the ' +
+          'labels apart or squeezes them together rather than sliding them.',
+      },
+    });
+  }
+  return terms;
+}
+
+/**
+ * Assemble the live band.
+ *
+ * Shaped as `PoseUncertainty` so the existing banner component and its tests
+ * read it unchanged. The measured totals are a FLOOR whenever any term has no
+ * figure, and `summarise` already says so.
+ */
+export function liveUncertainty(input: LiveUncertaintyInput): PoseUncertainty {
+  const terms = [...headingTerms(input), ...verticalTerms(input)];
+
+  const sumFor = (axis: 'horizontal' | 'vertical'): number =>
+    terms
+      .filter((term) => term.axis === axis && term.basis.kind === 'measured')
+      .reduce((total, term) => total + (term.basis.kind === 'measured' ? term.basis.deg : 0), 0);
+
+  const measuredDeg = { horizontal: sumFor('horizontal'), vertical: sumFor('vertical') };
+  const hasUnquantified = terms.some((term) => term.basis.kind === 'unquantified');
+  const frameFraction = {
+    horizontal: frameFractionOf(measuredDeg.horizontal, input.pose.hFovDeg),
+    vertical: frameFractionOf(measuredDeg.vertical, input.pose.vFovDeg),
+  };
+
+  return {
+    terms,
+    measuredDeg,
+    hasUnquantified,
+    frameFraction,
+    pixelsPerDegree: {
+      horizontal: pixelsPerDegreeAtCentre(input.pose.hFovDeg, input.framePx.widthPx),
+      vertical: pixelsPerDegreeAtCentre(input.pose.vFovDeg, input.framePx.heightPx),
+    },
+    summary: summarise(measuredDeg, frameFraction, hasUnquantified),
+  };
+}
+
+/**
+ * Half-width of the horizontal band in pixels, for the shaded strip drawn down
+ * the middle of the frame.
+ *
+ * Exact projection arithmetic — the same tangent scale the labels use — so the
+ * strip is as wide as the error it represents at the centre of frame. Zero when
+ * every horizontal term is unquantified, which is the honest width for "no
+ * figure": the strip disappears and the sentence carries the statement instead.
+ */
+export function horizontalBandHalfWidthPx(
+  uncertainty: PoseUncertainty,
+  framePx: { readonly widthPx: number },
+): number {
+  return (uncertainty.frameFraction.horizontal * framePx.widthPx) / 2;
+}
