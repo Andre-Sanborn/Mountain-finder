@@ -96,7 +96,8 @@ after its self-check has run and passed here. The checks are in
 - [x] Exclude each capture's drag anchor from F3 and F4; report its residual under F3.anchor/F4.anchor
 - [x] Build the annotator reference map sheets (`npm run annotator:map -- <site>`), no pose or overlay
 - [x] Test whether annotators given a top-down map can identify non-anchor summits (map: 0 graded)
-- [ ] Choose a field truth source that grades non-anchor summits; review it with strategy-adversary
+- [x] Choose a field truth source that grades non-anchor summits; review it with strategy-adversary
+- [ ] Rerun the aligner on IMG_7270 cropped right of the person, to isolate CV-11's cause
 
 ## Other open work
 
