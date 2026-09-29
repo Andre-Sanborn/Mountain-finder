@@ -69,7 +69,7 @@ after its self-check has run and passed here. The checks are in
 - [x] Replace the field guide's provisional steps with the real screen wording once field mode lands
 
 - [x] Redesign field truth: three answers, landmark truth, annotator method, stop rule, south-facing capture
-- [ ] Update the e2e specs to write @2 truth documents
+- [x] Update the e2e specs to write @2 truth documents
 - [ ] Move the field fixture generator into scripts/ with an npm script
 - [x] Add a measured pitch-bias term to the live vertical band; until measured, F2 vertical is not gated
 - [ ] Write the sun's frame offset into RecordedSegment.aimOffsetDeg at each aiming step
@@ -82,8 +82,9 @@ after its self-check has run and passed here. The checks are in
 - [ ] Make `npm run annotate` warn when GPSImgDirection is the only heading source (X-10)
 - [ ] Renumber the duplicate X-7 and X-8 ids in docs/FINDINGS.md
 
-- [ ] Split the gross heading offset from the fine trim; sun one-tap and named-summit re-anchor, stillness-gated
-- [ ] Add the walking-aim-at-the-sun segment to the home session and its analyzer verdict
+- [x] Split the gross heading offset from the fine trim; sun one-tap and named-summit re-anchor, stillness-gated
+- [ ] Widen field-analysis POSE_KEYS for grossHeadingOffsetDeg and its source, then flip POSE_CARRIES_GROSS_OFFSET
+- [x] Add the walking-aim-at-the-sun segment to the home session and its analyzer verdict
 - [ ] Add the pose-level raw-heading check to F2 in the prereg and the grader, before field data (after the re-anchor schema lands)
 - [x] Write the IMG_7270 188° derivation as a cited doc with runnable probes (187.9° ± 0.9°, −4.94° ± 0.26°)
 - [ ] Record both annotator pixels, not one agreed pixel, on the next apex read

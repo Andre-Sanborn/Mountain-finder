@@ -1468,6 +1468,322 @@ async function stubOfflineController(page: Page): Promise<void> {
   });
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * Recovering from a gross compass error
+ * ══════════════════════════════════════════════════════════════════════════
+ * The phone is really pointed at the Sun, and the compass is told it is pointed
+ * 92° to the right of that — the error measured on IMG_7270 (X-10). Everything
+ * drawn is therefore a quarter turn out, which no drag can fix: the fine trim
+ * stops at ±30°.
+ *
+ * The Sun is the instrument, as it is for the field of view. The app draws its
+ * disc where its own pose says the Sun is, so under the error the disc is off
+ * the frame entirely, and after the re-anchor it must sit at frame centre —
+ * which is where the real Sun is, because that is where the camera is pointed.
+ */
+
+/** The heading error injected, degrees. */
+const GROSS_ERROR_DEG = 92;
+
+async function tapReanchorAt(page: Page, xPx: number, yPx: number): Promise<void> {
+  await page.getByTestId('live-reanchor-tap-layer').evaluate(
+    (node, point) => {
+      node.dispatchEvent(
+        new PointerEvent('pointerup', {
+          bubbles: true,
+          cancelable: true,
+          clientX: point.xPx,
+          clientY: point.yPx,
+          pointerId: 1,
+          pointerType: 'touch',
+        }),
+      );
+    },
+    { xPx, yPx },
+  );
+}
+
+test('a compass a quarter turn out is put right by one tap on the sun', async ({ page }) => {
+  test.setTimeout(SCENE_TIMEOUT_MS + 120_000);
+  const now = new Date();
+  const observer = { lat: GORNERGRAT.lat, lon: GORNERGRAT.lon, heightM: OBSERVER_EYE_M };
+  const sun = sunPosition(now, observer, { refraction: true });
+  if (sun.altitudeDeg < 5) {
+    console.log(
+      `the sun is ${sun.altitudeDeg.toFixed(1)}° up at Gornergrat at this instant, so there is ` +
+        'nothing to tap; the summit re-anchor covers the same arithmetic',
+    );
+    test.skip();
+    return;
+  }
+
+  // Really aimed at the Sun; the compass reads 92° further round.
+  await startLive(page, {
+    trueHeadingDeg: sun.azimuthDeg + GROSS_ERROR_DEG,
+    pitchDeg: sun.altitudeDeg,
+  });
+  await expect(page.getByTestId('live-heading-basis')).toHaveAttribute(
+    'data-basis',
+    'true-model',
+    { timeout: 30_000 },
+  );
+
+  // ── the labels are wrong, and the Sun's own disc proves it ───────────────
+  await expect(page.getByTestId('live-marks')).toBeVisible();
+  await expect(page.getByTestId('live-mark-sun')).toHaveCount(0);
+  await expect(page.getByTestId('live-mark-note-sun')).toContainText('Turn that way');
+  const wrongHeading = await poseNumber(page, 'data-heading-deg');
+  expect(Math.abs(wrongHeading - ((sun.azimuthDeg + GROSS_ERROR_DEG) % 360))).toBeLessThan(1);
+
+  // ── the re-anchor waits for ten seconds of stillness ─────────────────────
+  const reanchor = page.getByTestId('live-reanchor');
+  await expect(reanchor).toBeVisible();
+  await expect(page.getByTestId('live-reanchor-sun')).toBeDisabled();
+  await expect
+    .poll(async () => Number(await reanchor.getAttribute('data-still-ms')), { timeout: 40_000 })
+    .toBeGreaterThanOrEqual(10_000);
+  await expect(page.getByTestId('live-reanchor-sun')).toBeEnabled();
+
+  // ── one tap where the real sun is: the middle of the picture ─────────────
+  await page.getByTestId('live-reanchor-sun').click();
+  await expect(page.getByTestId('live-reanchor-prompt')).toContainText('middle of the real sun');
+  await tapReanchorAt(page, FRAME.widthPx / 2, FRAME.heightPx / 2);
+
+  await expect(page.getByTestId('live-reanchor-note')).toContainText('the sun');
+  await expect(page.getByTestId('live-reanchor-note')).toContainText(
+    `${GROSS_ERROR_DEG}° to the right`,
+  );
+  expect(Number(await reanchor.getAttribute('data-gross-offset-deg'))).toBeCloseTo(
+    -GROSS_ERROR_DEG,
+    0,
+  );
+  await expect(reanchor).toHaveAttribute('data-anchor-source', 'sun');
+
+  // ── the labels land: the Sun is drawn where the real one is ──────────────
+  const disc = page.getByTestId('live-mark-sun');
+  await expect(disc).toBeVisible({ timeout: 15_000 });
+  const drawn = await disc.evaluate((node) => ({
+    cx: Number(node.getAttribute('cx')),
+    cy: Number(node.getAttribute('cy')),
+  }));
+  // The slack is the Sun's own motion between the aim and the tap, about 0.25°
+  // a minute of azimuth, which is 2 px a minute at this field of view.
+  expect(
+    Math.hypot(drawn.cx - FRAME.widthPx / 2, drawn.cy - FRAME.heightPx / 2),
+    `the sun disc landed at (${drawn.cx.toFixed(1)}, ${drawn.cy.toFixed(1)})`,
+  ).toBeLessThan(20);
+
+  const anchoredHeading = await poseNumber(page, 'data-heading-deg');
+  expect(Math.abs(anchoredHeading - (sun.azimuthDeg % 360))).toBeLessThan(1.5);
+
+  // ── and a drag afterwards is still a nudge ───────────────────────────────
+  // One pixel is 2·tan(hFOV/2)/800 rad = 0.1074° in this frame, so a 20 px drag
+  // is about 2.1°. If the correction lived inside the clamped trim, this drag
+  // would have snapped it back to +30° and moved the labels 62°.
+  const perPxDeg = ((2 * Math.tan((VISIBLE_FOV.hFovDeg * DEG) / 2)) / FRAME.widthPx) / DEG;
+  await dragPicture(page, 20, 0);
+  await expect
+    .poll(async () => poseNumber(page, 'data-heading-deg'), { timeout: 15_000 })
+    .toBeLessThan(anchoredHeading);
+  const afterDrag = await poseNumber(page, 'data-heading-deg');
+  expect(anchoredHeading - afterDrag).toBeGreaterThan(perPxDeg * 5);
+  expect(anchoredHeading - afterDrag).toBeLessThan(perPxDeg * 40);
+  expect(Number(await reanchor.getAttribute('data-gross-offset-deg'))).toBeCloseTo(
+    -GROSS_ERROR_DEG,
+    0,
+  );
+
+  // The gap between the compass and the anchor is on screen, and small, because
+  // the compass has not moved since.
+  const drift = page.getByTestId('live-anchor-drift');
+  await expect(drift).toHaveAttribute('data-beyond-band', 'false');
+  expect(Math.abs(Number(await drift.getAttribute('data-gap-deg')))).toBeLessThan(1);
+});
+
+test('turning the phone after a re-anchor warns that the fix has gone stale', async ({ page }) => {
+  test.setTimeout(SCENE_TIMEOUT_MS + 120_000);
+  const now = new Date();
+  const sun = sunPosition(
+    now,
+    { lat: GORNERGRAT.lat, lon: GORNERGRAT.lon, heightM: OBSERVER_EYE_M },
+    { refraction: true },
+  );
+  if (sun.altitudeDeg < 5) {
+    console.log('the sun is below the working window at this instant; nothing to anchor on');
+    test.skip();
+    return;
+  }
+
+  await startLive(page, {
+    trueHeadingDeg: sun.azimuthDeg + GROSS_ERROR_DEG,
+    pitchDeg: sun.altitudeDeg,
+  });
+  await expect(page.getByTestId('live-heading-basis')).toHaveAttribute(
+    'data-basis',
+    'true-model',
+    { timeout: 30_000 },
+  );
+  const reanchor = page.getByTestId('live-reanchor');
+  await expect
+    .poll(async () => Number(await reanchor.getAttribute('data-still-ms')), { timeout: 40_000 })
+    .toBeGreaterThanOrEqual(10_000);
+  await page.getByTestId('live-reanchor-sun').click();
+  await tapReanchorAt(page, FRAME.widthPx / 2, FRAME.heightPx / 2);
+  await expect(reanchor).toHaveAttribute('data-anchor-source', 'sun');
+
+  // The compass now reads 30° further round with the phone held where it was:
+  // a transient error baked into the anchor looks exactly like this.
+  await pumpSet(
+    page,
+    eventAnglesFor(magneticBearingFor(sun.azimuthDeg + GROSS_ERROR_DEG + 30, now), sun.altitudeDeg),
+  );
+  const drift = page.getByTestId('live-anchor-drift');
+  await expect(drift).toHaveAttribute('data-beyond-band', 'true', { timeout: 20_000 });
+  await expect(drift).toContainText('Fix the direction again');
+});
+
+test('a tap on the real sun says how far off the compass is', async ({ page }) => {
+  // The automatic warning. It fires on a tap the app can attribute to nothing:
+  // a tap is attributed to a drawn mark within 160 px, about 17° here, so a
+  // compass 92° out always leaves the app's own sun disc too far away to claim
+  // the tap. The step the person is on asks for the middle of the real sun.
+  test.setTimeout(SCENE_TIMEOUT_MS + 120_000);
+  const now = new Date();
+  const sun = sunPosition(
+    now,
+    { lat: GORNERGRAT.lat, lon: GORNERGRAT.lon, heightM: OBSERVER_EYE_M },
+    { refraction: true },
+  );
+  if (sun.altitudeDeg < 5) {
+    console.log('the sun is below the working window at this instant; nothing to tap');
+    test.skip();
+    return;
+  }
+
+  await startHomeSession(page);
+  // Really aimed at the sun, with the compass 92° out.
+  await pumpSet(
+    page,
+    eventAnglesFor(magneticBearingFor(sun.azimuthDeg + GROSS_ERROR_DEG, now), sun.altitudeDeg),
+  );
+  await page.getByTestId('home-session-start').click();
+  for (let index = 0; index < POSE_LABELS.length - 1; index += 1) {
+    await page.getByTestId('home-session-next').click();
+  }
+  await expect(page.getByTestId('home-session')).toHaveAttribute('data-step-pose', 'sun-capture');
+  await expect(page.getByTestId('home-session-tap-layer')).toBeVisible();
+
+  // Wait for the skyline, so the drawn summits that could claim the tap exist.
+  await expect(page.getByTestId('live-scene-state')).toHaveAttribute('data-scene', 'ready', {
+    timeout: SCENE_TIMEOUT_MS,
+  });
+  const centre = { xPx: FRAME.widthPx / 2, yPx: FRAME.heightPx / 2 };
+  const drawn = [
+    ...(await summitDots(page)),
+    ...(await page
+      .locator('[data-testid="live-marks"] circle')
+      .evaluateAll((nodes) =>
+        nodes.map((node) => ({
+          cx: Number(node.getAttribute('cx')),
+          cy: Number(node.getAttribute('cy')),
+        })),
+      )),
+  ];
+  const nearestPx = Math.min(
+    ...drawn.map((dot) => Math.hypot(dot.cx - centre.xPx, dot.cy - centre.yPx)),
+    Number.POSITIVE_INFINITY,
+  );
+  if (nearestPx <= 160) {
+    console.log(
+      `a drawn mark sits ${nearestPx.toFixed(0)} px from the middle of the frame, so the tap ` +
+        'would be attributed to it; skipped the warning assertion',
+    );
+    return;
+  }
+
+  // The middle of the picture is where the real sun is, because that is where
+  // the camera is pointed.
+  await tapAt(page, centre.xPx, centre.yPx);
+  const warning = page.getByTestId('live-gross-warning');
+  await expect(warning).toBeVisible({ timeout: 15_000 });
+  await expect(warning).toContainText('tap the sun (or a summit you know) to fix it');
+  const said = await warning.textContent();
+  const degrees = Number(/(\d+)°/.exec(said ?? '')?.[1] ?? 0);
+  expect(Math.abs(degrees - GROSS_ERROR_DEG)).toBeLessThan(3);
+});
+
+test('a summit picked by name re-anchors the labels, after the person confirms', async ({
+  page,
+}) => {
+  // The fallback for an overcast day, and the path that has to ask first: the
+  // move is stated in degrees and in a direction before anything turns.
+  test.setTimeout(SCENE_TIMEOUT_MS + 120_000);
+  await startLive(page, {
+    trueHeadingDeg: TRUE_HEADING_DEG + GROSS_ERROR_DEG,
+    pitchDeg: 0,
+  });
+  await expect(page.getByTestId('live-scene-state')).toHaveAttribute('data-scene', 'ready', {
+    timeout: SCENE_TIMEOUT_MS,
+  });
+
+  const reanchor = page.getByTestId('live-reanchor');
+  await expect
+    .poll(async () => Number(await reanchor.getAttribute('data-still-ms')), { timeout: 40_000 })
+    .toBeGreaterThanOrEqual(10_000);
+
+  await page.getByTestId('live-reanchor-summit').click();
+  const picker = page.getByTestId('live-reanchor-summit-name');
+  const matterhornValue = await picker
+    .locator('option')
+    .evaluateAll((nodes) =>
+      nodes
+        .filter((node) => (node.textContent ?? '').startsWith('Matterhorn '))
+        .map((node) => (node as HTMLOptionElement).value),
+    );
+  expect(matterhornValue[0], 'the sweep did not name the Matterhorn').toBeDefined();
+  await picker.selectOption(matterhornValue[0] ?? '');
+  await expect(page.getByTestId('live-reanchor-prompt')).toContainText('Now tap Matterhorn');
+
+  // Where the Matterhorn really is on the screen: the closed form for the pose
+  // the phone is actually in, which is 92° from what the compass claims.
+  const truth = expectedSummitPx(TRUE_HEADING_DEG);
+  await tapReanchorAt(page, truth.xPx, truth.yPx);
+
+  const confirm = page.getByTestId('live-reanchor-confirm');
+  await expect(confirm).toContainText(`This turns the labels ${GROSS_ERROR_DEG}° to the right.`);
+  // Nothing has turned yet.
+  expect(Number(await reanchor.getAttribute('data-gross-offset-deg'))).toBe(0);
+
+  await page.getByTestId('live-reanchor-confirm-no').click();
+  await expect(confirm).toHaveCount(0);
+  expect(Number(await reanchor.getAttribute('data-gross-offset-deg'))).toBe(0);
+
+  // Again, and this time say yes.
+  await tapReanchorAt(page, truth.xPx, truth.yPx);
+  await page.getByTestId('live-reanchor-confirm-yes').click();
+  await expect(reanchor).toHaveAttribute('data-anchor-source', 'summit');
+  expect(Number(await reanchor.getAttribute('data-gross-offset-deg'))).toBeCloseTo(
+    -GROSS_ERROR_DEG,
+    0,
+  );
+
+  // And the labels land where the closed form says they belong.
+  await expect
+    .poll(async () => poseNumber(page, 'data-heading-deg'), { timeout: 15_000 })
+    .toBeCloseTo(TRUE_HEADING_DEG, 0);
+  const dots = await summitDots(page);
+  const near = dots.filter(
+    (dot) =>
+      Math.abs(dot.cx - truth.xPx) < TOLERANCE_PX && Math.abs(dot.cy - truth.yPx) < TOLERANCE_PX,
+  );
+  expect(
+    near.length,
+    `no summit dot within ${TOLERANCE_PX} px of (${truth.xPx.toFixed(2)}, ` +
+      `${truth.yPx.toFixed(2)}); dots were ${JSON.stringify(dots.slice(0, 12))}`,
+  ).toBeGreaterThan(0);
+  await expect(page.getByTestId('live-labels')).toContainText('Matterhorn');
+});
+
 test('the offline strip reports the cache, and the button downloads the grid this viewpoint needs', async ({
   page,
 }) => {

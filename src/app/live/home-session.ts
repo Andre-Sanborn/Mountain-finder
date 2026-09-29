@@ -140,6 +140,14 @@ export const HOME_SESSION_STEPS: readonly HomeSessionStep[] = [
     holdMs: 6000,
   },
   {
+    pose: 'landscape-walking-known-bearing',
+    title: 'Walk with the sun',
+    instruction:
+      'Point the camera at the sun with the phone sideways and the camera end on your LEFT. Walk about 20 steps, keeping the sun in the middle. Then stand still for 10 seconds.',
+    kind: 'move',
+    holdMs: 30_000,
+  },
+  {
     pose: 'tip-past-vertical',
     title: 'Tip it over the top',
     instruction:

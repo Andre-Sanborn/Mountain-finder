@@ -113,6 +113,11 @@ export interface LandscapePoseInput {
   readonly screenRollHypothesis?: ScreenRollHypothesis;
   /** The user's drag, applied on top of the sensed pose (D9). */
   readonly trim: TrimState;
+  /**
+   * The re-anchor's heading correction, degrees. Unclamped, and untouched by
+   * any drag — see `src/app/trim.ts`. Zero until a re-anchor sets one.
+   */
+  readonly grossHeadingOffsetDeg?: number | undefined;
 }
 
 export interface LandscapePose {
@@ -191,7 +196,7 @@ export function landscapePose(input: LandscapePoseInput): LandscapePoseResult {
       // `applyTrim` re-derives vFov from hFov and the pose's aspect ratio, so
       // the trimmed pose keeps the visible box's shape rather than the camera
       // frame's.
-      pose: applyTrim(sensedPose, input.trim),
+      pose: applyTrim(sensedPose, input.trim, input.grossHeadingOffsetDeg ?? 0),
       heading: decision.heading,
       pitchSpreadDeg: sensors.pitch.field.spreadDeg,
       rollSpreadDeg: sensors.roll.ok ? sensors.roll.field.spreadDeg : undefined,

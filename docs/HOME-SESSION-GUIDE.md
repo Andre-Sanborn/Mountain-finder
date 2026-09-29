@@ -49,7 +49,8 @@ tells you to come back at a different hour.
   session.
 - **Somewhere to lean the phone sideways for three minutes.** One step asks you to put the
   phone down against something and not touch it. A wall, a step, a plant pot, a bag.
-- **A spot outdoors where you can see the sun**, with room to turn all the way round.
+- **A spot outdoors where you can see the sun**, with room to turn all the way round and to
+  walk twenty paces in a straight line.
 - **Wi-Fi at that spot, or just before you go out.** One step downloads about 40 MB.
 
 ---
@@ -138,12 +139,12 @@ Tap **Start recording**.
 If the button is greyed out, one of two lines under it says why: either you have not tapped
 Start and allowed the three questions yet, or the phone is still finding your location.
 
-## Step 6 — The thirteen steps on screen
+## Step 6 — The fourteen steps on screen
 
 Each step shows one instruction and a countdown in seconds. When the countdown runs out the
 app moves on by itself. A **Move on now** button skips ahead when you have finished early.
 
-These are the thirteen, in order, with the words the screen uses:
+These are the fourteen, in order, with the words the screen uses:
 
 1. **Flat, screen up** — Put the phone flat on a table with the screen facing the ceiling.
    (4 seconds)
@@ -159,17 +160,20 @@ These are the thirteen, in order, with the words the screen uses:
    your LEFT, and keep the sun in the middle. (6 seconds)
 7. **Sideways, top to the right** — Turn the phone the other way round, so the end with the
    camera is on your RIGHT, sun still in the middle. (6 seconds)
-8. **Tip it over the top** — Slowly tip the phone backwards, past straight up, until the
+8. **Walk with the sun** — Point the camera at the sun with the phone sideways and the
+   camera end on your LEFT. Walk about 20 steps, keeping the sun in the middle. Then stand
+   still for 10 seconds. (30 seconds)
+9. **Tip it over the top** — Slowly tip the phone backwards, past straight up, until the
    screen faces the sky. Take about five seconds. (9 seconds)
-9. **Spin it slowly** — Keep the camera pointing the same way and slowly spin the phone a
-   full turn, like a steering wheel. (9 seconds)
-10. **Upright, then sideways** — Hold the phone upright, then slowly turn it sideways, then
+10. **Spin it slowly** — Keep the camera pointing the same way and slowly spin the phone a
+    full turn, like a steering wheel. (9 seconds)
+11. **Upright, then sideways** — Hold the phone upright, then slowly turn it sideways, then
     back again. (8 seconds)
-11. **Leave it alone** — Put the phone down, sideways against something, and do not touch it
+12. **Leave it alone** — Put the phone down, sideways against something, and do not touch it
     until this step finishes. (3 minutes)
-12. **Walk about with it** — Pick the phone up and carry it around normally for a minute.
+13. **Walk about with it** — Pick the phone up and carry it around normally for a minute.
     Turn, walk, put it in a pocket, take it out. (1 minute)
-13. **Tap the real sun** — Hold the phone sideways and point it at the sun near the LEFT of
+14. **Tap the real sun** — Hold the phone sideways and point it at the sun near the LEFT of
     the screen; tap the middle of the real sun. Then turn until it is near the RIGHT and tap
     it again. (up to 1 minute)
 
@@ -177,15 +181,19 @@ Notes on the awkward ones:
 
 - **Steps 5, 6 and 7 point the camera at the sun.** Point the *phone*, and watch the screen,
   not the sky. Keep the sun's bright disc near the middle of the picture.
-- **Step 11 is the long one.** Lean the phone sideways against something solid and walk away
+- **Step 8 is the one that needs room.** Twenty ordinary paces in a straight line, with the
+  sun kept in the middle of the picture the whole way. Then stop and stand still for ten
+  seconds without moving the phone. It is the only step that can show a compass that reads
+  correctly standing still and wrongly while you walk.
+- **Step 12 is the long one.** Lean the phone sideways against something solid and walk away
   for three minutes. Bumping it spoils the step.
-- **Step 13 wants two taps.** Tap the sun's disc in the picture, not the label. A counter
+- **Step 14 wants two taps.** Tap the sun's disc in the picture, not the label. A counter
   says how many taps it has. After the second tap the screen reports what it measured and
   offers a button reading **Use this measurement** — tap it.
 
 ## Step 7 — The lining-up practice
 
-After the thirteen steps the app runs six short attempts, headed **Lining-up practice**.
+After the fourteen steps the app runs six short attempts, headed **Lining-up practice**.
 
 Each attempt asks you to brace the phone in both hands, pick one label on the screen, and
 drag it onto the thing it names with a finger. Lift your finger when it is as close as you
@@ -348,7 +356,7 @@ it stays black, close any other app that might be using the camera, then reload 
 All of these, together:
 
 - The page loaded and drew labels **with airplane mode on**.
-- All thirteen steps ran, and step 13 accepted two taps.
+- All fourteen steps ran, and step 14 accepted two taps.
 - The last screen says the file **holds no location and no clock time**.
 - **What the recording says** lists answers, and most of them are not "inconclusive".
 - Six lining-up attempts were recorded, and the two summary lines both carry numbers.

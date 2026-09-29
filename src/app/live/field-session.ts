@@ -161,6 +161,13 @@ export const FIELD_SESSION_STEPS: readonly FieldStep[] = [
     kind: 'tap',
   },
   {
+    id: 'fix-direction',
+    title: 'Check which way the labels point',
+    instruction:
+      'If the labels point the wrong way, tap Fix direction — tap the sun, or pick a summit you know by name and tap it. Otherwise carry on.',
+    kind: 'read',
+  },
+  {
     id: 'fix',
     title: 'Wait for the location',
     instruction:
@@ -267,6 +274,7 @@ export function fieldRunPlan(): readonly FieldRunStep[] {
   return [
     plain('stand'),
     plain('fov-check'),
+    plain('fix-direction'),
     plain('fix'),
     plain('brace'),
     plain('capture-raw'),
@@ -571,11 +579,32 @@ export function frameFileNameFor(captureId: string): string {
 /** The bundle's own file name. No date in it — a date is a wall clock. */
 export const FIELD_BUNDLE_FILE_NAME = 'mountain-finder-field-bundle.json';
 
+/** What set the capture's gross heading offset. */
+export type GrossHeadingSource = 'sensors' | 'sun' | 'summit';
+
+/**
+ * Whether a capture's pose carries the gross heading offset and its source.
+ *
+ * `parseFieldBundle` whitelists pose keys exactly, and `POSE_KEYS` in
+ * `src/live/field-analysis.ts` does not list these two, so writing them would
+ * make every bundle fail its own parser on the phone after the drive. The
+ * screen therefore records the offset and shows it, and the bundle carries only
+ * the heading it already produced. Flip this to true in the same change that
+ * adds `'grossHeadingOffsetDeg'` and `'grossHeadingSource'` to `POSE_KEYS`,
+ * parses them as a number in [−180, 180] and a member of
+ * {@link GrossHeadingSource}, and adds them to `CapturePose`.
+ */
+export const POSE_CARRIES_GROSS_OFFSET = false;
+
 /** Everything the live screen knows at the instant a capture is taken. */
 export interface FieldCaptureContext {
   readonly pose: CameraPose;
   readonly headingBasis: CapturePose['headingBasis'];
   readonly trim: { readonly headingDeg: number; readonly pitchDeg: number };
+  /** The re-anchor's heading correction, degrees. Zero when none was made. */
+  readonly grossHeadingOffsetDeg: number;
+  /** What set that correction. `'sensors'` means nobody re-anchored. */
+  readonly grossHeadingSource: GrossHeadingSource;
   /** The overlay's drawing space, i.e. the CSS viewport. */
   readonly overlayPx: { readonly widthPx: number; readonly heightPx: number };
   readonly band: PoseUncertainty;
@@ -615,7 +644,10 @@ function fold360(deg: number): number {
  * The heading is folded onto [0, 360) because the parser's bound is that range
  * and a pose that came back as −4° is the same direction, not a corrupt one.
  */
-export function buildFieldCapture(input: FieldCaptureInput): Capture {
+export function buildFieldCapture(
+  input: FieldCaptureInput,
+  carryGrossOffset: boolean = POSE_CARRIES_GROSS_OFFSET,
+): Capture {
   const { context } = input;
   const track = trackGeometryFrom(context.track);
   return {
@@ -634,6 +666,12 @@ export function buildFieldCapture(input: FieldCaptureInput): Capture {
       headingBasis: context.headingBasis,
       trimHeadingDeg: context.trim.headingDeg,
       trimPitchDeg: context.trim.pitchDeg,
+      ...(carryGrossOffset
+        ? {
+            grossHeadingOffsetDeg: context.grossHeadingOffsetDeg,
+            grossHeadingSource: context.grossHeadingSource,
+          }
+        : {}),
     },
     trace: input.trace,
     track: track ?? { width: 0, height: 0 },

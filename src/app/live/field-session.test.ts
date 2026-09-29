@@ -39,6 +39,7 @@ import {
   FIELD_SESSION_PRIVACY_STATEMENT,
   MIN_STORED_FRAME_WIDTH_PX,
   MOVEMENT_STEP_COUNT,
+  POSE_CARRIES_GROSS_OFFSET,
   REPEATED_DRAG_COUNT,
   STILL_MOVE_DEG,
   anchorOffsetU,
@@ -154,6 +155,8 @@ function contextOf(overrides: Partial<FieldCaptureContext> = {}): FieldCaptureCo
     pose: { headingDeg: 284.2, pitchDeg: 1.1, rollDeg: -0.4, hFovDeg: 73.74, vFovDeg: 38.088 },
     headingBasis: 'true-model',
     trim: { headingDeg: 0.62, pitchDeg: -0.18 },
+    grossHeadingOffsetDeg: 0,
+    grossHeadingSource: 'sensors',
     overlayPx: OVERLAY_PX,
     band: BAND,
     layout: layoutOf(),
@@ -236,6 +239,7 @@ describe('the run plan', () => {
     expect(fieldRunPlan().map((entry) => entry.step.id)).toEqual([
       'stand',
       'fov-check',
+      'fix-direction',
       'fix',
       'brace',
       'capture-raw',
@@ -736,5 +740,48 @@ describe('a whole run', () => {
   it('mentions Trinity Mountain nowhere unless the overlay drew it', () => {
     const text = JSON.stringify(bundleOf([captureOf()]));
     expect(text).not.toContain(TRINITY.name);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * The gross heading offset, and the schema that cannot hold it yet
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+describe('the gross heading offset in a capture', () => {
+  const context = contextOf({ grossHeadingOffsetDeg: -92, grossHeadingSource: 'sun' });
+  const input = (): Parameters<typeof buildFieldCapture>[0] => ({
+    captureId: 'c1',
+    role: 'before-drag',
+    tMs: 61_000,
+    framePx: { widthPx: 1920, heightPx: 1080 },
+    trace: TRACE,
+    context: contextOf(),
+  });
+
+  it('is left out of the pose while the bundle schema whitelists the old keys', () => {
+    expect(POSE_CARRIES_GROSS_OFFSET).toBe(false);
+    const pose = captureOf({ context }).pose as unknown as Record<string, unknown>;
+    expect(pose.grossHeadingOffsetDeg).toBeUndefined();
+    expect(pose.grossHeadingSource).toBeUndefined();
+  });
+
+  it('keeps a bundle the parser accepts, offset or no offset', () => {
+    const parsed = parseFieldBundle(bundleOf([captureOf({ context })]));
+    expect(parsed.ok, JSON.stringify(parsed.ok ? [] : parsed.problems)).toBe(true);
+  });
+
+  it('carries both fields the moment the schema is widened to take them', () => {
+    const pose = buildFieldCapture({ ...input(), context }, true).pose as unknown as Record<
+      string,
+      unknown
+    >;
+    expect(pose.grossHeadingOffsetDeg).toBe(-92);
+    expect(pose.grossHeadingSource).toBe('sun');
+  });
+
+  it('records the sensors as the source when nobody re-anchored', () => {
+    const pose = buildFieldCapture(input(), true).pose as unknown as Record<string, unknown>;
+    expect(pose.grossHeadingOffsetDeg).toBe(0);
+    expect(pose.grossHeadingSource).toBe('sensors');
   });
 });

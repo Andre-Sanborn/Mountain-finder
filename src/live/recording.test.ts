@@ -40,6 +40,7 @@ import {
   expectedTopEdgeMinusCameraDeg,
   fold360,
   meanAndSampleSd,
+  MOTION_HEADING_FAULT_DEG,
   parseRecording,
   protocolSegments,
   signedDeltaDeg,
@@ -179,7 +180,10 @@ describe('the compass reference hypothesis', () => {
   const injected = {
     alphaDriftDegPerMinute: 2.4,
     alphaBiasDeg: 213,
-    alphaRebase: { atMs: 60_000, byDeg: 77 },
+    // Inside the still-drift hold, which starts at 68 s of the synthetic
+    // protocol. A re-base during a discriminating pose would be a different
+    // test: it would move the reading mid-segment.
+    alphaRebase: { atMs: 80_000, byDeg: 77 },
   } as const;
 
   it('names device-top-edge for a phone that obeys it', () => {
@@ -887,13 +891,13 @@ describe('the committed fixtures', () => {
       // Neither fixture carries drag trials — they are recordings of the sensor
       // protocol alone — so `drag-scatter` is inconclusive on both. Neither
       // carries a Sun bearing either, so `pitch-bias` has no altitude to score
-      // against. Both are named here rather than counted, so a new inconclusive
-      // verdict shows up.
+      // against and `motion-heading` has no fixed reference. Both lists are
+      // named here rather than counted, so a new inconclusive verdict shows up.
       const unresolved = analysis.verdicts.filter((v) => v.inconclusive).map((v) => v.id);
       expect(unresolved).toEqual(
         expected === 'device-top-edge'
-          ? ['drag-scatter', 'pitch-bias']
-          : ['landscape-sign', 'drag-scatter', 'pitch-bias'],
+          ? ['drag-scatter', 'pitch-bias', 'motion-heading']
+          : ['landscape-sign', 'drag-scatter', 'pitch-bias', 'motion-heading'],
       );
       expect(result.value.dragTrials).toBeUndefined();
     });
@@ -962,6 +966,76 @@ function aimedRecording(
     synthesiseRecording(spec({ segments, attitudeNoiseDeg, compassNoiseDeg: 0 })),
   );
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * The walking aim
+ * ══════════════════════════════════════════════════════════════════════════
+ * The measured quantity is `compass reading − the Sun's magnetic azimuth`,
+ * taken over the still landscape step and over the walking one. Both steps hold
+ * the phone the same way round, so a difference between them is a change in the
+ * reading and nothing else. The synthetic camera azimuth is what is injected,
+ * so the expected change is the injection itself, to the compass noise.
+ */
+
+/** The protocol with the walking step aimed somewhere other than the Sun. */
+function walkingAimedOffBy(offsetDeg: number): HomeSessionRecording {
+  const segments = protocolSegments().map((segment) =>
+    segment.pose === 'landscape-walking-known-bearing'
+      ? { ...segment, cameraAzimuthDeg: fold360(KNOWN_BEARING_DEG + offsetDeg) }
+      : segment,
+  );
+  return withSunBearing(synthesiseRecording(spec({ segments, compassNoiseDeg: 0 })));
+}
+
+describe('the walking aim', () => {
+  it('reports no fault when the reading follows the Sun in both steps', () => {
+    const answer = verdictFor(walkingAimedOffBy(0), 'motion-heading');
+    expect(answer.inconclusive).toBe(false);
+    expect(answer.answer).toContain('no — the reading stayed within');
+    expect(answer.evidence.join('\n')).toContain(`against a ${MOTION_HEADING_FAULT_DEG}° threshold`);
+  });
+
+  it('flags a quarter-turn change between the still step and the walking one', () => {
+    const answer = verdictFor(walkingAimedOffBy(90), 'motion-heading');
+    expect(answer.answer).toContain('motion-dependent heading fault');
+    expect(answer.answer).toContain('90.0°');
+  });
+
+  it('stays quiet just inside the threshold and speaks just outside it', () => {
+    expect(verdictFor(walkingAimedOffBy(MOTION_HEADING_FAULT_DEG - 1), 'motion-heading').answer).toContain(
+      'no — the reading stayed',
+    );
+    expect(verdictFor(walkingAimedOffBy(MOTION_HEADING_FAULT_DEG + 1), 'motion-heading').answer).toContain(
+      'motion-dependent heading fault',
+    );
+  });
+
+  it('is inconclusive, not clean, when the walking step was never recorded', () => {
+    const answer = verdictFor(
+      withSunBearing(onlyPoses(['landscape-upright-known-bearing-top-left'], { compassNoiseDeg: 0 })),
+      'motion-heading',
+    );
+    expect(answer.inconclusive).toBe(true);
+    expect(answer.evidence.join('\n')).toContain('landscape-walking-known-bearing');
+  });
+
+  it('is inconclusive when the reference the two steps share is not the Sun', () => {
+    const recording = walkingAimedOffBy(90);
+    const answer = verdictFor(
+      {
+        ...recording,
+        knownBearing: {
+          kind: 'surveyed-bearing',
+          magneticAzimuthDeg: recording.knownBearing.magneticAzimuthDeg,
+          source: 'a church spire, taken off a map',
+        },
+      },
+      'motion-heading',
+    );
+    expect(answer.inconclusive).toBe(true);
+    expect(answer.evidence.join('\n')).toContain('not the Sun');
+  });
+});
 
 describe('the camera altitude', () => {
   it('reads an upright phone’s tilt straight off beta', () => {

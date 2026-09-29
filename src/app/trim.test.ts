@@ -16,7 +16,15 @@
 import { describe, expect, it } from 'vitest';
 
 import type { CameraPose } from '../core/types';
-import { applyTrim, aspectRatioOfPose, isUntrimmed, NO_TRIM, type TrimState } from './trim';
+import {
+  applyTrim,
+  aspectRatioOfPose,
+  isUntrimmed,
+  NO_GROSS_HEADING_OFFSET_DEG,
+  NO_TRIM,
+  TRIM_LIMIT_DEG,
+  type TrimState,
+} from './trim';
 
 /** 2·atan(3/4), the vertical FOV of a 4:3 frame whose horizontal FOV is 90°. */
 const TWO_ATAN_THREE_QUARTERS = 73.73979529168804;
@@ -47,6 +55,36 @@ describe('applyTrim — heading', () => {
   it('wraps below zero rather than reporting a negative bearing', () => {
     const pose = { ...FOUR_BY_THREE, headingDeg: 5 };
     expect(applyTrim(pose, trim({ headingDeg: -20 })).headingDeg).toBeCloseTo(345, 12);
+  });
+});
+
+describe('applyTrim — the gross heading offset', () => {
+  it('is zero when it is not given, so the fine trim alone is unchanged', () => {
+    const trimmed = trim({ headingDeg: 12.5 });
+    expect(applyTrim(FOUR_BY_THREE, trimmed, NO_GROSS_HEADING_OFFSET_DEG)).toEqual(
+      applyTrim(FOUR_BY_THREE, trimmed),
+    );
+  });
+
+  it('adds beside the fine trim rather than replacing it', () => {
+    // 137.25 + 12.5 + 92 = 241.75.
+    const result = applyTrim(FOUR_BY_THREE, trim({ headingDeg: 12.5 }), 92);
+    expect(result.headingDeg).toBeCloseTo(241.75, 12);
+  });
+
+  it('is not clamped, which is the whole reason it is separate', () => {
+    const past = TRIM_LIMIT_DEG.headingDeg + 62;
+    expect(applyTrim(FOUR_BY_THREE, NO_TRIM, past).headingDeg).toBeCloseTo(137.25 + past, 12);
+  });
+
+  it('wraps the total past north like any other heading', () => {
+    expect(applyTrim(FOUR_BY_THREE, NO_TRIM, 240).headingDeg).toBeCloseTo(17.25, 12);
+  });
+
+  it('changes nothing but the heading', () => {
+    const plain = applyTrim(FOUR_BY_THREE, NO_TRIM);
+    const offset = applyTrim(FOUR_BY_THREE, NO_TRIM, 92);
+    expect({ ...offset, headingDeg: plain.headingDeg }).toEqual(plain);
   });
 });
 

@@ -16,7 +16,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { NO_TRIM, TRIM_LIMIT_DEG, applyTrim } from '../app/trim';
+import { NO_GROSS_HEADING_OFFSET_DEG, NO_TRIM, TRIM_LIMIT_DEG, applyTrim } from '../app/trim';
 import { cameraPoseFromFocalLength, projectToImage } from '../core/projection';
 import { degPerPx, dragAngleDeg, trimFromDrag } from './drag-trim';
 
@@ -50,6 +50,58 @@ describe('dragAngleDeg', () => {
   it('refuses to divide by a frame that has not been laid out yet', () => {
     expect(dragAngleDeg(50, 0, 90)).toBe(0);
     expect(dragAngleDeg(50, 400, 0)).toBe(0);
+  });
+});
+
+describe('a drag after a re-anchor', () => {
+  /**
+   * The budget frame: 956 × 440 CSS px at 2·atan(3/4), where one pixel is
+   * atan(1.5/956) = 0.0898992° across (docs/FIELD-TEST-PREREGISTRATION.md's
+   * frame table, and `fine-drag.ts`'s own figure).
+   */
+  const BUDGET_FRAME = { widthPx: 956, heightPx: 440 };
+  const BUDGET_FOV = {
+    hFovDeg: (2 * Math.atan(0.75) * 180) / Math.PI,
+    vFovDeg: (2 * Math.atan((0.75 * 440) / 956) * 180) / Math.PI,
+  };
+  const ONE_PX_DEG = (Math.atan(1.5 / 956) * 180) / Math.PI;
+  const POSE = {
+    headingDeg: 130,
+    pitchDeg: 0,
+    rollDeg: 0,
+    hFovDeg: BUDGET_FOV.hFovDeg,
+    vFovDeg: BUDGET_FOV.vFovDeg,
+  };
+  /** The measured error on IMG_7270 (X-10), and the case this split exists for. */
+  const GROSS_DEG = 92;
+
+  it('moves the heading by one pixel, not back to the slider clamp', () => {
+    const anchored = applyTrim(POSE, NO_TRIM, GROSS_DEG);
+    expect(anchored.headingDeg).toBeCloseTo(222, 10);
+
+    const dragged = applyTrim(
+      POSE,
+      trimFromDrag(NO_TRIM, { dx: 1, dy: 0 }, BUDGET_FRAME, BUDGET_FOV),
+      GROSS_DEG,
+    );
+    expect(dragged.headingDeg - anchored.headingDeg).toBeCloseTo(-ONE_PX_DEG, 10);
+    expect(ONE_PX_DEG).toBeCloseTo(0.0898992, 7);
+
+    // With the re-anchor carried inside the clamped trim instead, the same
+    // pixel would have snapped the correction back to +30° and moved the
+    // labels 62° — the failure this split rules out.
+    expect(Math.abs(dragged.headingDeg - 160)).toBeGreaterThan(60);
+  });
+
+  it('keeps the whole offset through a drag long enough to hit the clamp', () => {
+    const far = trimFromDrag(NO_TRIM, { dx: 4000, dy: 0 }, BUDGET_FRAME, BUDGET_FOV);
+    expect(far.headingDeg).toBe(-TRIM_LIMIT_DEG.headingDeg);
+    expect(applyTrim(POSE, far, GROSS_DEG).headingDeg).toBeCloseTo(192, 10);
+  });
+
+  it('is the plain trim again when no re-anchor has been made', () => {
+    const drag = trimFromDrag(NO_TRIM, { dx: 1, dy: 0 }, BUDGET_FRAME, BUDGET_FOV);
+    expect(applyTrim(POSE, drag, NO_GROSS_HEADING_OFFSET_DEG)).toEqual(applyTrim(POSE, drag));
   });
 });
 

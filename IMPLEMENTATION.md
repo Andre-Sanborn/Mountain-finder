@@ -1445,3 +1445,36 @@ the refutation.
 
 The F2 grader was already per-axis. A test now pins it, and the aligned fixture carries the
 phone's vertical unquantified term. Eight mutations are caught.
+
+## Built: the gross-error recovery
+
+**The gross heading offset is an argument, not a trim axis.** The call is
+`applyTrim(pose, trim, grossHeadingOffsetDeg)`. `trimFromDrag` rebuilds and clamps a
+`TrimState`, so a number that is not in that type cannot be clamped. Re-anchor 92° and then drag
+1 px, and the heading moves 0.0899°. With the old clamped trim, the same drag snapped back 62°.
+
+**`reanchorFromTap`** (`src/app/live/reanchor.ts`) is pure: heading = azimuth − atan((x−c)/f),
+and pitch = altitude + atan((y−c)/f). It uses the drawn f and video-box's principal point.
+- **Sun:** one tap.
+- **Summit:** picked by name from the full 360° scene, tapped, then confirmed against a sentence
+  such as "This turns the labels 92° to the right".
+
+Both need 10 s of stillness. After an anchor, the live gap between compass and anchor is shown,
+with a warning past the band.
+
+**The automatic warning** fires on an unattributed tap on a sun step. Attribution only reaches
+160 px, about 17°, so under a gross error the app's own disc is never near the tap.
+
+**The home session gains a 14th step,** `landscape-walking-known-bearing`: aim at the sun with
+the camera end on the left, walk 20 steps, then stand still 10 s. The `motion-heading` verdict
+compares its compass-minus-sun median against the still top-left step, and flags a change of
+45° or more. That step is the reference because the two landscape steps differ by 180° under
+the top-edge hypothesis. The verdict cannot separate a compass that moved from a camera that
+stopped pointing at the sun, and says so. The session is now about 7 minutes of script.
+
+The field session gains a "Fix direction" step. The bundle cannot carry the offset until
+`POSE_KEYS` is widened; `POSE_CARRIES_GROSS_OFFSET` gates it. The e2e specs now write @2 truth.
+
+The e2e injects a 92° error and taps the sun, and the disc lands within 20 px of centre. The
+summit path runs on the Matterhorn. Fifteen mutations are caught. The sun e2e tests skip when
+the sun is below 5° at Gornergrat.

@@ -116,6 +116,12 @@ export interface HomeSessionPanelProps {
   readonly calibrationFrame: () => CalibrationFrame | undefined;
   /** Hand a finished measurement to the screen, which stores and applies it. */
   readonly onCalibrated: (fit: FovFit, references: readonly CalibrationReference[]) => void;
+  /** Tell the screen about every tap on the picture, attributed or not, so it
+      can watch for a gross compass error no field-of-view fit can absorb. */
+  readonly onPictureTap?: (
+    tappedPx: { readonly xPx: number; readonly yPx: number },
+    reference: CalibrationReference | undefined,
+  ) => void;
   /** Hand the tilt zero point to the screen, which stores it and bands with it. */
   readonly onPitchMeasured: (estimate: PitchBiasEstimate) => void;
   readonly shareTarget: ShareTarget;
@@ -320,6 +326,7 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
       const tappedPx = { xPx: event.clientX - box.left, yPx: event.clientY - box.top };
       const references = props.calibrationReferences();
       const reference = pickReference(tappedPx, references, MAX_TAP_DISTANCE_PX);
+      props.onPictureTap?.(tappedPx, reference);
       if (reference === undefined) {
         setTapNote(
           references.length === 0
@@ -397,7 +404,7 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
               ))}
             </div>
             <p data-testid="home-session-length">
-              {HOME_SESSION_STEPS.length} short steps, about five minutes, then{' '}
+              {HOME_SESSION_STEPS.length} short steps, about seven minutes, then{' '}
               {DRAG_TRIAL_PLAN.length} quick lining-up attempts. You can stop at any time by
               closing the page; nothing is kept if you do.
             </p>

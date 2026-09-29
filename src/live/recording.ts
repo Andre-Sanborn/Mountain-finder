@@ -111,6 +111,7 @@ export const POSE_LABELS = [
   'portrait-upright-known-bearing',
   'landscape-upright-known-bearing-top-left',
   'landscape-upright-known-bearing-top-right',
+  'landscape-walking-known-bearing',
   'tip-past-vertical',
   'roll-about-camera-axis',
   'rotate-to-landscape',
@@ -136,6 +137,38 @@ export const KNOWN_BEARING_POSES: readonly PoseLabel[] = [
   'landscape-upright-known-bearing-top-right',
   'sun-capture',
 ];
+
+/**
+ * The walking aim, and the still step it is scored against.
+ *
+ * `landscape-walking-known-bearing` is the only segment that can show a heading
+ * fault present only while the phone is moving. It is deliberately NOT in
+ * {@link KNOWN_BEARING_POSES}: a phone whose compass breaks under motion would
+ * fit neither hypothesis there, and one misfitting segment withdraws the
+ * compass-reference verdict for the whole recording. So it is read by
+ * {@link motionHeadingVerdict} alone.
+ *
+ * The reference is the top-LEFT still step and not the top-right one, because
+ * the two hold the phone's top edge in opposite directions: under the
+ * device-top-edge hypothesis their compass-minus-Sun offsets differ by 180°, so
+ * pooling them would measure the handedness rather than the motion. The walking
+ * step's instruction names the same handedness as the reference step's.
+ */
+export const WALKING_AIM_POSE: PoseLabel = 'landscape-walking-known-bearing';
+export const WALKING_AIM_REFERENCE_POSE: PoseLabel = 'landscape-upright-known-bearing-top-left';
+
+/**
+ * How far the compass-to-Sun offset may change between the still step and the
+ * walking one before it is called a motion-dependent fault, degrees.
+ *
+ * Forty-five is a quarter of the 180° the two reference hypotheses differ by in
+ * landscape, and close to four times the 12° residual a decided segment may
+ * leave ({@link MAX_WINNER_RESIDUAL_DEG}). A
+ * compass that is merely noisy under motion does not reach it; a reading that
+ * changes reference axis, or stops tracking while the phone moves, passes it by
+ * a wide margin.
+ */
+export const MOTION_HEADING_FAULT_DEG = 45;
 
 /**
  * The aiming poses, where the person was asked to keep the reference in the
@@ -2594,6 +2627,83 @@ function pitchBiasVerdict(
   );
 }
 
+/** The median of `compass reading − the Sun's magnetic azimuth` over one step. */
+interface SunOffsetSummary {
+  readonly samples: number;
+  readonly medianDeg: number;
+}
+
+function sunOffsetOverSegment(
+  recording: HomeSessionRecording,
+  pose: PoseLabel,
+): SunOffsetSummary | undefined {
+  const segment = recording.segments.find((s) => s.pose === pose);
+  if (segment === undefined) return undefined;
+  const offsets: number[] = [];
+  for (const s of reduceSegment(segment)) {
+    if (s.compassDeg === undefined) continue;
+    offsets.push(signedDeltaDeg(s.compassDeg, recording.knownBearing.magneticAzimuthDeg));
+  }
+  if (offsets.length < MIN_SCORED_SAMPLES) return undefined;
+  const medianDeg = median(offsets);
+  if (medianDeg === undefined) return undefined;
+  return { samples: offsets.length, medianDeg };
+}
+
+/**
+ * Does the compass still point the same way once the phone is moving?
+ *
+ * The person aims at the Sun in landscape twice: once standing still, once
+ * while walking twenty steps. Both steps put the camera on the same reference
+ * and hold the phone the same way round, so `reading − Sun azimuth` is the same
+ * quantity in both and its CHANGE needs no reference hypothesis to interpret.
+ *
+ * A static offset is not a fault here. A 90° one in the landscape steps is the
+ * other reference hypothesis, which `compass-reference` is what decides.
+ */
+function motionHeadingVerdict(recording: HomeSessionRecording): Verdict {
+  const question =
+    'Does the compass reading move away from the Sun once the phone is carried rather than held still?';
+  if (recording.knownBearing.kind !== 'sun-azimuth') {
+    return inconclusive('motion-heading', question, [
+      'the known bearing is not the Sun, so there is no fixed reference to hold the two steps against',
+    ]);
+  }
+  const still = sunOffsetOverSegment(recording, WALKING_AIM_REFERENCE_POSE);
+  const walking = sunOffsetOverSegment(recording, WALKING_AIM_POSE);
+  if (still === undefined || walking === undefined) {
+    return inconclusive('motion-heading', question, [
+      `${WALKING_AIM_REFERENCE_POSE}: ` +
+        (still === undefined
+          ? `fewer than ${MIN_SCORED_SAMPLES} usable compass samples, or no such segment`
+          : `${still.samples} samples, ${fmtSigned(still.medianDeg)} from the Sun`),
+      `${WALKING_AIM_POSE}: ` +
+        (walking === undefined
+          ? `fewer than ${MIN_SCORED_SAMPLES} usable compass samples, or no such segment`
+          : `${walking.samples} samples, ${fmtSigned(walking.medianDeg)} from the Sun`),
+    ]);
+  }
+
+  const changeDeg = Math.abs(signedDeltaDeg(walking.medianDeg, still.medianDeg));
+  const evidence = [
+    `${WALKING_AIM_REFERENCE_POSE}: ${still.samples} samples, ${fmtSigned(still.medianDeg)} from the Sun`,
+    `${WALKING_AIM_POSE}: ${walking.samples} samples, ${fmtSigned(walking.medianDeg)} from the Sun`,
+    `the offset changed by ${changeDeg.toFixed(1)}° between the two, against a ` +
+      `${MOTION_HEADING_FAULT_DEG}° threshold`,
+    'a constant offset shared by both steps is the reference-axis question, not a motion fault',
+  ];
+  return verdict(
+    'motion-heading',
+    question,
+    changeDeg >= MOTION_HEADING_FAULT_DEG
+      ? `yes — the reading moved ${changeDeg.toFixed(1)}° away from the Sun while walking, which is a ` +
+        'motion-dependent heading fault'
+      : `no — the reading stayed within ${changeDeg.toFixed(1)}° of where it sat while still`,
+    'moderate',
+    evidence,
+  );
+}
+
 function headingBiasVerdict(
   recording: HomeSessionRecording,
   analysis: CompassReferenceAnalysis,
@@ -2756,6 +2866,7 @@ export function analyseRecording(recording: HomeSessionRecording): RecordingAnal
   const pitchBias = estimatePitchBias(recording);
   verdicts.push(pitchBiasVerdict(recording, pitchBias));
   verdicts.push(headingBiasVerdict(recording, compassReference));
+  verdicts.push(motionHeadingVerdict(recording));
 
   return {
     device: recording.device,
@@ -3114,6 +3225,16 @@ export function protocolSegments(): readonly SynthSegmentSpec[] {
       to: { betaDeg: 5, gammaDeg: -90 },
       screenAngleDeg: 270,
       note: 'top edge to the left of the target; the hypotheses differ by -90 degrees',
+    },
+    {
+      pose: 'landscape-walking-known-bearing',
+      durationMs: 20_000,
+      orientationHz: 10,
+      motionHz: 10,
+      from: { betaDeg: 0, gammaDeg: -90 },
+      to: { betaDeg: 6, gammaDeg: -90 },
+      screenAngleDeg: 270,
+      note: 'the same landscape hold, carried twenty steps and then stood still',
     },
     {
       pose: 'tip-past-vertical',

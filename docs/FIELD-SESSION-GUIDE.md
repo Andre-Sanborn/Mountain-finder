@@ -53,6 +53,12 @@ If they do not, the trip will not produce an F1 result. Tell Claude before you g
 - The screen, the camera and GPS all run flat out, and cold drains a battery faster.
 - Put the screen brightness up before you start; you will need it in daylight.
 
+### Go when the sun is up, 15° to 50° above the horizon
+
+The sun measures the camera's width, and it is also how you put the direction right if the
+compass is a quarter turn out. Stack fists at arm's length from the horizon: one and a half
+fists to five. Mid-morning or mid-afternoon, not noon and not near sunset.
+
 ### Check the forecast for visibility, not just for weather
 
 The summits that matter are far away. Ten of the tallest-looking ones are 34 to 58 km out.
@@ -74,7 +80,7 @@ graded summits at all.
 ### Time budget
 
 **Twenty-five minutes on site, once you are standing at the spot.** That is the whole
-session: three cold starts, the fifteen guided steps, and the minutes you note at the end.
+session: three cold starts, the sixteen guided steps, and the minutes you note at the end.
 
 Add the drive and a walk from the car on top of that. Plan the visit with daylight to spare,
 and do not let the budget push you into hurrying the step where you wait for the location to
@@ -164,7 +170,7 @@ once, because this is the session that stores photographs:
 
 Under them:
 
-> 15 steps and 8 captures, about twenty-five minutes. You can stop at any time by closing the
+> 16 steps and 8 captures, about twenty-five minutes. You can stop at any time by closing the
 > page; nothing is kept if you do.
 
 Tap **Start the field session**. If that button is grey, a line under it says
@@ -172,9 +178,9 @@ Tap **Start the field session**. If that button is grey, a line under it says
 
 ---
 
-## The fifteen steps on screen
+## The sixteen steps on screen
 
-The panel shows one step at a time, as **Step 3 of 15 — Wait for the location**, with the
+The panel shows one step at a time, as **Step 4 of 16 — Wait for the location**, with the
 instruction under it. Each step ends with either **Done — next step** or a capture button.
 The order is part of the test: several of the criteria depend on nothing having been dragged
 or re-calibrated in between.
@@ -203,7 +209,33 @@ Tap **Use this measurement**. **Nothing after this counts without it.** If the a
 the two taps instead, it says why; try two features further apart, and do not carry on until
 it accepts.
 
-### Step 3 — Wait for the location
+### Step 3 — Check which way the labels point
+
+> If the labels point the wrong way, tap Fix direction — tap the sun, or pick a summit you
+> know by name and tap it. Otherwise carry on.
+
+Look at the picture. If the names sit roughly over the right mountains, tap **Done — next
+step** and move on.
+
+If everything is in the wrong place — a whole quarter turn out, so that the names belong to
+mountains somewhere else entirely — the phone's compass is wrong by more than any nudge can
+fix. Fix it here:
+
+1. Hold the phone still for ten seconds. Until then both buttons are grey.
+2. Tap **Fix direction — tap the sun**, then tap the middle of the real sun in the picture.
+   The labels turn as soon as you lift your finger, and a line says how far they turned.
+3. If you cannot see the sun, tap **Fix direction — tap a summit you know**, choose that
+   summit's name from the list, and tap it in the picture. The screen then says what it is
+   about to do — for example "This turns the labels 92° to the right." — and you tap
+   **Yes, turn them** or **No, leave them**.
+
+After a fix, a line stays on screen saying how far the compass has moved since: "The compass
+has moved 0.4° since you fixed the direction." If that line turns orange and tells you to
+fix the direction again, do it again before the next capture.
+
+Tap **Done — next step**.
+
+### Step 4 — Wait for the location
 
 > Stand still until the phone says it knows where it is to better than 30 metres. If it will
 > not settle, wait a minute and try again.
@@ -218,7 +250,7 @@ A line underneath reads one of three things:
 
 Do not go on until it reads the middle one.
 
-### Step 4 — Brace the phone
+### Step 5 — Brace the phone
 
 > Hold the phone in both hands with your elbows on a rail, a rock or your knee, point it at
 > the view, and keep it still until the bar fills.
@@ -233,7 +265,7 @@ Every capture from here is taken braced, with that line reading "that is enough"
 hand-held wobble is one of the error terms this session is measuring, and the braced number
 is the one that was budgeted for.
 
-### Step 5 — Capture as it is
+### Step 6 — Capture as it is
 
 > Without touching the labels, tap Capture raw. This is the picture of what the app got right
 > or wrong on its own.
@@ -241,7 +273,7 @@ is the one that was budgeted for.
 The button reads **Capture raw**. This one records how far off the app is before any human
 help.
 
-### Step 6 — Line one label up (1 of 3)
+### Step 7 — Line one label up (1 of 3)
 
 > Pick the one summit you are certain of, and drag its label onto it with your finger. Fine
 > drag is on, so the labels move slowly.
@@ -252,13 +284,13 @@ drawn, as buttons. Tap the one you dragged. It then reads "Lined up on:" with th
 Pick a summit you are sure of, not one you think is probably right. It is the anchor for the
 rest of the session.
 
-### Step 7 — Capture after the drag (1 of 3)
+### Step 8 — Capture after the drag (1 of 3)
 
 > Hold the phone still again, then tap Capture after drag.
 
 The button reads **Capture after drag**.
 
-### Step 8 — Turn to the left edge
+### Step 9 — Turn to the left edge
 
 > Without touching the labels again, turn slowly to your right until that same summit slides
 > over to the LEFT edge of the picture. The screen says when it is far enough. Hold still,
@@ -273,21 +305,21 @@ Watch the line that tracks the anchor:
 If you turn the wrong way it says so: "That summit is on the right of the picture and this
 step wants it on the left. Turn the other way." The button reads **Capture**.
 
-### Step 9 — Turn to the right edge
+### Step 10 — Turn to the right edge
 
 > Now turn the other way, past the middle, until that summit sits near the RIGHT edge
 > instead. Hold still, then capture.
 
 The same percentage line, counting to the right edge this time.
 
-### Step 10 — Tip up
+### Step 11 — Tip up
 
 > Point at the view again. Still without touching the labels, tip the top of the phone back
 > about ten degrees, hold still, then capture.
 
 A line reads "About 10° up is what is wanted."
 
-### Step 11 — Tip down
+### Step 12 — Tip down
 
 > Now tip it about ten degrees the other way, so it points a little below the view. Hold
 > still, then capture.
@@ -375,6 +407,8 @@ asks you to put it somewhere else, the answer is no.
   across the screen", and whether it was accepted at the first try.
 - The **location accuracy** the screen showed when you started capturing.
 - Which summit you used as the **anchor**, and how sure you were of it.
+- Whether you had to **fix the direction**: which way you fixed it, what the sun or the
+  summit was, and how far the labels turned.
 - The closing line: how many captures, and whether every one follows the protocol.
 - Every **shortfall** line, word for word, if there were any.
 - The line about the readings file: whether it is complete, and how many bytes.

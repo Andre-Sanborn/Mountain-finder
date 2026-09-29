@@ -319,23 +319,29 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
     );
     await page.getByTestId('field-session-next').click();
 
-    /* ── 3. the fix ───────────────────────────────────────────────────────── */
+    /* ── 3. which way the labels point ────────────────────────────────────── */
+    // Read past, deliberately: the rehearsal grades the pose the sensors gave,
+    // 8° of compass error and all, so nothing here is re-anchored.
+    await expect(session).toHaveAttribute('data-step-id', 'fix-direction');
+    await page.getByTestId('field-session-next').click();
+
+    /* ── 4. the fix ───────────────────────────────────────────────────────── */
     await expect(session).toHaveAttribute('data-step-id', 'fix');
     await expect(page.getByTestId('field-session-accuracy')).toBeVisible();
     await page.getByTestId('field-session-next').click();
 
-    /* ── 4. brace ─────────────────────────────────────────────────────────── */
+    /* ── 5. brace ─────────────────────────────────────────────────────────── */
     await expect(session).toHaveAttribute('data-step-id', 'brace');
     await holdStill(page);
     await page.getByTestId('field-session-next').click();
 
-    /* ── 5. capture raw ───────────────────────────────────────────────────── */
+    /* ── 6. capture raw ───────────────────────────────────────────────────── */
     await expect(session).toHaveAttribute('data-step-id', 'capture-raw');
     await holdStill(page);
     injected.push({ captureId: 'c1', headingDeg: RAW_HEADING_DEG, pitchDeg: RAW_PITCH_DEG });
     await capture(page, 1);
 
-    /* ── 6. the anchor, chosen by a rule fixed before the run ─────────────── */
+    /* ── 7. the anchor, chosen by a rule fixed before the run ─────────────── */
     await expect(session).toHaveAttribute('data-step-id', 'drag');
     const choices = page.getByTestId('field-session-anchor-choice');
     await expect(choices.first()).toBeVisible({ timeout: 20_000 });
@@ -438,13 +444,13 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
     expect(onTarget, 'no drawn dot landed on the drag target').not.toEqual([]);
     await page.getByTestId('field-session-next').click();
 
-    /* ── 7. capture after the drag ────────────────────────────────────────── */
+    /* ── 8. capture after the drag ────────────────────────────────────────── */
     await expect(session).toHaveAttribute('data-step-id', 'capture-drag');
     await holdStill(page);
     injected.push({ captureId: 'c2', headingDeg: RAW_HEADING_DEG, pitchDeg: RAW_PITCH_DEG });
     await capture(page, 2);
 
-    /* ── 8. the four movements § 2.4 registers ───────────────────────────── */
+    /* ── 9. the four movements § 2.4 registers ───────────────────────────── */
     const trim = await currentTrim(page);
     const halfFieldTan = Math.tan((VISIBLE_FOV.hFovDeg * DEG) / 2);
     /** Inject a pose and wait for the fused heading to catch up with it. */
@@ -523,7 +529,7 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
       await capture(page, index + 3);
     }
 
-    /* ── 9. the two remaining drags onto the same summit ──────────────────── */
+    /* ── 10. the two remaining drags onto the same summit ──────────────────── */
     await aim(RAW_HEADING_DEG, RAW_PITCH_DEG);
     for (const repeat of [2, 3]) {
       await expect(session).toHaveAttribute('data-step-id', 'drag');
@@ -645,8 +651,8 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
       return {
         captureId: item.captureId,
         readings: [
-          { annotatorId: 'synthetic-a', apexes },
-          { annotatorId: 'synthetic-b', apexes: second },
+          { annotatorId: 'synthetic-a', method: 'bare-frame', apexes },
+          { annotatorId: 'synthetic-b', method: 'bare-frame', apexes: second },
         ],
       };
     });
@@ -654,8 +660,8 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
       resolve(OUT_DIR, 'synthetic-truth.json'),
       `${JSON.stringify(
         {
-          format: 'mountain-finder/field-apex-truth@1',
-          method:
+          format: 'mountain-finder/field-apex-truth@2',
+          procedure:
             'SYNTHETIC — NOT INDEPENDENT TRUTH. The injected sensor pose with the injected ' +
             '8 deg compass and -2 deg pitch errors removed, projected onto the stored frame and ' +
             'straddled by +/-2 px. No annotator looked at a photograph. It exists to exercise ' +
@@ -712,13 +718,23 @@ function annotationBrief(
     `1. Open one frame at full resolution. Every frame is ${context.framePx.widthPx} x ` +
       `${context.framePx.heightPx} pixels. Pixel (0, 0)`,
     '   is the top-left corner, x runs right and y runs down.',
-    '2. For each summit named under that frame, decide whether you can identify it in the',
-    '   picture.',
-    '3. If you can, report its apex as a pixel: the single point you judge to be the top of',
-    '   that summit.',
-    '4. If you cannot, report `null`. **`null` is a real answer, not a skip.** It is what',
-    '   catches the app drawing a mountain that is not there.',
-    '5. Write nothing else about the frame, and do not revise an earlier frame after seeing',
+    '2. For each summit named under that frame, give exactly one of three answers. Each one',
+    '   is a positive claim, and the three grade in different directions:',
+    '   - **You found it.** Report its apex as a pixel: the single point you judge to be the',
+    '     top of that summit. If you took the point from a feature such as a mast, a lookout',
+    '     or a notch, name that feature as the landmark.',
+    '   - **It is not there.** The place where that summit would stand holds no summit. Say',
+    '     which it holds instead: `clear-sky` for open sky, `foreground-blocked` for ground',
+    '     or a ridge standing in front of it. This is the answer that convicts the app of',
+    '     drawing a mountain that is not there, so only give it when you are sure.',
+    '   - **You cannot tell.** Haze, a crowded ridge line, a foothill you cannot resolve.',
+    '     This answer removes the summit from the scoring rather than counting against the',
+    '     app either way.',
+    '3. Say which method you worked under, on your own reading:',
+    '   - `bare-frame` — the frame and the summit names, nothing else.',
+    '   - `frame-and-map` — the frame, the summit names, the viewpoint and a topographic',
+    '     map. Never the app\'s projection, and never the pose.',
+    '4. Write nothing else about the frame, and do not revise an earlier frame after seeing',
     '   a later one.',
   );
   lines.push('');
@@ -728,16 +744,25 @@ function annotationBrief(
   lines.push('');
   lines.push('```json');
   lines.push('{');
-  lines.push('  "format": "mountain-finder/field-apex-truth@1",');
-  lines.push('  "method": "two independent annotators, bare frames, labelled pixel grid",');
+  lines.push('  "format": "mountain-finder/field-apex-truth@2",');
+  lines.push('  "procedure": "two independent annotators, bare frames, labelled pixel grid",');
   lines.push('  "captures": [');
-  lines.push('    { "captureId": "c1", "readings": [ { "annotatorId": "you", "apexes": [');
-  lines.push('      { "summitId": "<the id printed beside the name>", "apexPx": { "xPx": 0, "yPx": 0 } },');
-  lines.push('      { "summitId": "<another id>", "apexPx": null }');
-  lines.push('    ] } ] }');
+  lines.push('    { "captureId": "c1", "readings": [');
+  lines.push('      { "annotatorId": "you", "method": "bare-frame", "apexes": [');
+  lines.push('        { "summitId": "<the id printed beside the name>", "apexPx": { "xPx": 0, "yPx": 0 } },');
+  lines.push('        { "summitId": "<one taken off a feature>", "apexPx": { "xPx": 0, "yPx": 0 }, "landmark": "the crest under the tallest mast" },');
+  lines.push('        { "summitId": "<one that is not there>", "absent": true, "reason": "clear-sky" },');
+  lines.push('        { "summitId": "<one you cannot tell>", "cannotIdentify": true }');
+  lines.push('      ] }');
+  lines.push('    ] }');
   lines.push('  ]');
   lines.push('}');
   lines.push('```');
+  lines.push('');
+  lines.push(
+    'Every summit named under a frame gets one of the three answers. `null` is not one of',
+    'them and the reader refuses it.',
+  );
   lines.push('');
   lines.push('## What is known about the frames');
   lines.push('');

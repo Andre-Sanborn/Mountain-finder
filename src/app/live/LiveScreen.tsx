@@ -70,7 +70,8 @@ import type { AnnotatedScene } from '../../pipeline/types';
 import { DEFAULT_TERRAIN_MANIFEST_URL } from '../../providers/terrain-manifest';
 import { resolveFromBase } from '../base-path';
 import { selectOverlayPeaks, TerrainUnavailableError } from '../overlay-builder';
-import { NO_TRIM, isUntrimmed, type TrimState } from '../trim';
+import { NO_GROSS_HEADING_OFFSET_DEG, NO_TRIM, isUntrimmed, type TrimState } from '../trim';
+import { magneticDeclinationDeg } from '../../core/declination';
 import { BrowserSensorTraces, requestMotionPermission, type RawEventSink } from './browser-sensors';
 import { CameraOpenError, openRearCamera, readTrackSettings, TRACK_POLL_INTERVAL_MS } from './camera-stream';
 import { celestialMarks, offFrameDirection, type CelestialMark } from './celestial-markers';
@@ -84,14 +85,25 @@ import {
 } from './fine-drag';
 import type { CompletedDrag } from './drag-trial';
 import { HomeSessionPanel } from './HomeSessionPanel';
-import type { CalibrationFrame, CalibrationReference, FovFit } from './fov-calibration';
+import type { CalibrationFrame, CalibrationReference, FovFit, PointPx } from './fov-calibration';
 import { calibrationFromFit } from './fov-calibration';
 import { FieldSessionPanel, type CapturedFrame } from './FieldSessionPanel';
 import {
   isFieldSessionRequested,
+  stillForMs,
   type FieldCaptureContext,
+  type PoseSample,
   type UnmeasuredSummit,
 } from './field-session';
+import {
+  anchorDrift,
+  azimuthInBasis,
+  grossHeadingWarning,
+  reanchorFromTap,
+  STILL_FOR_REANCHOR_MS,
+  type Reanchor,
+  type ReanchorReference,
+} from './reanchor';
 import { browserBundleShareTarget } from './field-share';
 import type { PitchBiasEstimate } from '../../live/recording';
 
@@ -147,6 +159,14 @@ const FRAME_QUALITY = 0.92;
 /** How much of the overlay's tick history is kept, milliseconds. */
 const TICK_MEMORY_MS = 4000;
 
+/**
+ * How much of the pose's own history is kept, milliseconds.
+ *
+ * Longer than the tick history, because the re-anchor is gated on ten seconds
+ * of stillness and `stillForMs` can only report what is still in the buffer.
+ */
+const POSE_TRACE_MEMORY_MS = STILL_FOR_REANCHOR_MS + 4000;
+
 export interface LiveScreenProps {
   /** Builds the one 360° scene. Injected so the screen has no data source of its own. */
   readonly buildScene: (
@@ -200,6 +220,26 @@ interface DecodedFrame {
   readonly heightPx: number;
 }
 
+/** Which reference the next tap on the picture is about. */
+type ReanchorMode = 'off' | 'sun' | 'summit';
+
+/** What a re-anchor recorded, so the screen can watch the compass leave it. */
+interface Anchor {
+  /** The sensed heading at the instant the anchor was set, degrees. */
+  readonly sensedHeadingDeg: number;
+  /** What the direction was taken from, for the field bundle and the screen. */
+  readonly source: 'sun' | 'summit';
+  readonly referenceName: string;
+  readonly offsetDeg: number;
+}
+
+/** A summit re-anchor the person has not confirmed yet. */
+interface PendingReanchor {
+  readonly value: Reanchor;
+  readonly reference: ReanchorReference;
+  readonly source: 'sun' | 'summit';
+}
+
 /** Read `env(safe-area-inset-*)` off a probe element the layout already sizes. */
 function readInsets(probe: HTMLElement | null): SafeAreaInsetsPx {
   if (probe === null) return {};
@@ -232,6 +272,23 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
   const [sceneError, setSceneError] = useState<string | undefined>(undefined);
   const [sweepMs, setSweepMs] = useState<number | undefined>(undefined);
   const [trim, setTrim] = useState<TrimState>(NO_TRIM);
+  /**
+   * The re-anchor's heading correction. Separate from `trim` on purpose: no
+   * drag can reach it, so a quarter-turn correction survives the next touch.
+   */
+  const [grossHeadingOffsetDeg, setGrossHeadingOffsetDeg] = useState(
+    NO_GROSS_HEADING_OFFSET_DEG,
+  );
+  const [anchor, setAnchor] = useState<Anchor | undefined>(undefined);
+  /** Which reference the next tap on the picture is about, or none. */
+  const [reanchorMode, setReanchorMode] = useState<ReanchorMode>('off');
+  /** The summit the person picked by name, by peak id. */
+  const [summitId, setSummitId] = useState('');
+  /** A summit re-anchor waiting to be confirmed, with the sentence to confirm. */
+  const [pendingReanchor, setPendingReanchor] = useState<PendingReanchor | undefined>(undefined);
+  const [reanchorNote, setReanchorNote] = useState<string | undefined>(undefined);
+  /** The warning raised when a tap says the compass is grossly wrong. */
+  const [grossWarning, setGrossWarning] = useState<string | undefined>(undefined);
   const [dragMode, setDragMode] = useState<DragMode>('normal');
   /** The last drag that finished, for the home session's repeated-drag trials. */
   const [completedDrag, setCompletedDrag] = useState<CompletedDrag | undefined>(undefined);
@@ -259,6 +316,9 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
   const rollRef = useRef<number | undefined>(undefined);
   /** When the overlay was last re-projected, newest last. Bounded by age. */
   const tickTimesRef = useRef<number[]>([]);
+  /** The pose's recent history, for the stillness the re-anchor is gated on. */
+  const poseTraceRef = useRef<PoseSample[]>([]);
+  const reanchorLayerRef = useRef<HTMLDivElement>(null);
 
   const landscape = isLandscapeViewport(viewport.widthPx, viewport.heightPx);
 
@@ -569,10 +629,11 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
       screenAngle: (traces.status().screenAngleDeg % 360) as 0 | 90 | 180 | 270,
       screenRollHypothesis: rollHypothesis,
       trim,
+      grossHeadingOffsetDeg,
     });
     // `tick` is what drives this: the traces are a mutable object the listeners
     // append to, so there is nothing else for a dependency array to notice.
-  }, [tick, fix, fov, rollHypothesis, trim, phase]);
+  }, [tick, fix, fov, rollHypothesis, trim, grossHeadingOffsetDeg, phase]);
 
   const sensorStatus = tracesRef.current?.status();
 
@@ -622,6 +683,205 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
       framePx,
     });
   }, [poseResult, pose, fov?.source, pitchBias, sensorStatus?.compassAccuracyDeg, framePx.widthPx]);
+
+
+  /* ── re-anchoring, for a compass that is grossly wrong ──────────────────── */
+  /**
+   * The pose's own history, one sample per redraw.
+   *
+   * The SENSED heading, not the drawn one: stillness is a property of the phone,
+   * and a drag moves the labels without moving the phone.
+   */
+  useEffect(() => {
+    if (pose === undefined || poseResult?.ok !== true) return;
+    const trace = poseTraceRef.current;
+    const tMs = performance.now();
+    trace.push({
+      tMs,
+      headingDeg: poseResult.value.sensedPose.headingDeg,
+      pitchDeg: poseResult.value.sensedPose.pitchDeg,
+      rollDeg: pose.rollDeg,
+    });
+    while ((trace[0]?.tMs ?? tMs) < tMs - POSE_TRACE_MEMORY_MS) trace.shift();
+  }, [tick, pose, poseResult]);
+
+  const stillMs = stillForMs(poseTraceRef.current);
+  const stillEnoughToReanchor = stillMs >= STILL_FOR_REANCHOR_MS;
+
+  /** WMM2025's declination here, so a magnetic pose gets a magnetic reference. */
+  const declinationDeg = useMemo(() => {
+    if (fix === undefined) return undefined;
+    return magneticDeclinationDeg(
+      { latitudeDeg: fix.lat, longitudeDeg: fix.lon, heightM: fix.altitudeM ?? 0 },
+      fix.when,
+    );
+  }, [fix]);
+
+  const headingBasis = poseResult?.ok === true ? poseResult.value.heading.basis : undefined;
+  const sunMark = marks.find((mark) => mark.body === 'sun');
+
+  const sunReference = useMemo((): ReanchorReference | undefined => {
+    if (sunMark === undefined || sunMark.belowHorizon || headingBasis === undefined) return undefined;
+    const azimuthDeg = azimuthInBasis(sunMark.azimuthDeg, headingBasis, declinationDeg);
+    if (azimuthDeg === undefined) return undefined;
+    return { name: 'the sun', azimuthDeg, altitudeDeg: sunMark.altitudeDeg };
+  }, [sunMark, headingBasis, declinationDeg]);
+
+  /**
+   * Every summit the sweep found, by name.
+   *
+   * Not the drawn ones: under a gross error the labels are in the wrong part of
+   * the sky, and the summit the person recognises is usually one the app has
+   * put somewhere else entirely or left off the frame.
+   */
+  const reanchorPeaks = useMemo(() => {
+    if (scene === undefined) return [];
+    return [...scene.peaks]
+      .filter((peak) => peak.name.trim() !== '')
+      .sort((left, right) => left.name.localeCompare(right.name));
+  }, [scene]);
+
+  const summitReference = useMemo((): ReanchorReference | undefined => {
+    if (headingBasis === undefined) return undefined;
+    const peak = reanchorPeaks.find((candidate) => candidate.id === summitId);
+    if (peak === undefined) return undefined;
+    const azimuthDeg = azimuthInBasis(peak.bearingDeg, headingBasis, declinationDeg);
+    if (azimuthDeg === undefined) return undefined;
+    return { name: peak.name, azimuthDeg, altitudeDeg: peak.altitudeDeg };
+  }, [headingBasis, declinationDeg, reanchorPeaks, summitId]);
+
+  const reanchorReference =
+    reanchorMode === 'sun' ? sunReference : reanchorMode === 'summit' ? summitReference : undefined;
+
+  const applyReanchor = useCallback(
+    (value: Reanchor, reference: ReanchorReference, source: 'sun' | 'summit') => {
+      if (poseResult?.ok !== true) return;
+      setGrossHeadingOffsetDeg(value.grossHeadingOffsetDeg);
+      // The fine heading trim is cleared: a re-anchor replaces the whole
+      // heading correction rather than adding to whatever was dragged in.
+      setTrim((current) => ({ ...current, headingDeg: 0, pitchDeg: value.pitchTrimDeg }));
+      setAnchor({
+        sensedHeadingDeg: poseResult.value.sensedPose.headingDeg,
+        source,
+        referenceName: reference.name,
+        offsetDeg: value.grossHeadingOffsetDeg,
+      });
+      setReanchorMode('off');
+      setPendingReanchor(undefined);
+      setGrossWarning(undefined);
+      setReanchorNote(
+        `The labels now line up with ${reference.name}. ${value.sentence}` +
+          (value.pitchClamped
+            ? ' The up-and-down part was bigger than the nudge allows, so only part of it was used.'
+            : ''),
+      );
+    },
+    [poseResult],
+  );
+
+  const onReanchorTap = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const layer = reanchorLayerRef.current;
+      if (layer === null || pose === undefined || poseResult?.ok !== true) return;
+      if (reanchorReference === undefined) {
+        setReanchorNote(
+          reanchorMode === 'summit'
+            ? 'Pick the summit by name first.'
+            : 'The sun is not up, or the app does not know which way north is yet.',
+        );
+        return;
+      }
+      const box = layer.getBoundingClientRect();
+      const solved = reanchorFromTap({
+        reference: reanchorReference,
+        tappedPx: { xPx: event.clientX - box.left, yPx: event.clientY - box.top },
+        sensedPose: poseResult.value.sensedPose,
+        drawnHeadingDeg: pose.headingDeg,
+        framePx,
+        principalPointPx: geometry.principalPointPx,
+        visibleHFovDeg: pose.hFovDeg,
+      });
+      if (!solved.ok) {
+        setReanchorNote(solved.detail);
+        return;
+      }
+      if (reanchorMode === 'sun') {
+        applyReanchor(solved.value, reanchorReference, 'sun');
+        return;
+      }
+      setPendingReanchor({ value: solved.value, reference: reanchorReference, source: 'summit' });
+    },
+    [
+      pose,
+      poseResult,
+      reanchorReference,
+      reanchorMode,
+      framePx.widthPx,
+      framePx.heightPx,
+      geometry.principalPointPx,
+      applyReanchor,
+    ],
+  );
+
+  /**
+   * Watch a tap on the picture for a gross compass error.
+   *
+   * Both sessions ask for taps on the real Sun to measure the field of view,
+   * and the same tap solves a heading. A heading tens of degrees from the
+   * sensed one is a broken compass, not a mis-measured lens.
+   *
+   * An UNATTRIBUTED tap counts, and it is the case that actually fires. A tap
+   * is attributed to a drawn mark within 160 px, which at this field of view is
+   * about 17° — narrower than the 20° this warns about — so a gross error
+   * always leaves the app's own Sun disc too far from the tap to be attributed
+   * at all. The step the person is on asks them to tap the real Sun, so a tap
+   * nothing can be attributed to is read as one.
+   */
+  const notePictureTap = useCallback(
+    (tappedPx: PointPx, reference: CalibrationReference | undefined) => {
+      if (reference !== undefined && reference.kind !== 'sun') return;
+      if (sunReference === undefined || pose === undefined || poseResult?.ok !== true) return;
+      const solved = reanchorFromTap({
+        reference: sunReference,
+        tappedPx,
+        sensedPose: poseResult.value.sensedPose,
+        drawnHeadingDeg: pose.headingDeg,
+        framePx,
+        principalPointPx: geometry.principalPointPx,
+        visibleHFovDeg: pose.hFovDeg,
+      });
+      if (!solved.ok) return;
+      // Set unconditionally: a later tap that solves close to the sensed
+      // heading clears a warning the first one raised.
+      setGrossWarning(
+        grossHeadingWarning(
+          poseResult.value.sensedPose.headingDeg,
+          solved.value.anchoredHeadingDeg,
+        ),
+      );
+    },
+    [sunReference, pose, poseResult, framePx.widthPx, framePx.heightPx, geometry.principalPointPx],
+  );
+
+  /** How far the compass has moved since the anchor was set. */
+  const drift = useMemo(() => {
+    if (anchor === undefined || poseResult?.ok !== true) return undefined;
+    return anchorDrift(
+      poseResult.value.sensedPose.headingDeg,
+      anchor.sensedHeadingDeg,
+      band?.measuredDeg.horizontal ?? 0,
+    );
+  }, [anchor, poseResult, band]);
+
+  /** Put everything the person has changed back where the sensors say. */
+  const clearAllTrim = useCallback(() => {
+    setTrim(NO_TRIM);
+    setGrossHeadingOffsetDeg(NO_GROSS_HEADING_OFFSET_DEG);
+    setAnchor(undefined);
+    setPendingReanchor(undefined);
+    setReanchorMode('off');
+    setReanchorNote(undefined);
+  }, []);
 
   /* ── the drag (D9), at normal or fine gain ──────────────────────────────── */
   const onPointerDown = useCallback(
@@ -866,6 +1126,13 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
 
   const readTickTimesMs = useCallback((): readonly number[] => tickTimesRef.current, []);
   const readNowMs = useCallback(() => performance.now(), []);
+  /**
+   * Clear the drag, keeping any re-anchor.
+   *
+   * The field session's repeated drags start from the same place each time, and
+   * that place is the anchored pose rather than the raw compass. The screen's
+   * own undo button clears both; this one is the session's.
+   */
   const resetTrim = useCallback(() => setTrim(NO_TRIM), []);
 
   const bundleShareTarget = useMemo(
@@ -905,6 +1172,8 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
       pose,
       headingBasis: poseResult.value.heading.basis,
       trim: { headingDeg: trim.headingDeg, pitchDeg: trim.pitchDeg },
+      grossHeadingOffsetDeg,
+      grossHeadingSource: anchor?.source ?? 'sensors',
       overlayPx: { widthPx: framePx.widthPx, heightPx: framePx.heightPx },
       band,
       layout,
@@ -926,6 +1195,8 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
     fov,
     trim.headingDeg,
     trim.pitchDeg,
+    grossHeadingOffsetDeg,
+    anchor?.source,
     framePx.widthPx,
     framePx.heightPx,
     trackSettings,
@@ -1038,6 +1309,18 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
         </svg>
       )}
 
+      {/* Above the drag layer while a re-anchor is armed: a finger on the
+          picture then means "the real thing is here" rather than "push the
+          labels", and the two cannot share one surface. */}
+      {reanchorMode !== 'off' && (
+        <div
+          ref={reanchorLayerRef}
+          className="live__session-taps"
+          data-testid="live-reanchor-tap-layer"
+          onPointerUp={onReanchorTap}
+        />
+      )}
+
       <div
         className="live__drag"
         data-testid="live-drag"
@@ -1096,6 +1379,7 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
             calibrationReferences={calibrationReferences}
             calibrationFrame={calibrationFrame}
             onCalibrated={applyFovFit}
+            onPictureTap={notePictureTap}
             onPitchMeasured={applyPitchBias}
             shareTarget={shareTarget}
             completedDrag={completedDrag}
@@ -1118,6 +1402,7 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
             calibrationReferences={calibrationReferences}
             calibrationFrame={calibrationFrame}
             onCalibrated={applyFovFit}
+            onPictureTap={notePictureTap}
             dragMode={dragMode}
             setDragMode={setDragMode}
             resetTrim={resetTrim}
@@ -1276,12 +1561,145 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
           <button
             type="button"
             data-testid="live-reset-trim"
-            disabled={isUntrimmed(trim)}
-            onClick={() => setTrim(NO_TRIM)}
+            disabled={isUntrimmed(trim) && grossHeadingOffsetDeg === NO_GROSS_HEADING_OFFSET_DEG}
+            onClick={clearAllTrim}
           >
             Put the labels back where the sensors say
           </button>
         </p>
+
+        {/* Fixing the direction sits beside the nudge, not in Settings. A
+            quarter-turn compass error makes every label on screen wrong, so the
+            way out of it has to be where the person is already looking. */}
+        {poseResult?.ok === true && (
+          <section
+            className="live__nudge"
+            data-testid="live-reanchor"
+            data-mode={reanchorMode}
+            data-gross-offset-deg={grossHeadingOffsetDeg}
+            data-still-ms={Math.round(stillMs)}
+            data-anchor-source={anchor?.source ?? ''}
+          >
+            {grossWarning !== undefined && (
+              <p className="live__warn" data-testid="live-gross-warning">
+                {grossWarning}
+              </p>
+            )}
+
+            {reanchorMode === 'off' && (
+              <>
+                <p>
+                  Labels pointing the wrong way?{' '}
+                  {stillEnoughToReanchor
+                    ? 'Fix the direction by tapping something you can name.'
+                    : `Hold the phone still for ${Math.max(
+                        1,
+                        Math.ceil((STILL_FOR_REANCHOR_MS - stillMs) / 1000),
+                      )} more second(s) first.`}
+                </p>
+                <button
+                  type="button"
+                  data-testid="live-reanchor-sun"
+                  disabled={!stillEnoughToReanchor || sunReference === undefined}
+                  onClick={() => {
+                    setReanchorNote(undefined);
+                    setReanchorMode('sun');
+                  }}
+                >
+                  Fix direction — tap the sun
+                </button>{' '}
+                <button
+                  type="button"
+                  data-testid="live-reanchor-summit"
+                  disabled={!stillEnoughToReanchor || reanchorPeaks.length === 0}
+                  onClick={() => {
+                    setReanchorNote(undefined);
+                    setReanchorMode('summit');
+                  }}
+                >
+                  Fix direction — tap a summit you know
+                </button>
+              </>
+            )}
+
+            {reanchorMode === 'sun' && (
+              <p data-testid="live-reanchor-prompt">
+                Tap the middle of the real sun in the picture.{' '}
+                <button type="button" data-testid="live-reanchor-cancel" onClick={() => setReanchorMode('off')}>
+                  Cancel
+                </button>
+              </p>
+            )}
+
+            {reanchorMode === 'summit' && (
+              <>
+                <label data-testid="live-reanchor-summit-picker">
+                  Which summit?{' '}
+                  <select
+                    data-testid="live-reanchor-summit-name"
+                    value={summitId}
+                    onChange={(event) => setSummitId(event.target.value)}
+                  >
+                    <option value="">Pick one by name</option>
+                    {reanchorPeaks.map((peak) => (
+                      <option key={peak.id} value={peak.id}>
+                        {peak.name} ({peak.distanceKm.toFixed(0)} km)
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p data-testid="live-reanchor-prompt">
+                  {summitReference === undefined
+                    ? 'Pick the summit by name, then tap it in the picture.'
+                    : `Now tap ${summitReference.name} in the picture.`}{' '}
+                  <button type="button" data-testid="live-reanchor-cancel" onClick={() => setReanchorMode('off')}>
+                    Cancel
+                  </button>
+                </p>
+              </>
+            )}
+
+            {pendingReanchor !== undefined && (
+              <p data-testid="live-reanchor-confirm" data-move-deg={pendingReanchor.value.moveDeg}>
+                {pendingReanchor.value.sentence}{' '}
+                <button
+                  type="button"
+                  data-testid="live-reanchor-confirm-yes"
+                  onClick={() =>
+                    applyReanchor(
+                      pendingReanchor.value,
+                      pendingReanchor.reference,
+                      pendingReanchor.source,
+                    )
+                  }
+                >
+                  Yes, turn them
+                </button>{' '}
+                <button
+                  type="button"
+                  data-testid="live-reanchor-confirm-no"
+                  onClick={() => setPendingReanchor(undefined)}
+                >
+                  No, leave them
+                </button>
+              </p>
+            )}
+
+            {reanchorNote !== undefined && <p data-testid="live-reanchor-note">{reanchorNote}</p>}
+
+            {anchor !== undefined && drift !== undefined && (
+              <p
+                className={drift.beyondBand ? 'live__warn' : undefined}
+                data-testid="live-anchor-drift"
+                data-gap-deg={drift.gapDeg}
+                data-beyond-band={String(drift.beyondBand)}
+              >
+                Direction fixed on {anchor.referenceName}, {Math.abs(anchor.offsetDeg).toFixed(0)}°{' '}
+                {anchor.offsetDeg < 0 ? 'left' : 'right'} of what the compass said. {drift.text}
+              </p>
+            )}
+          </section>
+        )}
 
         {/* Fine drag sits beside the nudge rather than in Settings, for the same
             reason the undo does: it is part of the gesture, and the step size is

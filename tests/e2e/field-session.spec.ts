@@ -375,24 +375,34 @@ test.describe('the field session', () => {
     );
     await page.getByTestId('field-session-next').click();
 
-    /* ── 3. the fix ───────────────────────────────────────────────────────── */
+    /* ── 3. which way the labels point ────────────────────────────────────── */
+    // The re-anchor lives on the live screen, not in this panel, so the step is
+    // a read: it tells the person the button is there and moves on.
+    await expect(session).toHaveAttribute('data-step-id', 'fix-direction');
+    await expect(page.getByTestId('field-session-instruction')).toContainText(
+      'tap Fix direction',
+    );
+    await expect(page.getByTestId('live-reanchor')).toBeVisible();
+    await page.getByTestId('field-session-next').click();
+
+    /* ── 4. the fix ───────────────────────────────────────────────────────── */
     await expect(session).toHaveAttribute('data-step-id', 'fix');
     const accuracy = page.getByTestId('field-session-accuracy');
     await expect(accuracy).toBeVisible();
     await page.getByTestId('field-session-next').click();
 
-    /* ── 4. brace ─────────────────────────────────────────────────────────── */
+    /* ── 5. brace ─────────────────────────────────────────────────────────── */
     await expect(session).toHaveAttribute('data-step-id', 'brace');
     await holdStill(page);
     await page.getByTestId('field-session-next').click();
 
-    /* ── 5. capture raw ───────────────────────────────────────────────────── */
+    /* ── 6. capture raw ───────────────────────────────────────────────────── */
     await expect(session).toHaveAttribute('data-step-id', 'capture-raw');
     await holdStill(page);
     injected.push({ captureId: 'c1', headingDeg: TRUE_HEADING_DEG, pitchDeg: 0 });
     await capture(page, 1);
 
-    /* ── 6. the first drag, on a summit the person names ──────────────────── */
+    /* ── 7. the first drag, on a summit the person names ──────────────────── */
     await expect(session).toHaveAttribute('data-step-id', 'drag');
     await expect(page.getByTestId('live-drag-mode')).toHaveAttribute('data-mode', 'fine');
     const anchor = page
@@ -408,13 +418,13 @@ test.describe('the field session', () => {
     await dragPicture(page, 4, 0);
     await page.getByTestId('field-session-next').click();
 
-    /* ── 7. capture after the drag ────────────────────────────────────────── */
+    /* ── 8. capture after the drag ────────────────────────────────────────── */
     await expect(session).toHaveAttribute('data-step-id', 'capture-drag');
     await holdStill(page);
     injected.push({ captureId: 'c2', headingDeg: TRUE_HEADING_DEG, pitchDeg: 0 });
     await capture(page, 2);
 
-    /* ── 8. the four movements § 2.4 registers ───────────────────────────── */
+    /* ── 9. the four movements § 2.4 registers ───────────────────────────── */
     // 33° off the summit's own bearing. On this frame x = 400 + 533.33·tan(δ),
     // so |δ| = 33° puts the marker 533.33 × 0.6494 = 346 px from the centre,
     // i.e. u = 0.866 — past the 0.8 target and still inside the 36.87°
@@ -454,7 +464,7 @@ test.describe('the field session', () => {
       await capture(page, index + 3);
     }
 
-    /* ── 10. the two remaining drags onto the same summit ─────────────────── */
+    /* ── 11. the two remaining drags onto the same summit ─────────────────── */
     await aim(TRUE_HEADING_DEG, 0);
     for (const repeat of [2, 3]) {
       await expect(session).toHaveAttribute('data-step-id', 'drag');
@@ -678,8 +688,16 @@ test.describe('the field session', () => {
       return {
         captureId,
         readings: [
-          { annotatorId: 'closed-form-a', apexes: [{ summitId: anchorId, apexPx: { xPx: xPx - 2, yPx } }] },
-          { annotatorId: 'closed-form-b', apexes: [{ summitId: anchorId, apexPx: { xPx: xPx + 2, yPx } }] },
+          {
+            annotatorId: 'closed-form-a',
+            method: 'bare-frame',
+            apexes: [{ summitId: anchorId, apexPx: { xPx: xPx - 2, yPx } }],
+          },
+          {
+            annotatorId: 'closed-form-b',
+            method: 'bare-frame',
+            apexes: [{ summitId: anchorId, apexPx: { xPx: xPx + 2, yPx } }],
+          },
         ],
       };
     };
@@ -689,8 +707,8 @@ test.describe('the field session', () => {
       resolve(FIELD_OUT_DIR, 'truth.json'),
       `${JSON.stringify(
         {
-          format: 'mountain-finder/field-apex-truth@1',
-          method:
+          format: 'mountain-finder/field-apex-truth@2',
+          procedure:
             'closed-form projection of the injected pose, straddled by ±2 px; no annotator looked at a picture',
           captures: parsed.value.captures.map((capture) => truthFor(capture.captureId)),
         },

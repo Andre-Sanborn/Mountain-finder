@@ -126,6 +126,12 @@ export interface FieldSessionPanelProps {
   readonly calibrationReferences: () => readonly CalibrationReference[];
   readonly calibrationFrame: () => CalibrationFrame | undefined;
   readonly onCalibrated: (fit: FovFit, references: readonly CalibrationReference[]) => void;
+  /** Tell the screen about every tap on the picture, attributed or not, so it
+      can watch for a gross compass error no field-of-view fit can absorb. */
+  readonly onPictureTap?: (
+    tappedPx: { readonly xPx: number; readonly yPx: number },
+    reference: CalibrationReference | undefined,
+  ) => void;
   readonly dragMode: DragMode;
   readonly setDragMode: (mode: DragMode) => void;
   /** Put the labels back where the sensors say, before a repeated drag. */
@@ -357,6 +363,7 @@ export function FieldSessionPanel(props: FieldSessionPanelProps): JSX.Element {
       const tappedPx = { xPx: event.clientX - box.left, yPx: event.clientY - box.top };
       const references = props.calibrationReferences();
       const picked = pickReference(tappedPx, references, MAX_TAP_DISTANCE_PX);
+      props.onPictureTap?.(tappedPx, picked);
       if (picked === undefined) {
         setTapNote(
           references.length === 0
