@@ -99,7 +99,9 @@ after its self-check has run and passed here. The checks are in
 - [x] Build the annotator reference map sheets (`npm run annotator:map -- <site>`), no pose or overlay
 - [x] Test whether annotators given a top-down map can identify non-anchor summits (map: 0 graded)
 - [x] Choose a field truth source that grades non-anchor summits; review it with strategy-adversary
-- [ ] Rerun the aligner on IMG_7270 cropped right of the person, to isolate CV-11's cause
+- [x] Rerun the aligner on IMG_7270 cropped right of the person, to isolate CV-11's cause
+- [ ] Fix annotate's rangeIsMeasured call from 0 m: with --min-range-m 150 every peak reads unmeasured
+- [ ] Stop annotate applying a low-confidence aligner trim automatically
 - [x] Pre-register the site's near-band limit, the south direction's bands, and the apex rules
 - [x] Add the optional `rule` field to the @2 truth format and split the report by rule-bound/free
 - [x] Register two north-east captures with a `turned` role that F2 reads and F3/F4 do not
