@@ -7,16 +7,15 @@ after its self-check has run and passed here. The checks are in
 ## Route to the field test
 
 - [x] Fix the portrait FOV axis in core, the phone shell and annotate-photo; re-derive the drag-trim test
-- [ ] Settle long-side vs CIPA-diagonal 35 mm equivalence against the solved Railroad Ridge pose (~2°, 3% scale)
 - [x] Build WMM2025 declination in src/core; reproduce NOAA's test values to 0.05°; cross-check a second source
 - [x] Wire src/core/declination into the live heading policy, labelled "true (model)"
 - [ ] Hold the user's trim across a heading-basis change, so the first fix does not jump the overlay
-- [ ] Use the WMM2025 path in the web shell's heading, as the phone shell now does
+- [ ] Confirm the live web screen's heading uses the WMM2025 true-model path end to end
 - [x] Build sun and moon position in src/core against Meeus worked examples
-- [ ] Draw the sun and moon discs in the AR screen; bench-test heading, pitch and FOV against them
+- [x] Draw the sun and moon discs in the AR screen
 - [x] Deploy the web app to GitHub Pages from Actions, gated on test:deploy and a no-GPS privacy check
 - [ ] Confirm the first Pages run on GitHub; if enablement fails, the human sets Source to GitHub Actions
-- [x] Measure what the phone downloads from Pages; drop --gzip if the .gz siblings go unread
+- [x] Measure the Pages artifact with and without --gzip; dropped it (88.87 MB of unservable siblings)
 - [x] Add the Idaho field-site tiles to the Pages workflow's fetch:tiles line
 - [x] Build the repository privacy check: no EXIF GPS or coordinate pairs in new files; wire into check
 - [x] Build the web sensor adapter as a pure function of raw Safari and Chromium events
@@ -43,16 +42,15 @@ after its self-check has run and passed here. The checks are in
 - [x] Register the stored frame's geometry: the grader compares 16:9 frames against the 956x440 viewport
 - [ ] Have field-session.ts import the stored-frame width from field-analysis.ts's registration
 - [ ] Decide from the home session's drag scatter whether the field session drags in fine mode
-- [ ] Trim the field bundle: overlay.withheld repeats ~940 unmeasured summits per capture (2.4 MB for 8)
+- [ ] Check the field bundle size before trimming: 2.4 MB in the Gornergrat e2e, 1.27 MB in the rehearsal
 - [x] Write the error budget and pre-register the field pass criteria
 - [x] Run the headless dress rehearsal at Bogus Basin on IMG_7270 with injected compass and pitch error
 - [ ] Grade the rehearsal against apex truth from two independent annotators
 - [ ] Map overlay to stored frame through the cover crop in the grader; a 4:3 camera in a 16:9 view mis-scales residuals
-- [ ] Write the home-session steps; run the home session with the human
+- [ ] Run the home session with the human (steps: docs/HOME-SESSION-GUIDE.md)
 - [ ] Turn the home-session recording into fixtures; fix any sign or FOV error it shows
 - [x] Lock the railroad-ridge CV result as a regression test, labelled n = 1
-- [ ] Re-check CV-2/CV-8's 14 mm figures via `npm run annotate`: suggestPoseTrim now reads coverage 66.6 %, not 0 %
-- [ ] Write the field-session steps; run the field test with the human
+- [ ] Run the field test with the human (steps: docs/FIELD-SESSION-GUIDE.md)
 
 - [x] Take the live sweep range from the served site (60 km at Bogus Basin), not APP_SWEEP's 30 km
 - [x] Measure the 60 km live sweep in Chromium under 4-6x CPU throttling; precondition of the field session
@@ -69,8 +67,15 @@ after its self-check has run and passed here. The checks are in
 - [ ] Confirm the iOS 26 motion-permission remedy on the phone at the home session
 - [x] Replace the field guide's provisional steps with the real screen wording once field mode lands
 
+- [ ] Redesign field truth: agent annotators named 0 of 17 summits on the rehearsal frame (n = 1)
+- [ ] Add a measured pitch-bias term to the live vertical band; until measured, F2 vertical is not gated
+- [ ] Re-run the rehearsal at a 956x440 viewport over a 1920x1080 camera, without cropToAspect
+- [ ] Separate refusals from notes in the field report
+
 ## Other open work
 
+- [ ] Re-check CV-2/CV-8's 14 mm figures via `npm run annotate`: suggestPoseTrim now reads coverage 66.6 %, not 0 %
+- [ ] Settle long-side vs CIPA-diagonal 35 mm equivalence against the solved Railroad Ridge pose (~2°, 3% scale)
 - [ ] Get the human's answer on whether the seven photos in fixtures/photos/real/ stay public.
 - [ ] Decide the fate of the retired `claude/topographic-peak-identifier-EV4ZN` branch: keep, tag, or delete.
 - [ ] P7.5: add a cue for soft crest steps under haze so the 24 mm and 14 mm frames report columns instead of declining.
