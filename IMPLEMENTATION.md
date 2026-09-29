@@ -1551,3 +1551,15 @@ So agent annotators on a bare frame can place landmark summits only. Whether a t
 changes that is being tested.
 
 F4 on the rehearsal is not a measurement, because the fake camera is still.
+
+## Annotator reference maps
+
+`npm run annotator:map -- <site>` draws two north-up sheets from a site package into
+`out/annotator-map/<site>/`: one at the mosaic's full half-width and one at about 10 km.
+Each sheet has hillshade, 100 m contours, geodesic range rings, true-bearing ticks every 10°,
+and the named summits from the site's peak region with their tagged heights.
+
+The sheets carry no camera heading, field of view, pose or overlay. An annotator using
+method `frame-and-map` must place summits from terrain shape and bearings alone, so the
+map cannot leak the answer the grader checks.
+

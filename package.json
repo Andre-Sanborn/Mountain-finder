@@ -32,7 +32,8 @@
     "annotate": "tsx scripts/annotate-photo.ts",
     "analyze:recording": "tsx scripts/analyze-recording.ts",
     "analyze:field": "tsx scripts/analyze-field.ts",
-    "site:package": "tsx scripts/make-site-package.ts"
+    "site:package": "tsx scripts/make-site-package.ts",
+    "annotator:map": "tsx scripts/make-annotator-map.ts"
   },
   "dependencies": {
     "exifr": "^7.1.3",

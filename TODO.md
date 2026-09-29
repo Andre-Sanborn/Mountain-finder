@@ -93,6 +93,7 @@ after its self-check has run and passed here. The checks are in
 - [ ] Record both annotator pixels, not one agreed pixel, on the next apex read
 
 - [x] Exclude each capture's drag anchor from F3 and F4; report its residual under F3.anchor/F4.anchor
+- [x] Build the annotator reference map sheets (`npm run annotator:map -- <site>`), no pose or overlay
 - [ ] Test whether annotators given a top-down map can identify non-anchor summits (bare frame: 0 of 37)
 
 ## Other open work
