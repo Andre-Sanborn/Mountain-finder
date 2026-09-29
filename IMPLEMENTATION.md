@@ -905,3 +905,29 @@ the suite uses. Three mutations fail 4, 1 and 4 tests. `test:deploy` adds a test
 - GPS altitude is treated as ellipsoidal. CoreLocation reports altitude above the geoid, and the
   gap reaches about 50 m (0.29° on a summit 10 km away). Preferring the DEM's ground at the fix
   is the planned fix.
+
+## The real-photo CV result is locked on its own terrain window
+
+`tests/acceptance/cv-alignment-lock.test.ts` pins what `suggestPoseTrim` recovers on the 48 mm
+Railroad Ridge frame: heading error −0.1148° and pitch error +0.6892° against the solved pose,
+gated at 0.25° and 0.85°. The gates are about 1.3 and 1.6 steps of the comb's 0.1° search. The
+test also requires `low-confidence` status with named concerns, and the 24 mm and 14 mm frames
+to decline. It is a regression lock, not a capability claim: n = 1, the truth is an eyeball apex
+pick, and the constants were tuned on these frames.
+
+**The recorded figure depended on gitignored data.** On the committed 7.5 km disc the 48 mm
+frame declines. The docs' −0.109° / +0.690° came from a 30 km profile off `data/tiles/`, and
+that reproduces to 0.0006°. Sweeping the maximum range shows why the window matters:
+- declined at 7.5 km
+- −0.66° at 8–10 km
+- converged from 12 km, stable to 25 km
+
+Castle Peak, at 11.07 km, anchors the fit. So the lock uses a committed sector,
+`railroad-ridge-cv-window`: bearings 140–210°, out to 12.5 km, 579 KiB. It gives trims
+bit-identical to a full 360° profile, because the aligner reads nothing outside its searched
+span.
+
+Flipping the heading sign and the pitch sign in `align.ts` were each caught.
+
+**Known brittleness.** The 14 mm frame declines at 24.2 % usable columns against a 25 % floor,
+0.8 points from flipping. CV-10's row in `docs/FINDINGS.md` now carries these figures.

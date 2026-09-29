@@ -1,0 +1,52 @@
+{
+  "name": "railroad-ridge-cv-window",
+  "data": "railroad-ridge-cv-window.i16be",
+  "format": "int16-be-row-major-north-first",
+  "description": "Terrain for the \"railroad-ridge-cv\" ground-truth acceptance case: a 433x685 rectangle of real SRTM1 data cut byte-for-byte out of N44W115. Committed so the acceptance suite runs offline without data/tiles/, which is gitignored.",
+  "coverageNote": "Covers the southern sector of the Railroad Ridge Road viewpoint out to 12.5 km — bearings 140-210 deg, which is the 48 mm frame (41.11 deg wide, centred 174.089 deg) plus the +/-6 deg compass budget the CV aligner searches, with margin. WHAT IT CAN PROVE: what pose suggestPoseTrim recovers on the 48 mm frame, and that the 24 mm and 14 mm frames are declined. WHAT IT CANNOT PROVE: anything about bearings outside the sector, any visibility verdict (no peak is judged against it), and nothing about a viewpoint with a different compass reading. Sampling starts at 150 m, so the near-field DEM artefact (docs/NEAR-FIELD.md) is outside the cut sweep by construction.",
+  "sweep": {
+    "bearingStepDeg": 0.25,
+    "rangeStepM": 90,
+    "minRangeM": 150,
+    "maxRangeKm": 12.5,
+    "startBearingDeg": 140,
+    "spanDeg": 70
+  },
+  "source": {
+    "tile": "N44W115",
+    "url": "https://s3.amazonaws.com/elevation-tiles-prod/skadi/N44/N44W115.hgt.gz",
+    "dataset": "SRTM1 (1 arc-second) via the AWS elevation-tiles-prod \"skadi\" mirror",
+    "sourceGridSize": 3601,
+    "extractedFromRow": 3087,
+    "extractedFromCol": 1152,
+    "extractedOn": "2026-09-29",
+    "license": "SRTM is public domain (NASA/USGS); the AWS mirror is a public dataset.",
+    "regenerateWith": "npm run fixtures:case-tiles"
+  },
+  "geometry": {
+    "northLat": 44.1425,
+    "westLon": -114.68,
+    "rows": 433,
+    "cols": 685,
+    "latStepDeg": 0.0002777777777777778,
+    "lonStepDeg": 0.0002777777777777778
+  },
+  "bounds": {
+    "north": 44.1425,
+    "south": 44.0225,
+    "west": -114.68,
+    "east": -114.49000000000001
+  },
+  "statistics": {
+    "voidSamples": 0,
+    "minElevationM": 2016,
+    "maxElevationM": 3595,
+    "maxAt": {
+      "row": 369,
+      "col": 336,
+      "lat": 44.04,
+      "lon": -114.58666666666667
+    }
+  },
+  "accuracyCaveat": "Terrain horizon only. SRTM under-reads AND displaces sharp summits (Matterhorn 4230 m here against a surveyed 4478 m, ~320 m out of position), so summit heights come from the peak database in fixtures/peaks/, never from these bytes."
+}

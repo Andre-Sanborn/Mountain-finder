@@ -202,6 +202,38 @@ export const CASE_TERRAIN: readonly CaseTerrainSpec[] = [
     judgeBeyondWindow: false,
   },
   {
+    caseId: 'railroad-ridge-cv',
+    sourceTile: 'N44W115',
+    // A SECTOR window, not a disc: the CV regression lock searches bearings
+    // 147.5-200.6 only (the 48 mm frame plus the +/-6 deg compass budget), and
+    // the recovered pose is identical whether the profile covers that sector or
+    // the whole compass. Sized to 12.5 km because the answer converges at 12 km
+    // — Castle Peak stands at 11.07 km and the 7.5 km `railroad-ridge` window
+    // stops short of it, which makes that window's decline an artefact of its
+    // own size. Bounds clear the farthest ray sample by 460-580 m.
+    bounds: { north: 44.1425, south: 44.0225, west: -114.68, east: -114.49 },
+    sweep: {
+      bearingStepDeg: 0.25,
+      rangeStepM: 90,
+      minRangeM: 150,
+      maxRangeKm: 12.5,
+      startBearingDeg: 140,
+      spanDeg: 70,
+    },
+    coverageNote:
+      'Covers the southern sector of the Railroad Ridge Road viewpoint out to ' +
+      '12.5 km — bearings 140-210 deg, which is the 48 mm frame (41.11 deg ' +
+      'wide, centred 174.089 deg) plus the +/-6 deg compass budget the CV ' +
+      'aligner searches, with margin. WHAT IT CAN PROVE: what pose ' +
+      'suggestPoseTrim recovers on the 48 mm frame, and that the 24 mm and ' +
+      '14 mm frames are declined. WHAT IT CANNOT PROVE: anything about ' +
+      'bearings outside the sector, any visibility verdict (no peak is judged ' +
+      'against it), and nothing about a viewpoint with a different compass ' +
+      'reading. Sampling starts at 150 m, so the near-field DEM artefact ' +
+      '(docs/NEAR-FIELD.md) is outside the cut sweep by construction.',
+    judgeBeyondWindow: true,
+  },
+  {
     caseId: 'fort-william',
     sourceTile: 'N56W006',
     // East stops at -5.0, the tile edge; Ben Nevis at -5.0035 is inside it by

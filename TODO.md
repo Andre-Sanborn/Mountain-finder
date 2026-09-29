@@ -40,7 +40,8 @@ after its self-check has run and passed here. The checks are in
 - [ ] Run the headless dress rehearsal on IMG_7270 and railroad-ridge-48mm with injected errors
 - [ ] Write the home-session steps; run the home session with the human
 - [ ] Turn the home-session recording into fixtures; fix any sign or FOV error it shows
-- [ ] Lock the railroad-ridge CV result as a regression test, labelled n = 1
+- [x] Lock the railroad-ridge CV result as a regression test, labelled n = 1
+- [ ] Re-check CV-2/CV-8's 14 mm figures via `npm run annotate`: suggestPoseTrim now reads coverage 66.6 %, not 0 %
 - [ ] Write the field-session steps; run the field test with the human
 
 ## Other open work
