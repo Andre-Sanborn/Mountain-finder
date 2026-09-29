@@ -45,7 +45,7 @@ after its self-check has run and passed here. The checks are in
 - [ ] Check the field bundle size before trimming: 2.4 MB in the Gornergrat e2e, 1.27 MB in the rehearsal
 - [x] Write the error budget and pre-register the field pass criteria
 - [x] Run the headless dress rehearsal at Bogus Basin on IMG_7270 with injected compass and pitch error
-- [ ] Grade the rehearsal against apex truth from two independent annotators
+- [x] Grade the rehearsal against apex truth from two independent annotators
 - [x] Map overlay to stored frame through the cover crop in the grader; a 4:3 camera in a 16:9 view mis-scales residuals
 - [ ] State the overlay-to-frame mapping in the prereg's § 2.0 and Part 3 bodies, not only its revision history
 - [ ] Run the home session with the human (steps: docs/HOME-SESSION-GUIDE.md)
@@ -79,10 +79,10 @@ after its self-check has run and passed here. The checks are in
 - [x] Separate refusals from notes in the field report
 
 - [x] Re-run the Bogus Basin rehearsal at the solved pose (187.9°, −4.94°), Deer Point as anchor, grade other features
-- [ ] Grade the re-run rehearsal against @2 truth from two independent annotators
+- [x] Grade the re-run rehearsal against @2 truth from two independent annotators
 - [x] Let the field anchor picker offer crowded-out summits, and force-label the one picked
 - [x] Make the anchor-drift warning compare the compass change with the phone's own turn
-- [ ] Refresh the rehearsal spec's drift-line notes; they still describe the compass-only check
+- [x] Refresh the rehearsal spec's drift-line notes; they still describe the compass-only check
 - [ ] Make `npm run annotate` warn when GPSImgDirection is the only heading source (X-10)
 - [ ] Renumber the duplicate X-7 and X-8 ids in docs/FINDINGS.md
 
