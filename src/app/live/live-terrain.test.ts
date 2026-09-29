@@ -29,13 +29,14 @@ import {
 } from '../overlay-builder';
 import {
   buildLiveScene,
+  groundHeightNote,
   LIVE_SWEEP_SPAN_DEG,
   liveSweepConfig,
   metresFromFix,
   RESWEEP_DISTANCE_M,
 } from './live-terrain';
 
-const OBSERVER = { lat: 45, lon: 7, eyeHeightM: 1.6, groundElevationM: 1000 };
+const OBSERVER = { lat: 45, lon: 7, eyeHeightM: 1.6, fallbackGroundElevationM: 1000 };
 
 /** 10 km due east of the observer, at 45° N: 1° of longitude is ~78.6 km. */
 const SUMMIT: Peak = {
@@ -196,13 +197,79 @@ describe('buildLiveScene', () => {
   });
 
   it('lets the pipeline sample the ground when the fix carried no altitude', async () => {
-    const { groundElevationM: _dropped, ...noAltitude } = OBSERVER;
+    const { fallbackGroundElevationM: _dropped, ...noAltitude } = OBSERVER;
     const scene = await buildLiveScene(noAltitude, {
       terrain: terrainSource(true),
       peaks: new StaticPeakSource([SUMMIT]),
     });
     // The plane reads 1000 m everywhere, so that is what the observer stands on.
     expect(scene.observer.groundElevationM).toBeCloseTo(1000, 6);
+  });
+
+  it('prefers the terrain’s ground over the GPS altitude, and says so', async () => {
+    // The plane is at 1000 m and the phone claims 1400 m. The DEM answer wins.
+    // Phone altitude is above the geoid while this pipeline is ellipsoidal, and
+    // the gap reaches about 50 m; a phone's vertical error adds tens more.
+    const scene = await buildLiveScene(
+      { ...OBSERVER, fallbackGroundElevationM: 1400 },
+      { terrain: terrainSource(true, 1000), peaks: new StaticPeakSource([SUMMIT]) },
+    );
+    expect(scene.observer.groundElevationM).toBeCloseTo(1000, 6);
+    expect(scene.observerResolution.groundElevationSource).toBe('terrain');
+
+    const note = groundHeightNote(scene.observer, scene.observerResolution);
+    expect(note.source).toBe('terrain');
+    expect(note.warn).toBe(false);
+    // 1000 m of ground plus 1.6 m of eye height is 1001.6 m.
+    expect(note.text).toContain('1000.0 m of ground');
+    expect(note.text).toContain('1001.6 m');
+  });
+
+  it('uses the GPS altitude only where the terrain has a void, and warns', async () => {
+    // Covered tile, no sample at the observer's own point: an SRTM void. The
+    // rays still read 1000 m, so the sweep works and only the observer's own
+    // height falls back.
+    const voidAtObserver = (point: LatLng): number | null =>
+      point.lat === 45 && point.lon === 7 ? null : 1000;
+    const scene = await buildLiveScene(
+      { ...OBSERVER, fallbackGroundElevationM: 1400 },
+      {
+        terrain: {
+          elevation: new FunctionElevationSource(voidAtObserver),
+          coverage: () =>
+            Promise.resolve({ covered: true, tileName: 'N45E007', available: ['N45E007'] }),
+        },
+        peaks: new StaticPeakSource([SUMMIT]),
+      },
+    );
+    expect(scene.observer.groundElevationM).toBeCloseTo(1400, 6);
+    expect(scene.observerResolution.groundElevationSource).toBe('fallback');
+
+    const note = groundHeightNote(scene.observer, scene.observerResolution);
+    expect(note.source).toBe('fallback');
+    expect(note.warn).toBe(true);
+    expect(note.text).toContain('no ground height at this spot');
+    expect(note.text).toContain('tens of metres');
+    expect(note.text).toContain('1401.6 m');
+  });
+
+  it('refuses to invent a height when neither the terrain nor GPS has one', async () => {
+    // No supplied figure, no fallback and a void under the observer. Standing at
+    // a fictitious 0 m in the Alps produces a horizon wrong by kilometres and a
+    // set of labels that all look about right, so the pipeline throws instead.
+    const { fallbackGroundElevationM: _dropped, ...noAltitude } = OBSERVER;
+    await expect(
+      buildLiveScene(noAltitude, {
+        terrain: {
+          elevation: new FunctionElevationSource((point) =>
+            point.lat === 45 && point.lon === 7 ? null : 1000,
+          ),
+          coverage: () =>
+            Promise.resolve({ covered: true, tileName: 'N45E007', available: ['N45E007'] }),
+        },
+        peaks: new StaticPeakSource([SUMMIT]),
+      }),
+    ).rejects.toThrow(/ground elevation/i);
   });
 });
 

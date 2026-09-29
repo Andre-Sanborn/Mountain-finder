@@ -39,9 +39,18 @@
  * `rawEventSink` receives every raw sensor event before any conversion, and every
  * `track.getSettings()` snapshot the lens watch reads. Between them that is
  * everything `RecordedSensorEvent` and `RecordedTrackSettings` in
- * `src/live/recording.ts` are built from, so the capture feature needs no further
- * seam here. Recording is its own task and nothing in `src/app/live/` writes
- * anything anywhere.
+ * `src/live/recording.ts` are built from. `HomeSessionRecorder` is a sink of
+ * exactly that shape, and `live.html?session=home` attaches one alongside any
+ * sink the caller passed. Nothing here writes to disk or to the network: the
+ * finished recording leaves only through the share sheet the person taps.
+ *
+ * ── THE OBSERVER'S HEIGHT COMES FROM THE MAP, NOT FROM GPS ─────────────────
+ * The fix's altitude is handed over as `fallbackGroundElevationM`, so the
+ * pipeline reads the ground under the observer off the terrain and puts the eye
+ * 1.6 m above it. `live-terrain.ts` carries the measurements behind that choice,
+ * and `groundHeightNote` puts the answer on screen, because the two figures
+ * differ by tens of metres and only the user can see whether the labels sit too
+ * high.
  */
 
 import {
@@ -64,6 +73,12 @@ import { NO_TRIM, isUntrimmed, type TrimState } from '../trim';
 import { BrowserSensorTraces, requestMotionPermission, type RawEventSink } from './browser-sensors';
 import { CameraOpenError, openRearCamera, readTrackSettings, TRACK_POLL_INTERVAL_MS } from './camera-stream';
 import { celestialMarks, offFrameDirection, type CelestialMark } from './celestial-markers';
+import { HomeSessionPanel } from './HomeSessionPanel';
+import type { CalibrationFrame, CalibrationReference, FovFit } from './fov-calibration';
+import { calibrationFromFit } from './fov-calibration';
+import { isHomeSessionRequested, sunKnownBearing } from './home-session';
+import { HomeSessionRecorder } from './home-session-recorder';
+import { browserShareTarget } from './home-session-share';
 import {
   DEFAULT_LENS_LABEL,
   DEFAULT_MODEL_NAME,
@@ -82,7 +97,7 @@ import {
   type ScreenRollHypothesis,
 } from './landscape-pose';
 import { EMPTY_LENS_LOG, lensSwitchWarning, recordTrackSettings, type LensLog } from './lens-log';
-import { metresFromFix, RESWEEP_DISTANCE_M, type LiveObserver } from './live-terrain';
+import { groundHeightNote, metresFromFix, RESWEEP_DISTANCE_M, type LiveObserver } from './live-terrain';
 import { horizontalBandHalfWidthPx, liveUncertainty } from './live-uncertainty';
 import { liveRefusal, refusalForWebSample, type LiveRefusalCode } from './refusals';
 import { videoBoxGeometry, type SafeAreaInsetsPx } from './video-box';
@@ -99,8 +114,13 @@ export interface LiveScreenProps {
     observer: LiveObserver,
     signal: AbortSignal,
   ) => Promise<AnnotatedScene>;
-  /** The seam the capture feature fills. Nothing here writes anything. */
+  /** A second sink beside the home session's own. Nothing here writes anything. */
   readonly rawEventSink?: RawEventSink;
+  /**
+   * Run the guided home session. Defaults to whether the address asks for it,
+   * so `live-main.tsx` needs no knowledge of this mode.
+   */
+  readonly homeSession?: boolean;
 }
 
 type Phase = 'idle' | 'starting' | 'running';
@@ -176,6 +196,33 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
 
   const landscape = isLandscapeViewport(viewport.widthPx, viewport.heightPx);
 
+  /* ── the home session ───────────────────────────────────────────────────── */
+  const homeSession =
+    props.homeSession ??
+    (typeof window === 'undefined' ? false : isHomeSessionRequested(window.location.search));
+  // One recorder for the life of the screen. `performance.now()` is monotonic and
+  // carries no wall clock, which is what the recording's timestamps need.
+  const recorderRef = useRef<HomeSessionRecorder>();
+  if (recorderRef.current === undefined) {
+    recorderRef.current = new HomeSessionRecorder(() => performance.now());
+  }
+  const recorder = recorderRef.current;
+  const sink: RawEventSink | undefined = useMemo(() => {
+    const passed = props.rawEventSink;
+    if (!homeSession) return passed;
+    if (passed === undefined) return recorder;
+    return {
+      onRawEvent: (sample) => {
+        passed.onRawEvent(sample);
+        recorder.onRawEvent(sample);
+      },
+      onTrackSettings: (settings, tMs) => {
+        passed.onTrackSettings?.(settings, tMs);
+        recorder.onTrackSettings(settings, tMs);
+      },
+    };
+  }, [props.rawEventSink, homeSession, recorder]);
+
   /* ── viewport and safe area ─────────────────────────────────────────────── */
   useEffect(() => {
     const measure = (): void => {
@@ -209,12 +256,13 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
       lat: fix.lat,
       lon: fix.lon,
       eyeHeightM: EYE_HEIGHT_M,
-      // The fix's altitude is the CAMERA's height above the ellipsoid, so the
-      // ground under it is that less the eye height — the same subtraction the
-      // still app makes for a photograph's GPS altitude.
+      // The fix's altitude is the CAMERA's height, so the ground under it is
+      // that less the eye height — the same subtraction the still app makes for
+      // a photograph's GPS altitude. It is the FALLBACK: the DEM's ground at the
+      // fix is the better figure, and `live-terrain.ts` says by how much.
       ...(fix.altitudeM === undefined
         ? {}
-        : { groundElevationM: fix.altitudeM - EYE_HEIGHT_M }),
+        : { fallbackGroundElevationM: fix.altitudeM - EYE_HEIGHT_M }),
     };
     setSceneError(undefined);
     const startedAt = performance.now();
@@ -280,7 +328,7 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
       setPhase('idle');
       return;
     }
-    const traces = new BrowserSensorTraces(window, () => performance.now(), props.rawEventSink);
+    const traces = new BrowserSensorTraces(window, () => performance.now(), sink);
     traces.attach();
     tracesRef.current = traces;
 
@@ -306,7 +354,7 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
       },
       { enableHighAccuracy: true, timeout: 20_000, maximumAge: 0 },
     );
-  }, [props.rawEventSink]);
+  }, [sink]);
 
   /* ── the lens watch ─────────────────────────────────────────────────────── */
   useEffect(() => {
@@ -317,13 +365,13 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
       if (track === undefined) return;
       const settings = readTrackSettings(track);
       const tMs = performance.now() - startedAt;
-      props.rawEventSink?.onTrackSettings?.(settings, tMs);
+      sink?.onTrackSettings?.(settings, tMs);
       setLensLog((log) => recordTrackSettings(log, settings, tMs));
     };
     read();
     const handle = window.setInterval(read, TRACK_POLL_INTERVAL_MS);
     return () => window.clearInterval(handle);
-  }, [phase, props.rawEventSink]);
+  }, [phase, sink]);
 
   /* ── tear down on unmount ───────────────────────────────────────────────── */
   useEffect(
@@ -524,6 +572,100 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
     setTrim((current) => ({ ...current, hFovDeg: 0 }));
   }, [pose, decodedFrame, geometry.visibleFraction.x, calibrationStoreKey]);
 
+  /* ── the home session's three seams ─────────────────────────────────────── */
+  /**
+   * Every mark a tap could be about: the two discs, plus every summit the
+   * renderer put a dot on. A summit is on the same footing as the Sun here —
+   * that is the landmark sweep, and it needs no arithmetic of its own.
+   */
+  const calibrationReferences = useCallback(
+    (): readonly CalibrationReference[] => [
+      ...marks
+        .filter((mark) => mark.inFrame && !mark.belowHorizon)
+        .map((mark) => ({
+          kind: mark.body,
+          name: mark.body === 'sun' ? 'the Sun' : 'the Moon',
+          drawnPx: mark.centrePx,
+        })),
+      ...(layout?.markers ?? []).map((marker) => ({
+        kind: 'summit' as const,
+        name: marker.peak.name,
+        drawnPx: marker.summitPx,
+      })),
+    ],
+    [marks, layout],
+  );
+
+  const calibrationFrame = useCallback((): CalibrationFrame | undefined => {
+    if (pose === undefined || framePx.widthPx === 0 || decodedFrame.widthPx === 0) return undefined;
+    return {
+      framePx,
+      principalPointPx: geometry.principalPointPx,
+      // The field of view the marks were DRAWN with, trim included, because the
+      // fit corrects what is on screen rather than what the guess said.
+      visibleFov: { hFovDeg: pose.hFovDeg, vFovDeg: pose.vFovDeg },
+      visibleFractionX: geometry.visibleFraction.x,
+      decodedFrame,
+    };
+  }, [pose, framePx.widthPx, framePx.heightPx, geometry, decodedFrame]);
+
+  const applyFovFit = useCallback(
+    (fit: FovFit, references: readonly CalibrationReference[]) => {
+      const frame = calibrationFrame();
+      if (frame === undefined) return;
+      const measured = calibrationFromFit(fit, frame, references);
+      const stored = writeStoredFovCalibration(
+        typeof localStorage === 'undefined' ? undefined : localStorage,
+        calibrationStoreKey,
+        measured,
+      );
+      setCalibration(measured);
+      setCalibrationNote(
+        stored
+          ? `Measured ${formatDeg(measured.frameHFovDeg, 2)} across the camera frame — ${measured.method}.`
+          : `Measured ${formatDeg(measured.frameHFovDeg, 2)} across the camera frame, but this ` +
+            'browser would not save it, so it lasts for this session only.',
+      );
+      // The fit was made against the pose as drawn, trim and all, so its two
+      // offsets are added to the trim already in force. The width goes into the
+      // calibration instead of the field-of-view nudge, which is reset.
+      setTrim((current) => ({
+        headingDeg: current.headingDeg + fit.trim.headingDeg,
+        pitchDeg: current.pitchDeg + fit.trim.pitchDeg,
+        hFovDeg: 0,
+      }));
+    },
+    [calibrationFrame, calibrationStoreKey],
+  );
+
+  const shareTarget = useMemo(
+    () =>
+      browserShareTarget(
+        typeof navigator === 'undefined' ? undefined : navigator,
+        typeof document === 'undefined' ? undefined : document,
+      ),
+    [],
+  );
+
+  /**
+   * The Sun's magnetic azimuth here and now, with the position and the instant
+   * thrown away. Only the three numbers cross into the recorder.
+   */
+  const knownBearingNow = useCallback(() => {
+    if (fix === undefined) return undefined;
+    return sunKnownBearing(new Date(), {
+      lat: fix.lat,
+      lon: fix.lon,
+      heightM:
+        scene === undefined
+          ? (fix.altitudeM ?? 0)
+          : scene.observer.groundElevationM + scene.observer.eyeHeightM,
+    });
+  }, [fix, scene]);
+
+  const heightNote =
+    scene === undefined ? undefined : groundHeightNote(scene.observer, scene.observerResolution);
+
   /* ── which refusal, if any, stops the drawing ───────────────────────────── */
   const activeRefusal: LiveRefusalCode | undefined = (() => {
     // Ordered by what the user has to do FIRST, not by which check is cheapest.
@@ -673,6 +815,20 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
           </section>
         )}
 
+        {homeSession && (
+          <HomeSessionPanel
+            recorder={recorder}
+            ready={phase === 'running'}
+            device={typeof navigator === 'undefined' ? 'unknown browser' : navigator.userAgent}
+            canComputeBearing={fix !== undefined}
+            computeKnownBearing={knownBearingNow}
+            calibrationReferences={calibrationReferences}
+            calibrationFrame={calibrationFrame}
+            onCalibrated={applyFovFit}
+            shareTarget={shareTarget}
+          />
+        )}
+
         {phase === 'idle' && activeRefusal === 'not-started' && (
           <ol className="live__steps" data-testid="live-steps">
             <li>Hold the phone sideways, like taking a landscape photo.</li>
@@ -708,6 +864,16 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
           <p className="live__warn" data-testid="live-moved">
             You have moved {movedM.toFixed(0)} m from where the skyline was worked out. The far
             summits are unaffected; the nearest ridges may be a little off.
+          </p>
+        )}
+
+        {heightNote !== undefined && (
+          <p
+            className={heightNote.warn ? 'live__warn' : 'live__hidden-note'}
+            data-testid="live-ground-height"
+            data-ground-source={heightNote.source}
+          >
+            {heightNote.text}
           </p>
         )}
 

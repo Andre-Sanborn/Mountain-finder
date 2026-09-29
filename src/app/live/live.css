@@ -114,6 +114,9 @@
   position: absolute;
   left: 0;
   right: 0;
+  /* Above the home session's tap surface, so its own buttons stay tappable
+     while a finger on the picture means "the real sun is here". */
+  z-index: 3;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
@@ -356,4 +359,71 @@
   width: 100%;
   margin: 0.4rem 0;
   text-align: left;
+}
+
+/*
+ * The home session's panel. It is the only thing on screen that matters while a
+ * recording is running, so it takes the readable width of the top strip and its
+ * instruction is set larger than the rest of the chrome: a person reading it is
+ * holding the phone at arm's length, or looking at it edge-on while it lies on a
+ * table.
+ */
+.live__session {
+  pointer-events: auto;
+  /* The chrome is its own stacking context, and the tap surface is a later child
+     of it, so the panel needs a layer of its own to keep its buttons tappable
+     during the tap step. */
+  position: relative;
+  z-index: 2;
+  background: rgb(0 0 0 / 72%);
+  border: 1px solid rgb(255 255 255 / 30%);
+  border-radius: 10px;
+  padding: 0.5rem 0.6rem;
+}
+
+.live__session h2 {
+  margin: 0 0 0.3rem;
+  font-size: 0.95rem;
+}
+
+.live__session p {
+  margin: 0.3rem 0;
+}
+
+.live__session-instruction {
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.live__session button {
+  display: block;
+  width: 100%;
+  margin: 0.45rem 0;
+  min-height: 46px;
+  font-size: 1rem;
+}
+
+.live__session-analysis ul {
+  margin: 0.3rem 0;
+  padding-left: 1.1rem;
+}
+
+.live__session-analysis li {
+  margin: 0.25rem 0;
+}
+
+/*
+ * The tap surface for the sun step. Fixed rather than absolute so the top
+ * strip's own scroll container cannot clip it, and above the drag layer because
+ * during this step a finger on the picture means "the real sun is here" rather
+ * than "push the labels".
+ */
+.live__session-taps {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: crosshair;
 }

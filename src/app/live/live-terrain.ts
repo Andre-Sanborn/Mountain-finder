@@ -37,9 +37,15 @@
  * with no browser and no tiles.
  */
 
-import type { LatLng } from '../../core/types';
+import type { LatLng, Observer } from '../../core/types';
 import { annotateScene } from '../../pipeline/annotate';
-import type { AnnotatedScene, PeakSource, PipelineConfig } from '../../pipeline/types';
+import type {
+  AnnotatedScene,
+  GroundElevationSource,
+  ObserverResolution,
+  PeakSource,
+  PipelineConfig,
+} from '../../pipeline/types';
 import {
   APP_NEAR_FIELD_RADIUS_M,
   APP_PEAK_RADIUS_KM,
@@ -52,8 +58,24 @@ import {
 /** Where the observer is standing, as the position fix reports it. */
 export interface LiveObserver extends LatLng {
   readonly eyeHeightM: number;
-  /** Absent when the fix carried no altitude — the pipeline then samples it. */
-  readonly groundElevationM?: number | undefined;
+  /**
+   * The ground height GPS implies, used only if the terrain has no reading here.
+   *
+   * The fix's own altitude is deliberately NOT the first answer. Two reasons,
+   * both measured:
+   *
+   *   • CoreLocation reports altitude above the geoid while this pipeline works
+   *     in ellipsoidal heights, and the gap reaches about 50 m — 0.29° on a
+   *     summit 10 km away, which is several label widths.
+   *   • A phone's vertical GPS error is two to three times its horizontal one,
+   *     tens of metres on a good fix.
+   *
+   * The DEM, by contrast, reads broad terrain to the metre: Zermatt village
+   * comes back at its true 1608 m (MISSION.md, verified 2026-08-16). So the
+   * ground under the observer comes from the terrain and the eye sits 1.6 m
+   * above it, and the GPS figure is the fallback for a void in the DEM.
+   */
+  readonly fallbackGroundElevationM?: number | undefined;
 }
 
 /** The full circle, from due north. */
@@ -96,9 +118,12 @@ export async function buildLiveScene(
       lat: observer.lat,
       lon: observer.lon,
       eyeHeightM: observer.eyeHeightM,
-      ...(observer.groundElevationM === undefined
+      // `fallbackGroundElevationM`, never `groundElevationM`: supplying the
+      // latter skips the terrain lookup, and the DEM's ground at the fix is the
+      // better figure. `resolveObserver` records which of the two it used.
+      ...(observer.fallbackGroundElevationM === undefined
         ? {}
-        : { groundElevationM: observer.groundElevationM }),
+        : { fallbackGroundElevationM: observer.fallbackGroundElevationM }),
     },
     // The sweep and every verdict are pose-free, so the camera handed to the
     // pipeline only has to be a valid pose — the live loop supplies the real
@@ -132,3 +157,51 @@ export function metresFromFix(fix: LatLng, now: LatLng): number {
 
 /** How far the observer may move before the screen offers a fresh sweep. */
 export const RESWEEP_DISTANCE_M = 500;
+
+/** Where the height the labels were worked out from came from, for the screen. */
+export interface GroundHeightNote {
+  readonly source: GroundElevationSource;
+  /** One or two sentences for the readout. */
+  readonly text: string;
+  /** True when the figure is the GPS one, which is the weaker of the two. */
+  readonly warn: boolean;
+}
+
+/**
+ * Say which height the sight lines were measured from, in the user's own terms.
+ *
+ * On screen rather than in a log, because the two answers differ by tens of
+ * metres and the user is the only one who can tell whether the labels sit too
+ * high or too low. A screen that showed one number without saying where it came
+ * from would make a GPS guess look like a survey.
+ */
+export function groundHeightNote(
+  observer: Observer,
+  resolution: ObserverResolution,
+): GroundHeightNote {
+  const eye = observer.groundElevationM + observer.eyeHeightM;
+  const heights =
+    `${observer.groundElevationM.toFixed(1)} m of ground plus ${observer.eyeHeightM.toFixed(2)} m ` +
+    `of eye height, so ${eye.toFixed(1)} m`;
+  if (resolution.groundElevationSource === 'terrain') {
+    return {
+      source: 'terrain',
+      text: `Your height came from the map's own terrain: ${heights}.`,
+      warn: false,
+    };
+  }
+  if (resolution.groundElevationSource === 'fallback') {
+    return {
+      source: 'fallback',
+      text:
+        `The map has no ground height at this spot, so your phone's altitude was used instead: ` +
+        `${heights}. Phone altitude can be tens of metres out, which tilts the whole skyline.`,
+      warn: true,
+    };
+  }
+  return {
+    source: 'supplied',
+    text: `Your height was set by hand: ${heights}.`,
+    warn: false,
+  };
+}

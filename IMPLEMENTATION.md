@@ -902,9 +902,8 @@ the suite uses. Three mutations fail 4, 1 and 4 tests. `test:deploy` adds a test
 **Limits.**
 - The offline status and download button are not rendered yet.
 - Eye height is 1.6 m.
-- GPS altitude is treated as ellipsoidal. CoreLocation reports altitude above the geoid, and the
-  gap reaches about 50 m (0.29° on a summit 10 km away). Preferring the DEM's ground at the fix
-  is the planned fix.
+- The observer stands 1.6 m above the DEM's ground at the fix. GPS altitude is only a fallback,
+  and the screen shows which was used; see "The home session" below.
 
 ## The real-photo CV result is locked on its own terrain window
 
@@ -1018,3 +1017,54 @@ ISO timestamps, bearings and camera ids.
 
 The suite has 57 tests. Seven mutations are caught, and three of them first survived and forced
 fixes. For example, the threshold comparison is now a single `withinThreshold`.
+
+## The home session, `live.html?session=home`
+
+This is the AR screen with a guided sequence over it: one step per `POSE_LABELS` entry, each with
+one plain instruction, a countdown and "Move on now". It takes about five minutes, three of
+them a still hold. What the file contains is stated before recording starts. The file holds
+sensor readings and camera frame sizes, and never the location, the time or any picture.
+
+`HomeSessionRecorder` is a second raw-event sink. It stamps its own relative clock and drops
+device ids and labels. The Sun's magnetic azimuth is computed once, at the first aiming step,
+and position and time are then discarded. Over the 20 s of aiming the Sun moves about 0.08°.
+The device parses and analyses the file itself, then offers Web Share with the file, falling
+back to a download. `home-session-share.ts` contains no `fetch` and no URL, and a test checks
+that.
+
+**Field of view from taps, `fov-calibration.ts`.** The fit is `b = s·a + d` in pixels, where
+`s = f_true/f_assumed`. Then:
+- `tan(hFov_true/2) = tan(hFov_assumed/2)/s`
+- heading moves by −d_x/f
+- pitch moves by +d_y/f
+
+Two taps near opposite edges are required, and references closer than a tenth of the frame are
+refused. The field of view is stored through `fov-choice.ts`, and the offsets go into the
+visible nudge.
+
+**Observer height from the DEM.** The fix's altitude is passed as `fallbackGroundElevationM`. At
+Gornergrat the DEM reads 3087.98 m, against a published 3089 m.
+
+Six new e2e tests drive all 13 poses with dispatched events. They check that:
+- the shared file passes `parseRecording`
+- it holds no coordinates, epochs or fix digits
+- no request carries it
+- an injected ×1.1 scale and a (10, −6) px offset are recovered from taps
+
+The sun disc itself is not exercised, because the Sun is near the horizon at Gornergrat during
+CI. Summit dots take the same arithmetic path. Nine mutations each fail between 1 and 4 tests.
+
+**The human's steps**, as the screen presents them:
+1. flat face up
+2. upright portrait
+3. face down
+4. upright, turned right edge down
+5. rear camera at the sun, portrait
+6. landscape, camera end left
+7. landscape, camera end right
+8. tip past vertical
+9. a steering-wheel roll
+10. rotate to landscape and back
+11. still for 3 minutes
+12. 1 minute of normal handling
+13. two taps on the sun near the left and right edges

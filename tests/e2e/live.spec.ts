@@ -96,6 +96,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { geomagneticField } from '../../src/core/declination';
 import { moonPosition, sunPosition } from '../../src/core/celestial';
+import { EPOCH_FLOOR, findForbiddenContent, parseRecording, POSE_LABELS } from '../../src/live/recording';
 import { FAKE_CAMERA_DIR, FAKE_FRAME, writeFakeCameraVideo } from './support/fake-camera';
 
 const FAKE_VIDEO = resolve(
@@ -136,6 +137,12 @@ const VISIBLE_FOV = {
 
 /** Tolerance: 1 % of the frame width, as the still path uses. */
 const TOLERANCE_PX = 8;
+
+/**
+ * Smallest spread of reference positions `fitFovCalibration` will fit, in this
+ * frame's pixels: a tenth of the frame width.
+ */
+const MIN_SPREAD_PX = 0.1 * FRAME.widthPx;
 
 /** Initial great-circle bearing from observer to summit, degrees. */
 function bearingDeg(from: { lat: number; lon: number }, to: { lat: number; lon: number }): number {
@@ -892,4 +899,470 @@ test('a position with no terrain names the missing tile instead of drawing nothi
   await expect(detail).toContainText('no peaks are visible');
   // And nothing was drawn.
   await expect(page.locator('[data-testid="live-overlay-svg"] g.mf-summits circle')).toHaveCount(0);
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * THE HOME SESSION
+ * ══════════════════════════════════════════════════════════════════════════
+ * `live.html?session=home` walks a person through every pose in `POSE_LABELS`
+ * and produces a file they share themselves. Three things are provable without a
+ * phone, and all three are checked below:
+ *
+ *   the recording the screen builds passes the strict parser, and carries no
+ *   coordinate, no epoch and no wall clock
+ *   the Share button reaches the platform's share sheet with the JSON as a FILE
+ *   nothing the page does puts the recording on the network
+ *
+ * What it cannot prove is what a real phone's sensors report, which is the whole
+ * reason the session exists. The events here are the ones this suite dispatches.
+ *
+ * ── HOW THE SHARE SHEET IS STUBBED ─────────────────────────────────────────
+ * Headless Chromium has no `navigator.share`. It is installed by an init script
+ * that keeps the file's name, type and TEXT on `window`, so the assertions run
+ * against the exact bytes the share sheet was handed rather than against the
+ * page's own idea of them.
+ */
+
+interface SharedRecordingCapture {
+  readonly name: string;
+  readonly type: string;
+  readonly text: string;
+}
+
+/** Install a share sheet that records what it was given. */
+async function installShareStub(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const store = { shared: undefined as unknown, calls: 0 };
+    (window as unknown as Record<string, unknown>).__mfShare = store;
+    Object.defineProperty(navigator, 'canShare', {
+      configurable: true,
+      value: (data: { files?: File[] }) => Array.isArray(data.files) && data.files.length > 0,
+    });
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: async (data: { files?: File[] }) => {
+        store.calls += 1;
+        const file = data.files?.[0];
+        if (file === undefined) throw new Error('share was called with no file');
+        store.shared = { name: file.name, type: file.type, text: await file.text() };
+      },
+    });
+  });
+}
+
+async function sharedRecording(page: Page): Promise<SharedRecordingCapture | undefined> {
+  return page.evaluate(
+    () =>
+      (window as unknown as { __mfShare: { shared: SharedRecordingCapture | undefined } }).__mfShare
+        .shared,
+  );
+}
+
+/** Open the guided session and get as far as the first step being offered. */
+async function startHomeSession(page: Page): Promise<void> {
+  await installShareStub(page);
+  await installSensorPump(page);
+  await page.goto('/live.html?session=home');
+  await expect(page.getByTestId('home-session')).toBeVisible();
+
+  await page.getByTestId('live-start').click();
+  await expect(page.getByTestId('live-root')).toHaveAttribute('data-phase', 'running');
+  await pumpSet(page, eventAnglesFor(magneticBearingFor(TRUE_HEADING_DEG, new Date()), 0));
+
+  // The Start button waits for the position fix, because the Sun's bearing is
+  // worked out from it once and the file is worthless without one.
+  await expect(page.getByTestId('home-session-start')).toBeEnabled({ timeout: 30_000 });
+}
+
+/**
+ * Tap the picture at one point.
+ *
+ * A real `mouse.click` would land on whichever element is topmost, and the
+ * panel's own instruction covers the upper half of a 450 px viewport. So the
+ * `pointerup` is constructed and dispatched on the tap surface itself, the same
+ * route this file already uses for the sensor events, and for the same reason:
+ * the handler is a function of the event object, so a constructed event
+ * exercises the code a finger would.
+ */
+async function tapAt(page: Page, xPx: number, yPx: number): Promise<void> {
+  await page.getByTestId('home-session-tap-layer').evaluate(
+    (node, point) => {
+      node.dispatchEvent(
+        new PointerEvent('pointerup', {
+          bubbles: true,
+          cancelable: true,
+          clientX: point.xPx,
+          clientY: point.yPx,
+          pointerId: 1,
+          pointerType: 'touch',
+        }),
+      );
+    },
+    { xPx, yPx },
+  );
+}
+
+/** Click through every step, moving the phone so the poses are not all identical. */
+async function walkEveryStep(page: Page): Promise<void> {
+  const session = page.getByTestId('home-session');
+  for (let index = 0; index < POSE_LABELS.length; index += 1) {
+    await expect(session).toHaveAttribute('data-step-index', String(index));
+    await expect(session).toHaveAttribute('data-step-pose', POSE_LABELS[index] ?? '');
+    // A different attitude per step, so the segments are not copies of each
+    // other. The values are arbitrary: what a real phone reports is the
+    // question the session asks, and no dispatched event can answer it.
+    await pumpSet(page, { alpha: index * 17, beta: 60 + index * 5, gamma: index * 3 - 20 });
+    await page.getByTestId('home-session-next').click();
+  }
+  await expect(session).toHaveAttribute('data-phase', 'finished', { timeout: 30_000 });
+}
+
+test('the home session says what it records before it records anything', async ({ page }) => {
+  await installShareStub(page);
+  await page.goto('/live.html?session=home');
+
+  const privacy = page.getByTestId('home-session-privacy');
+  await expect(privacy).toBeVisible();
+  // The four facts, in plain words: what is recorded, what is not, the one
+  // number worked out from the fix, and where the file goes.
+  await expect(privacy).toContainText('does not record where you are');
+  await expect(privacy).toContainText('No photograph and no video is saved');
+  await expect(privacy).toContainText('thrown away');
+  await expect(privacy).toContainText('Nothing is uploaded');
+  await expect(privacy).toContainText('goes only where you send it');
+
+  // And it is shown BEFORE the first step, with recording not yet possible.
+  await expect(page.getByTestId('home-session')).toHaveAttribute('data-phase', 'explaining');
+  await expect(page.getByTestId('home-session-start')).toBeDisabled();
+  await expect(page.getByTestId('home-session-not-ready')).toBeVisible();
+});
+
+test('the ordinary live screen has no home session on it', async ({ page }) => {
+  await page.goto('/live.html');
+  await expect(page.getByTestId('live-title')).toBeVisible();
+  await expect(page.getByTestId('home-session')).toHaveCount(0);
+});
+
+test('a step runs out on its own, so a phone left on a table gets through it', async ({
+  page,
+}) => {
+  // The countdown is what makes "hold still" actionable, and it has to move the
+  // session on by itself: the first four steps are a phone lying on a table,
+  // where nobody is there to tap anything. The first step is four seconds long.
+  await startHomeSession(page);
+  await page.getByTestId('home-session-start').click();
+
+  const session = page.getByTestId('home-session');
+  await expect(session).toHaveAttribute('data-step-index', '0');
+  const remaining = page.getByTestId('home-session-remaining');
+  const first = Number(await remaining.getAttribute('data-remaining-ms'));
+  expect(first).toBeLessThanOrEqual(4000);
+
+  // It counts down, without a tap.
+  await expect
+    .poll(async () => Number(await remaining.getAttribute('data-remaining-ms')), {
+      timeout: 5000,
+    })
+    .toBeLessThan(first - 500);
+
+  // And then it moves on by itself.
+  await expect(session).toHaveAttribute('data-step-index', '1', { timeout: 10_000 });
+  await expect(session).toHaveAttribute('data-step-pose', POSE_LABELS[1] ?? '');
+});
+
+test('the session walks every pose and builds a recording the parser accepts', async ({ page }) => {
+  test.setTimeout(SCENE_TIMEOUT_MS + 120_000);
+
+  // Every request the page makes, with its body, so the recording can be looked
+  // for on the network rather than assumed absent.
+  const requests: { url: string; method: string; body: string }[] = [];
+  page.on('request', (request) => {
+    requests.push({
+      url: request.url(),
+      method: request.method(),
+      body: request.postData() ?? '',
+    });
+  });
+
+  await startHomeSession(page);
+  await page.getByTestId('home-session-start').click();
+  await walkEveryStep(page);
+
+  const session = page.getByTestId('home-session');
+  // The screen's own verdict on the file it built, from the same strict parser.
+  const parse = page.getByTestId('home-session-parse');
+  await expect(parse).toHaveAttribute('data-valid', 'true');
+  await expect(parse).toHaveAttribute('data-problem-count', '0');
+  await expect(parse).toContainText('holds no location and no clock time');
+  expect(Number(await session.getAttribute('data-event-count'))).toBeGreaterThan(0);
+
+  // The analysis ran on the device. Its verdicts are expected to be weak here —
+  // the segments are seconds long and the events are dispatched — so what is
+  // asserted is that every question was answered, not which way.
+  const verdicts = page.locator('[data-testid="home-session-analysis"] li');
+  expect(await verdicts.count()).toBeGreaterThan(10);
+  await expect(page.locator('li[data-verdict-id="compass-reference"]')).toBeVisible();
+
+  // Share it. The stub takes the file and keeps the bytes.
+  await page.getByTestId('home-session-share').click();
+  await expect(page.getByTestId('home-session-share-result')).toHaveAttribute(
+    'data-outcome',
+    'shared',
+  );
+  await expect(page.getByTestId('home-session-share-result')).toContainText('Nothing was uploaded');
+
+  const captured = await sharedRecording(page);
+  expect(captured, 'the share sheet was handed no file').toBeDefined();
+  if (captured === undefined) return;
+  expect(captured.name).toBe('mountain-finder-home-session.json');
+  expect(captured.type).toBe('application/json');
+
+  // ── the decisive assertions, on the shared bytes themselves ──────────────
+  const parsed = parseRecording(JSON.parse(captured.text) as unknown);
+  expect(parsed.ok ? [] : parsed.problems).toEqual([]);
+  expect(parsed.ok).toBe(true);
+  if (!parsed.ok) return;
+  expect(parsed.value.segments.map((segment) => segment.pose)).toEqual([...POSE_LABELS]);
+  expect(parsed.value.knownBearing.kind).toBe('sun-azimuth');
+  expect(parsed.value.device).toContain('Mozilla');
+
+  // No coordinate, no epoch, no wall clock — the parser's own scan, plus a
+  // direct look for the numbers Playwright injected as the position.
+  expect(findForbiddenContent(JSON.parse(captured.text) as unknown)).toEqual([]);
+  for (const banned of ['latitude', 'longitude', 'coords', 'geolocation', 'altitudeAccuracy']) {
+    expect(captured.text, banned).not.toContain(banned);
+  }
+  expect(captured.text).not.toContain(GORNERGRAT.lat.toFixed(4));
+  expect(captured.text).not.toContain(GORNERGRAT.lon.toFixed(4));
+  // The fix's own digits, to two places, are enough to place a viewpoint.
+  expect(captured.text).not.toContain('45.98');
+  expect(captured.text).not.toContain('7.78');
+  const numbers = [...captured.text.matchAll(/-?\d+(\.\d+)?/g)].map((match) =>
+    Math.abs(Number(match[0])),
+  );
+  expect(Math.max(...numbers)).toBeLessThan(EPOCH_FLOOR);
+
+  // ── and nothing carried it off the phone ────────────────────────────────
+  const carriers = requests.filter(
+    (request) =>
+      request.body.includes('home-session-recording') ||
+      request.body.includes('ms-since-recording-start'),
+  );
+  expect(carriers, 'a request carried the recording').toEqual([]);
+  const foreign = requests.filter(
+    (request) =>
+      !/^(blob:)?http:\/\/localhost:\d+\//.test(request.url) && !request.url.startsWith('data:'),
+  );
+  expect(foreign.map((request) => request.url), 'the session called a foreign origin').toEqual([]);
+  // Every request was a read of this origin's own files.
+  expect(requests.filter((request) => request.method !== 'GET')).toEqual([]);
+});
+
+test('a tap during the sun step measures the field of view and the aim', async ({ page }) => {
+  // The landmark sweep, which shares every line of arithmetic with the sun tap:
+  // any mark whose direction the app claims to know is a reference, and a summit
+  // dot is one. It is what this suite can drive at any hour, because the Sun is
+  // below the horizon at Gornergrat for most of the day.
+  //
+  // A KNOWN camera error is injected and the screen has to recover it. Each tap
+  // is placed at
+  //
+  //     tapped = principal + s · (drawn − principal) + d,   s = 1.1, d = (10, −6)
+  //
+  // which is exactly what a camera 1.1× longer than the guess, aimed a little
+  // off, would have put there. So the fit must come back with scale 1.1, a
+  // visible field of 2·atan(400 / (1.1 · 400/0.75)) = 61.9275°, and the two
+  // offsets −atan(10/586.667) and +atan(−6/586.667).
+  test.setTimeout(SCENE_TIMEOUT_MS + 180_000);
+  const INJECTED_SCALE = 1.1;
+  const INJECTED_SHIFT_PX = { xPx: 10, yPx: -6 };
+
+  await startHomeSession(page);
+  await page.getByTestId('home-session-start').click();
+  for (let index = 0; index < POSE_LABELS.length - 1; index += 1) {
+    await page.getByTestId('home-session-next').click();
+  }
+
+  const session = page.getByTestId('home-session');
+  await expect(session).toHaveAttribute('data-step-pose', 'sun-capture');
+  await expect(page.getByTestId('home-session-instruction')).toContainText('LEFT');
+  await expect(page.getByTestId('home-session-instruction')).toContainText('RIGHT');
+
+  // The tap surface covers the whole picture, so a finger anywhere on it is a
+  // tap rather than a nudge of the labels. The panel's own buttons stay above
+  // it, which the previous test proves by clicking Finish through it.
+  const layer = page.getByTestId('home-session-tap-layer');
+  await expect(layer).toBeVisible();
+  const box = await layer.boundingBox();
+  expect(box?.width).toBe(FRAME.widthPx);
+  expect(box?.height).toBe(FRAME.heightPx);
+  await expect(page.getByTestId('home-session-taps')).toHaveAttribute('data-tap-count', '0');
+
+  // Wait for the skyline, because the references are its summit dots.
+  await expect(page.getByTestId('live-scene-state')).toHaveAttribute('data-scene', 'ready', {
+    timeout: SCENE_TIMEOUT_MS,
+  });
+  const dots = await summitDots(page);
+  expect(dots.length, 'the landmark sweep needs drawn summits').toBeGreaterThan(1);
+
+  // A tap further than the attribution limit from every drawn mark is refused
+  // rather than attached to whatever happened to be closest.
+  const marks = await page
+    .locator('[data-testid="live-marks"] circle')
+    .evaluateAll((nodes) =>
+      nodes.map((node) => ({
+        cx: Number(node.getAttribute('cx')),
+        cy: Number(node.getAttribute('cy')),
+      })),
+    );
+  const everything = [...dots, ...marks];
+  const farFromEverything = (() => {
+    for (let yPx = 10; yPx < FRAME.heightPx; yPx += 10) {
+      for (let xPx = 10; xPx < FRAME.widthPx; xPx += 10) {
+        const nearest = Math.min(
+          ...everything.map((dot) => Math.hypot(dot.cx - xPx, dot.cy - yPx)),
+        );
+        if (nearest > 250) return { xPx, yPx };
+      }
+    }
+    return undefined;
+  })();
+  if (farFromEverything !== undefined) {
+    await tapAt(page, farFromEverything.xPx, farFromEverything.yPx);
+    await expect(page.getByTestId('home-session-tap-note')).toBeVisible();
+    await expect(page.getByTestId('home-session-taps')).toHaveAttribute('data-tap-count', '0');
+  } else {
+    console.log('every part of this frame is within 250 px of a drawn mark; skipped the miss case');
+  }
+
+  const injectedTap = (dot: { cx: number; cy: number }): { xPx: number; yPx: number } => ({
+    xPx: FRAME.widthPx / 2 + INJECTED_SCALE * (dot.cx - FRAME.widthPx / 2) + INJECTED_SHIFT_PX.xPx,
+    yPx:
+      FRAME.heightPx / 2 + INJECTED_SCALE * (dot.cy - FRAME.heightPx / 2) + INJECTED_SHIFT_PX.yPx,
+  });
+
+  /**
+   * Two references far enough apart to separate scale from offset, each of which
+   * is the NEAREST drawn mark to its own injected tap.
+   *
+   * The screen attributes a tap to the nearest mark, so a pair chosen without
+   * that check could have one tap land nearer a neighbouring summit — and the
+   * fit would then be recovering a displacement nobody injected. The RMS spread
+   * of two points is half their separation, which is why the gap has to clear
+   * twice the module's floor.
+   */
+  const pair = (() => {
+    const nearest = (point: { xPx: number; yPx: number }): { cx: number; cy: number } | undefined =>
+      everything.reduce<{ cx: number; cy: number } | undefined>((best, dot) => {
+        if (best === undefined) return dot;
+        return Math.hypot(dot.cx - point.xPx, dot.cy - point.yPx) <
+          Math.hypot(best.cx - point.xPx, best.cy - point.yPx)
+          ? dot
+          : best;
+      }, undefined);
+    const claimsItsOwnTap = (dot: { cx: number; cy: number }): boolean => {
+      const hit = nearest(injectedTap(dot));
+      return hit !== undefined && hit.cx === dot.cx && hit.cy === dot.cy;
+    };
+    const sorted = [...dots].sort((a, b) => a.cx - b.cx);
+    for (let i = 0; i < sorted.length; i += 1) {
+      for (let j = sorted.length - 1; j > i; j -= 1) {
+        const a = sorted[i];
+        const b = sorted[j];
+        if (a === undefined || b === undefined) continue;
+        if (b.cx - a.cx <= 2 * MIN_SPREAD_PX) continue;
+        if (claimsItsOwnTap(a) && claimsItsOwnTap(b)) return { left: a, right: b };
+      }
+    }
+    return undefined;
+  })();
+  expect(pair, 'no two drawn summits are far enough apart and unambiguous').toBeDefined();
+  if (pair === undefined) return;
+  const { left, right } = pair;
+
+  const firstTap = injectedTap(left);
+  await tapAt(page, firstTap.xPx, firstTap.yPx);
+  await expect(page.getByTestId('home-session-taps')).toHaveAttribute('data-tap-count', '1');
+  // One tap cannot tell a wrong lens width from a wrong direction, and the
+  // screen says exactly that instead of producing a field of view.
+  const refusal = page.getByTestId('home-session-fit-refusal');
+  await expect(refusal).toHaveAttribute('data-refusal', 'too-few-taps');
+  await expect(refusal).toContainText('different parts of the picture');
+
+  const secondTap = injectedTap(right);
+  await tapAt(page, secondTap.xPx, secondTap.yPx);
+  await expect(page.getByTestId('home-session-taps')).toHaveAttribute('data-tap-count', '2');
+
+  const fit = page.getByTestId('home-session-fit');
+  await expect(fit).toBeVisible();
+  const read = async (attribute: string): Promise<number> => Number(await fit.getAttribute(attribute));
+  // The injected camera, recovered. The tolerances allow for the label positions
+  // moving by a fraction of a pixel between the read above and each tap: the
+  // fused pose is still settling by thousandths of a degree.
+  expect(await read('data-scale')).toBeCloseTo(INJECTED_SCALE, 2);
+  const assumedFocalPx = FRAME.widthPx / 2 / Math.tan((VISIBLE_FOV.hFovDeg * DEG) / 2);
+  const fittedFocalPx = INJECTED_SCALE * assumedFocalPx;
+  expect(await read('data-visible-hfov-deg')).toBeCloseTo(
+    (2 * Math.atan(FRAME.widthPx / 2 / fittedFocalPx)) / DEG,
+    1,
+  );
+  expect(await read('data-heading-offset-deg')).toBeCloseTo(
+    -Math.atan(INJECTED_SHIFT_PX.xPx / fittedFocalPx) / DEG,
+    1,
+  );
+  expect(await read('data-pitch-offset-deg')).toBeCloseTo(
+    Math.atan(INJECTED_SHIFT_PX.yPx / fittedFocalPx) / DEG,
+    1,
+  );
+  expect(await read('data-residual-px')).toBeLessThan(2);
+
+  // Saving it changes what the overlay is drawn with, and the label stops
+  // calling the field of view a guess.
+  const beforeHFov = await poseNumber(page, 'data-hfov-deg');
+  expect(beforeHFov).toBeCloseTo(VISIBLE_FOV.hFovDeg, 3);
+  const fittedVisibleHFov = await read('data-visible-hfov-deg');
+  const fittedHeadingOffset = await read('data-heading-offset-deg');
+  await page.getByTestId('home-session-use-fit').click();
+
+  const label = page.getByTestId('live-fov-label');
+  await expect(label).toHaveAttribute('data-fov-source', 'calibrated', { timeout: 15_000 });
+  await expect(label).toContainText('taps on');
+  await expect
+    .poll(async () => poseNumber(page, 'data-hfov-deg'), { timeout: 15_000 })
+    .toBeCloseTo(fittedVisibleHFov, 1);
+  // The two offsets land in the nudge, where the user can see and undo them,
+  // rather than being applied behind their back.
+  expect(
+    Number(await page.getByTestId('live-trim').getAttribute('data-heading-deg')),
+  ).toBeCloseTo(fittedHeadingOffset, 6);
+});
+
+test('the observer stands on the map’s ground, not on the GPS altitude', async ({ page }) => {
+  test.setTimeout(SCENE_TIMEOUT_MS + 90_000);
+  await startLive(page, { trueHeadingDeg: TRUE_HEADING_DEG, pitchDeg: 0 });
+  await expect(page.getByTestId('live-scene-state')).toHaveAttribute('data-scene', 'ready', {
+    timeout: SCENE_TIMEOUT_MS,
+  });
+
+  // Playwright's fix carries no altitude at all, so the terrain is the only
+  // source there is — and that is what the screen has to say it used.
+  const note = page.getByTestId('live-ground-height');
+  await expect(note).toHaveAttribute('data-ground-source', 'terrain');
+  await expect(note).toContainText("from the map's own terrain");
+
+  // The DEM reads 3087.98 m at the Gornergrat platform, whose published height
+  // is 3089 m (IMPLEMENTATION.md). The eye is 1.6 m above whatever it reads, so
+  // the note must show a ground height within a few metres of the platform and
+  // an eye height 1.6 m above it.
+  const text = (await note.textContent()) ?? '';
+  const matched = /([\d.]+) m of ground plus ([\d.]+) m of eye height, so ([\d.]+) m/.exec(text);
+  expect(matched, `the height note did not name its two parts: ${text}`).not.toBeNull();
+  if (matched === null) return;
+  const ground = Number(matched[1]);
+  const eye = Number(matched[2]);
+  const total = Number(matched[3]);
+  expect(ground).toBeGreaterThan(3070);
+  expect(ground).toBeLessThan(3100);
+  expect(eye).toBeCloseTo(1.6, 2);
+  expect(total).toBeCloseTo(ground + eye, 1);
 });

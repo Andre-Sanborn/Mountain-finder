@@ -22,7 +22,7 @@ after its self-check has run and passed here. The checks are in
 - [x] Build the web sensor adapter as a pure function of raw Safari and Chromium events
 - [ ] Settle webkitCompassHeading's reference axis for an upright phone from the home recording
 - [x] Build a recording schema and `analyze:recording` that scores the compass hypotheses automatically
-- [ ] Wire the recording schema to LiveScreen's rawEventSink so the home session can save a capture bundle
+- [x] Wire the recording schema to LiveScreen's rawEventSink so the home session can save a capture bundle
 - [ ] Only if landscape fails: the iOS alpha-offset hold, re-anchored continuously, invalidated on re-base
 - [ ] Settle the device-roll to screen-roll sign from the home recording
 - [x] Give suggestPoseTrim tests a timeout that holds under parallel load (1.8 s alone, >5 s at load 13)
@@ -35,8 +35,9 @@ after its self-check has run and passed here. The checks are in
 - [x] Add a service worker to live.html, so the AR screen opens with no network after one visit
 - [ ] Render the offline status line and the "Download Bogus Basin" button on the live screen
 - [ ] Measure the real 42.55 MB download on the phone, and what iOS keeps after a week
-- [ ] Prefer the DEM's ground at the fix over GPS altitude on the live screen; the geoid gap reaches ~50 m
-- [ ] Calibrate the live field of view against the sun or a landmark at the home session, and store it
+- [x] Prefer the DEM's ground at the fix over GPS altitude on the live screen; the geoid gap reaches ~50 m
+- [x] Build field-of-view calibration from taps on the sun or a landmark, stored against track settings
+- [ ] Prove the automatic advance on the three-minute stillness step on a real device
 - [x] Build the capture bundle schema and `analyze:field`; bundles never enter the repository
 - [ ] Have the live screen emit a field bundle in the field-bundle@1 shape (no bearings, no wall clock)
 - [ ] Record the phone's coords.accuracy per fix, to replace the n = 1 15 m observer term
