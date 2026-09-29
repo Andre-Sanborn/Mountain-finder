@@ -5,6 +5,15 @@ and self-checks in [IMPLEMENTATION.md](IMPLEMENTATION.md), open work in [TODO.md
 
 ## Needed from the human
 
+- **A decision only they can make: do the nine photographs stay public?** The repository is
+  public (GitHub API, `private: false`). `fixtures/photos/real/` holds nine of the human's own
+  iPhone originals with GPS in their EXIF, public since 2026-08-17, and docs print those
+  coordinates. The nine are the `.heic` files in that directory, each cleared by path and
+  sha256 in `scripts/privacy-allowlist.json`; the two `.jpeg` exports beside them carry no
+  GPS. They are mountain viewpoints, not a residence. Asked 2026-09-29. Nothing is blocked;
+  the default until answered is that they stay. Options given: keep; make the repo
+  private (Pages would then need another host); or rewrite history (overrides "nothing is
+  deleted", needs their explicit word). Repeat this ask in every reply until answered.
 - **An action only they can take: turn on GitHub Pages (about 2 minutes, not urgent).** The
   Pages workflow builds and passes its gates, but the deploy step fails with 404 "Ensure GitHub
   Pages has been enabled" (run 36514664919). The repository's default branch is the retired
@@ -15,15 +24,12 @@ and self-checks in [IMPLEMENTATION.md](IMPLEMENTATION.md), open work in [TODO.md
 - **Recorded, not asked: how "archive all of our work" was read.** Snapshot the state, archive
   the governance documents, keep the code and build on it. The human can say if they meant a
   whole-tree archive and rebuild.
-- **Settled 2026-09-29.** The nine photographs stay public. The Bogus Basin field session happens
-  only after local testing, meaning the home session first. The usage-budget rule stays in this
-  repository only.
 - **Told, not asked (2026-09-29): what the Bogus Basin session can grade.** Agent annotators,
   with or without a top-down map, agreed on no summit beyond the drag anchor (Deer Point) in the
   rehearsal frame, and the near band is site-limited. Expect the session to test sensors, pose,
   visibility and the tilt zero point (F2, F5, F6), and probably not label placement beyond the
   anchor. The orchestrator is going ahead; the human can say the drive is not worth it. A second
-  site is not proposed until this session's data exists.
+  site is not proposed until this session's data exists. Repeat until acknowledged.
 - **Coming later: the home session (~15 min) and the field session (~30 min).** The steps are
   written in [docs/HOME-SESSION-GUIDE.md](docs/HOME-SESSION-GUIDE.md) and
   [docs/FIELD-SESSION-GUIDE.md](docs/FIELD-SESSION-GUIDE.md). Both are blocked on GitHub Pages

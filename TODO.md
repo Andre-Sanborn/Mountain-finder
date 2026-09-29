@@ -126,7 +126,7 @@ after its self-check has run and passed here. The checks are in
 - [ ] Find a real photograph that exercises D8's self-occlusion rule; it has never fired on one
 - [ ] Re-check CV-2/CV-8's 14 mm figures via `npm run annotate`: suggestPoseTrim now reads coverage 66.6 %, not 0 %
 - [ ] Settle long-side vs CIPA-diagonal 35 mm equivalence against the solved Railroad Ridge pose (~2°, 3% scale)
-- [ ] Get the human's answer on whether the seven photos in fixtures/photos/real/ stay public.
+- [x] Get the human's answer on whether the nine photos in fixtures/photos/real/ stay public (they stay).
 - [ ] Decide the fate of the retired `claude/topographic-peak-identifier-EV4ZN` branch: keep, tag, or delete.
 - [ ] P7.5: add a cue for soft crest steps under haze so the 24 mm and 14 mm frames report columns instead of declining.
 - [ ] P7.7: capture pitch at photograph time on iOS, so the pose does not depend on recovering it from the picture.

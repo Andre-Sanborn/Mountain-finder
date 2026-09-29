@@ -345,8 +345,9 @@ is recorded here so nobody has to re-litigate it. **Any further personal
 photograph needs the human's explicit yes before it is committed.**
 
 The repository is public: the GitHub API reports `private: false`. Those nine
-photographs and their coordinates are therefore readable by anyone. **The human
-decided on 2026-09-29 that they stay public.**
+photographs and their coordinates are therefore readable by anyone. The human has
+been asked whether they should stay public. **Until they answer, the photographs
+stay**, and this paragraph records the question as open rather than settled.
 
 ### Captures from the phone
 
