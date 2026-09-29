@@ -25,6 +25,7 @@
  * the two functions that touch `localStorage` and can throw-and-be-caught.
  */
 
+import type { PitchBiasSource } from '../../live/recording';
 import type { WebStorageLike } from './fov-choice';
 
 /** `localStorage` key holding every tilt measurement this origin has stored. */
@@ -40,7 +41,16 @@ export interface PitchBiasCalibration {
   readonly segmentCount: number;
   /** How it was measured, in the operator's own words. */
   readonly method: string;
+  /**
+   * Which measurement it came out of.
+   *
+   * The two sources need different numbers of readings before the band may gate
+   * on them, so the source has to survive the round trip through storage.
+   */
+  readonly source: PitchBiasSource;
 }
+
+const PITCH_BIAS_SOURCES: readonly PitchBiasSource[] = ['fov-calibration-taps', 'sun-aiming-steps'];
 
 /** The key a measurement is stored under. */
 export function pitchBiasKey(userAgent: string): string {
@@ -57,7 +67,14 @@ export function pitchBiasKey(userAgent: string): string {
  *
  * A negative spread is refused and a bias beyond a quarter turn is refused. The
  * second bound is loose on purpose — the point is to catch a field holding a
- * heading or a pixel count, not to decide what tilt error is plausible.
+ * heading or a pixel count, not to decide what tilt error is plausible. What
+ * decides whether a stored measurement may close the band is
+ * `qualifiesToGateVertical`, not this parser.
+ *
+ * An entry naming no known source is dropped, so a blob written before the
+ * source was stored reads as no measurement. That is the conservative end: the
+ * band reports the tilt term as unquantified and the next home session
+ * remeasures.
  */
 export function parsePitchBiasCalibrations(
   raw: unknown,
@@ -74,7 +91,7 @@ export function parsePitchBiasCalibrations(
   for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
     if (typeof value !== 'object' || value === null) continue;
     const entry = value as Record<string, unknown>;
-    const { biasDeg, spreadDeg, segmentCount, method } = entry;
+    const { biasDeg, spreadDeg, segmentCount, method, source } = entry;
     if (
       typeof biasDeg !== 'number' ||
       !Number.isFinite(biasDeg) ||
@@ -86,11 +103,13 @@ export function parsePitchBiasCalibrations(
       typeof segmentCount !== 'number' ||
       !Number.isInteger(segmentCount) ||
       segmentCount < 1 ||
-      typeof method !== 'string'
+      typeof method !== 'string' ||
+      typeof source !== 'string' ||
+      !PITCH_BIAS_SOURCES.includes(source as PitchBiasSource)
     ) {
       continue;
     }
-    out[key] = { biasDeg, spreadDeg, segmentCount, method };
+    out[key] = { biasDeg, spreadDeg, segmentCount, method, source: source as PitchBiasSource };
   }
   return out;
 }

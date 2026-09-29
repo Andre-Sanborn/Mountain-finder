@@ -588,6 +588,7 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
         spreadDeg: estimate.spreadDeg,
         segmentCount: estimate.sampleCount,
         method: estimate.method,
+        source: estimate.source,
       };
       writeStoredPitchBias(
         typeof localStorage === 'undefined' ? undefined : localStorage,

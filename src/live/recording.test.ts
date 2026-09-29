@@ -41,10 +41,14 @@ import {
   expectedGravity,
   expectedTopEdgeMinusCameraDeg,
   fold360,
+  MAX_QUALIFYING_TILT_SPREAD_DEG,
   meanAndSampleSd,
+  MIN_QUALIFYING_TILT_AIMING_STEPS,
+  MIN_QUALIFYING_TILT_TAPS,
   MOTION_HEADING_FAULT_DEG,
   parseRecording,
   protocolSegments,
+  qualifiesToGateVertical,
   PROTOCOL_SUN_ALTITUDE_DEG,
   signedDeltaDeg,
   synthesiseRecording,
@@ -1439,6 +1443,60 @@ describe('the tilt zero point read off the field-of-view fit', () => {
     if (tap !== undefined) tap.name = 'Deer Point';
     const refusedName = parseRecording(named);
     expect(refusedName.ok).toBe(false);
+  });
+});
+
+/**
+ * The bar a tilt zero point clears before it may gate F2's vertical axis.
+ *
+ * Each expectation is the rule read off the three published constants by hand.
+ * The 1.0° ceiling is about 2.6σ on the statistic the fit reports: a tap is
+ * placed to about 0.543° at 1σ, two taps leave one degree of freedom, and
+ * `sqrt(SSR / 2)` with SSR ~ σ²χ²₁ has 0.543 / √2 = 0.384° for its own scale.
+ */
+describe('qualifying to gate the vertical axis', () => {
+  const TAPS = {
+    biasDeg: 2,
+    spreadDeg: 0.384,
+    sampleCount: 2,
+    source: 'fov-calibration-taps',
+  } as const;
+
+  it('takes two agreeing taps, which is the fewest that leave a residual', () => {
+    expect(MIN_QUALIFYING_TILT_TAPS).toBe(2);
+    expect(qualifiesToGateVertical(TAPS)).toBe(true);
+    expect(qualifiesToGateVertical({ ...TAPS, sampleCount: 1 })).toBe(false);
+  });
+
+  it('takes three aiming steps, because two re-aims give no spread worth pooling', () => {
+    expect(MIN_QUALIFYING_TILT_AIMING_STEPS).toBe(3);
+    const aiming = { ...TAPS, source: 'sun-aiming-steps' } as const;
+    expect(qualifiesToGateVertical({ ...aiming, sampleCount: 2 })).toBe(false);
+    expect(qualifiesToGateVertical({ ...aiming, sampleCount: 3 })).toBe(true);
+  });
+
+  it('admits a spread exactly on the ceiling and refuses one past it', () => {
+    expect(MAX_QUALIFYING_TILT_SPREAD_DEG).toBe(1);
+    expect(qualifiesToGateVertical({ ...TAPS, spreadDeg: 1 })).toBe(true);
+    expect(qualifiesToGateVertical({ ...TAPS, spreadDeg: 1.000001 })).toBe(false);
+  });
+
+  it('refuses a bias past the credible ceiling, which is a missed aim', () => {
+    expect(qualifiesToGateVertical({ ...TAPS, biasDeg: 15 })).toBe(true);
+    expect(qualifiesToGateVertical({ ...TAPS, biasDeg: -15.5 })).toBe(false);
+  });
+
+  it('says on screen why a loose pair does not close the band', () => {
+    // A residual of focal · tan(2°) is a 2° disagreement, twice the ceiling.
+    const loose = synthesiseRecording(
+      spec({ tiltBiasDeg: 2, fitResidualPx: SYNTH_FOCAL_PX * Math.tan((2 * Math.PI) / 180) }),
+    );
+    expect(estimatePitchBias(loose)?.spreadDeg).toBeCloseTo(2, 9);
+    const evidence = verdictFor(loose, 'pitch-bias').evidence.join('\n');
+    expect(evidence).toContain('keeps its unquantified tilt term');
+
+    const tight = synthesiseRecording(spec({ tiltBiasDeg: 2 }));
+    expect(verdictFor(tight, 'pitch-bias').evidence.join('\n')).toContain('qualifies to gate');
   });
 });
 

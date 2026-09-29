@@ -39,6 +39,9 @@
  *   pitch bias, unmeasured        unquantified: nothing on this phone has ever
  *                                 checked the sensed tilt against a known
  *                                 direction
+ *   pitch bias, too loose         unquantified: a measurement exists, but its
+ *                                 readings disagree too widely or too few were
+ *                                 pooled to call it a zero point
  *
  * The scatter terms are the only ones with a sample count above 1, and they are
  * measurements of the noise rather than of the bias. Saying so matters: a still
@@ -49,6 +52,7 @@
 
 import type { CameraPose } from '../../core/types';
 import { MODEL_DECLINATION_RMS_DEG, type DrawableHeading } from '../../live/heading-policy';
+import { qualifiesToGateVertical } from '../../live/recording';
 import {
   frameFractionOf,
   pixelsPerDegreeAtCentre,
@@ -162,6 +166,12 @@ function headingTerms(input: LiveUncertaintyInput): readonly UncertaintyTerm[] {
  * not subtract the bias from the pose — it reports it — so the band has to
  * carry the whole of it, and the re-aim spread is how well the bias itself is
  * known.
+ *
+ * A stored measurement whose readings disagree too widely, or that pooled too
+ * few of them, is not a zero point. `qualifiesToGateVertical` decides, and a
+ * measurement that fails it leaves this term unquantified with its own figures
+ * named, so the screen says which measurement fell short rather than implying
+ * none was taken.
  */
 function pitchBiasTerm(bias: PitchBiasCalibration | undefined): UncertaintyTerm {
   if (bias === undefined) {
@@ -175,6 +185,29 @@ function pitchBiasTerm(bias: PitchBiasCalibration | undefined): UncertaintyTerm 
           'it knows, so the app cannot say how far the tilt reading sits from the truth. ' +
           'It could be a fraction of a degree or it could be several. Run the home ' +
           'session in sunshine to measure it.',
+      },
+    };
+  }
+  if (
+    !qualifiesToGateVertical({
+      biasDeg: bias.biasDeg,
+      spreadDeg: bias.spreadDeg,
+      sampleCount: bias.segmentCount,
+      source: bias.source,
+    })
+  ) {
+    return {
+      axis: 'vertical',
+      label: 'Tilt zero point never checked',
+      basis: {
+        kind: 'unquantified',
+        note:
+          `The home session did aim at the sun, but its ${bias.segmentCount} reading` +
+          `${bias.segmentCount === 1 ? '' : 's'} landed ${bias.spreadDeg.toFixed(2)}° apart ` +
+          `and found the tilt ${Math.abs(bias.biasDeg).toFixed(2)}° out, which is not steady ` +
+          'enough to stand as a zero point. So the app still cannot say how far the tilt ' +
+          'reading sits from the truth. Run the home session again in sunshine, tapping the ' +
+          'middle of the sun.',
       },
     };
   }

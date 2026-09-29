@@ -23,6 +23,7 @@ import {
   MODEL_DECLINATION_RMS_DEG,
   type DrawableHeading,
 } from '../../live/heading-policy';
+import { MAX_QUALIFYING_TILT_SPREAD_DEG } from '../../live/recording';
 import { MEASURED_ASSUMED_PITCH_ERROR_DEG } from '../uncertainty';
 import { horizontalBandHalfWidthPx, liveUncertainty } from './live-uncertainty';
 import type { PitchBiasCalibration } from './pitch-bias';
@@ -57,6 +58,7 @@ const PITCH_BIAS: PitchBiasCalibration = {
   spreadDeg: 0.1,
   segmentCount: 3,
   method: 'Measured against the sun over 3 aiming step(s) in the home session.',
+  source: 'sun-aiming-steps',
 };
 
 const MAGNETIC_HEADING: DrawableHeading = {
@@ -281,6 +283,91 @@ describe('the tilt zero point', () => {
     expect(term?.label).toContain('sun');
     expect(term?.basis.kind === 'measured' ? term.basis.sampleCount : 0).toBe(3);
     expect(term?.basis.note).toContain('0.40° too high');
+  });
+});
+
+/**
+ * The qualifying rule, at the live band.
+ *
+ * Every expectation here is the rule read off `qualifiesToGateVertical` by
+ * hand — a source, a count and a spread against the three published constants —
+ * rather than anything the code printed.
+ */
+describe('a tilt zero point that does not qualify to gate the up/down axis', () => {
+  const TAPS: PitchBiasCalibration = {
+    biasDeg: 0.4,
+    spreadDeg: 0.38,
+    segmentCount: 2,
+    method: 'Read from the 2 field-of-view taps on sun in the home session.',
+    source: 'fov-calibration-taps',
+  };
+
+  const bandWith = (bias: PitchBiasCalibration): ReturnType<typeof liveUncertainty> =>
+    liveUncertainty({
+      heading: MODEL_HEADING,
+      pitchSpreadDeg: 0.003,
+      fovSource: 'calibrated',
+      pitchBias: bias,
+      pose: POSE,
+      framePx: FRAME,
+    });
+
+  it('gates on two taps that agree, which is the measurement the field test rests on', () => {
+    const band = bandWith(TAPS);
+    const term = band.terms.find((entry) => entry.label.includes('Tilt zero point'));
+    expect(term?.basis.kind).toBe('measured');
+    // 0.003 of wobble, plus 0.4 of bias and 0.38 of tap disagreement.
+    expect(band.measuredDeg.vertical).toBeCloseTo(0.783, 12);
+    expect(band.hasUnquantified).toBe(false);
+  });
+
+  it('gates a pair sitting exactly on the 1.0° spread ceiling', () => {
+    // The ceiling is a maximum, so the boundary qualifies. An off-by-one
+    // comparison here would refuse an honest pair.
+    const band = bandWith({ ...TAPS, spreadDeg: MAX_QUALIFYING_TILT_SPREAD_DEG });
+    const term = band.terms.find((entry) => entry.label.includes('Tilt zero point'));
+    expect(term?.basis.kind).toBe('measured');
+    expect(band.hasUnquantified).toBe(false);
+  });
+
+  it('keeps the term unquantified when two taps disagree past the ceiling', () => {
+    const band = bandWith({ ...TAPS, spreadDeg: 1.2 });
+    const term = band.terms.find((entry) => entry.label.includes('Tilt zero point'));
+    expect(term?.label).toBe('Tilt zero point never checked');
+    expect(term?.basis.kind).toBe('unquantified');
+    // The screen says which measurement fell short, not that none was taken.
+    expect(term?.basis.note).toContain('1.20° apart');
+    expect(band.hasUnquantified).toBe(true);
+    expect(band.summary).toContain('minimum');
+    // A floor cannot be exceeded, so the vertical axis charges wobble alone.
+    expect(band.measuredDeg.vertical).toBeCloseTo(0.003, 12);
+  });
+
+  it('keeps the term unquantified for a single tap, however tight its spread', () => {
+    const band = bandWith({ ...TAPS, segmentCount: 1, spreadDeg: 0 });
+    expect(
+      band.terms.find((entry) => entry.label.includes('Tilt zero point'))?.basis.kind,
+    ).toBe('unquantified');
+  });
+
+  it('asks three aiming steps for the older measurement, not two', () => {
+    const aiming: PitchBiasCalibration = { ...PITCH_BIAS, segmentCount: 2 };
+    expect(
+      bandWith(aiming).terms.find((entry) => entry.label.includes('Tilt zero point'))?.basis.kind,
+    ).toBe('unquantified');
+    expect(
+      bandWith({ ...aiming, segmentCount: 3 }).terms.find((entry) =>
+        entry.label.includes('Tilt zero point'),
+      )?.basis.kind,
+    ).toBe('measured');
+  });
+
+  it('keeps the term unquantified for a bias past the credible ceiling', () => {
+    // A 20° figure is a missed aim rather than a sensor's zero point.
+    const band = bandWith({ ...TAPS, biasDeg: 20 });
+    expect(
+      band.terms.find((entry) => entry.label.includes('Tilt zero point'))?.basis.kind,
+    ).toBe('unquantified');
   });
 });
 

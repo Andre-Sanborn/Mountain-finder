@@ -73,7 +73,7 @@ after its self-check has run and passed here. The checks are in
 - [x] Move the field fixture generator into scripts/ with an npm script
 - [x] Add a measured pitch-bias term to the live vertical band; until measured, F2 vertical is not gated
 - [x] Measure the tilt zero point from step 14's two Sun taps, and record the fit that produced it
-- [ ] Pre-register when a tap-derived tilt zero point gates F2's vertical axis
+- [x] Pre-register when a tap-derived tilt zero point gates F2's vertical axis
 - [ ] Cross-check the tap-derived tilt bias on a second phone or session; it is n = 1 on both
 - [ ] Find why live.spec's "a tap on the real sun says how far off the compass is" failed once under a parallel run
 - [x] Give protocolSegments() aiming attitudes that point at a plausible sun altitude

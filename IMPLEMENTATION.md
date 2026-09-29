@@ -1437,6 +1437,24 @@ limit, where it only helps attribution.
 
 `aimOffsetDeg` and `HomeSessionRecorder.setAimOffsetDeg` remain unwired.
 
+**Not every stored measurement gates the vertical axis.** `qualifiesToGateVertical` in
+`src/live/recording.ts` decides, for both the live band and the home session's verdict. It needs
+two taps for a step-14 fit or three aiming steps, a bias within 15°, and a spread within
+`MAX_QUALIFYING_TILT_SPREAD_DEG` = 1.0°. A measurement that fails is stored and shown, but the
+band keeps "Tilt zero point never checked" as unquantified, so the bundle's
+`hasUnquantifiedVertical` stays true and `gradeF2` reports the vertical axis `recorded-not-gated`.
+The note names the measurement's own figures.
+
+A tap is placed to about 0.543° at 1σ per axis, term 9's millimetre of finger. `fitFovCalibration`
+reports sqrt(SSR / taps); with two taps SSR ~ σ²χ²₁, so the statistic's scale is σ/√2 = 0.384° and
+1.0° sits at 2.6σ, refusing about 0.9% of honest pairs. The 0.543° is the budgeted drag figure, not
+a measured tap scatter. Two aiming steps are refused because a two-sample spread is barely a
+spread.
+
+`PitchBiasCalibration` carries its `source`, since the two sources need different reading
+counts. A stored entry without one is dropped and reads as no measurement; the next home session
+remeasures. Limit: n = 2 taps, one phone, one session; a second home session is the cross-check.
+
 The same change set corrected the photo count to nine `.heic` originals. The two JPEG exports
 carry no GPS. It also set MISSION.md, README.md and HANDOFF.md to name `live.html` as the live
 vehicle, with Expo as the fallback that has never been run.

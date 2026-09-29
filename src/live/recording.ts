@@ -2706,6 +2706,66 @@ export const MIN_PITCH_BIAS_SAMPLES = MIN_SCORED_SAMPLES;
 export const MAX_CREDIBLE_PITCH_BIAS_DEG = 15;
 
 /**
+ * Widest disagreement between two readings that may still gate F2's vertical
+ * axis, degrees at 1σ.
+ *
+ * A tap is placed to about 0.543° at 1σ per axis — the field test's term 9, one
+ * millimetre of finger on the glass. Two taps give four scalar measurements
+ * against three unknowns, so one degree of freedom is left, and
+ * `fitFovCalibration` reports `sqrt(SSR / taps)`. With SSR ~ σ²χ²₁ over two
+ * taps that statistic has σ / √2 ≈ 0.384° for its own scale, so this 1.0°
+ * ceiling sits at about 2.6σ and refuses roughly one honest pair in a hundred.
+ *
+ * The ceiling exists because the pooled bias is only as good as the readings
+ * that agreed on it. Two taps that disagree by several degrees have not located
+ * the zero point; charging their mean as a measurement would gate F2's vertical
+ * axis on a number nobody measured.
+ */
+export const MAX_QUALIFYING_TILT_SPREAD_DEG = 1;
+
+/** Fewest field-of-view taps a fit needs before its bias may gate the band. */
+export const MIN_QUALIFYING_TILT_TAPS = 2;
+
+/** Fewest aiming steps the older measurement needs before it may gate the band. */
+export const MIN_QUALIFYING_TILT_AIMING_STEPS = 3;
+
+/** What {@link qualifiesToGateVertical} reads. {@link PitchBiasEstimate} has it all. */
+export interface TiltZeroPointQuality {
+  readonly biasDeg: number;
+  readonly spreadDeg: number;
+  /** Taps for a `fov-calibration-taps` estimate, aiming steps for the other. */
+  readonly sampleCount: number;
+  readonly source: PitchBiasSource;
+}
+
+/**
+ * May this tilt zero point turn F2's vertical axis from recorded into gated?
+ *
+ * Three conditions, and all three are about whether a number was measured
+ * rather than guessed. Enough independent readings: two taps, which is the
+ * fewest that leave a residual at all, or three aiming steps, which is the
+ * fewest that give a spread of re-aims rather than one hold's own wobble.
+ * A credible bias, since a figure past {@link MAX_CREDIBLE_PITCH_BIAS_DEG} is a
+ * missed aim. And readings that agree, within
+ * {@link MAX_QUALIFYING_TILT_SPREAD_DEG}.
+ *
+ * A measurement that fails any of them is still stored and still shown. What it
+ * does not do is close the band: the live screen keeps its unquantified tilt
+ * term and F2's vertical axis stays `recorded-not-gated`.
+ */
+export function qualifiesToGateVertical(quality: TiltZeroPointQuality): boolean {
+  const enoughReadings =
+    quality.source === 'fov-calibration-taps'
+      ? quality.sampleCount >= MIN_QUALIFYING_TILT_TAPS
+      : quality.sampleCount >= MIN_QUALIFYING_TILT_AIMING_STEPS;
+  return (
+    enoughReadings &&
+    Math.abs(quality.biasDeg) <= MAX_CREDIBLE_PITCH_BIAS_DEG &&
+    quality.spreadDeg <= MAX_QUALIFYING_TILT_SPREAD_DEG
+  );
+}
+
+/**
  * The tilt zero point, measured against the Sun.
  *
  * `undefined` when the reference is not the Sun, or when no aiming step carries
@@ -2904,6 +2964,22 @@ function pitchBiasVerdict(
       ...evidence,
     ]);
   }
+
+  const gates = qualifiesToGateVertical(estimate);
+  evidence.push(
+    gates
+      ? 'this measurement qualifies to gate the up/down axis of the field test: enough ' +
+          'independent readings, a credible bias, and they agree to within ' +
+          `${MAX_QUALIFYING_TILT_SPREAD_DEG.toFixed(1)}°`
+      : `the readings disagree by ${estimate.spreadDeg.toFixed(3)}° over ` +
+          `${estimate.sampleCount} reading${estimate.sampleCount === 1 ? '' : 's'}, which does ` +
+          `not meet the ${MAX_QUALIFYING_TILT_SPREAD_DEG.toFixed(1)}° and ` +
+          `${
+            estimate.source === 'fov-calibration-taps'
+              ? MIN_QUALIFYING_TILT_TAPS
+              : MIN_QUALIFYING_TILT_AIMING_STEPS
+          }-reading bar for gating — the live band keeps its unquantified tilt term`,
+  );
 
   return verdict(
     'pitch-bias',

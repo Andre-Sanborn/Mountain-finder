@@ -49,6 +49,7 @@ const MEASUREMENT: PitchBiasCalibration = {
   spreadDeg: 0.18,
   segmentCount: 3,
   method: 'Measured against the sun over 3 aiming step(s) in the home session.',
+  source: 'sun-aiming-steps',
 };
 
 describe('the key', () => {
@@ -74,16 +75,18 @@ describe('the parser', () => {
       a: { biasDeg: 0.4, spreadDeg: 0.1, segmentCount: 3 },
       b: { biasDeg: 0.4, spreadDeg: 0.1, method: 'x' },
       c: { spreadDeg: 0.1, segmentCount: 3, method: 'x' },
+      d: { biasDeg: 0.4, spreadDeg: 0.1, segmentCount: 3, method: 'x' },
     });
     expect(parsePitchBiasCalibrations(raw)).toEqual({});
   });
 
-  it('refuses a negative spread and a bias past a quarter turn', () => {
+  it('refuses a negative spread, a bias past a quarter turn, and an unknown source', () => {
     const raw = JSON.stringify({
       a: { ...MEASUREMENT, spreadDeg: -0.1 },
       b: { ...MEASUREMENT, biasDeg: 91 },
       c: { ...MEASUREMENT, segmentCount: 0 },
       d: { ...MEASUREMENT, segmentCount: 1.5 },
+      e: { ...MEASUREMENT, source: 'guessed' },
     });
     expect(parsePitchBiasCalibrations(raw)).toEqual({});
   });

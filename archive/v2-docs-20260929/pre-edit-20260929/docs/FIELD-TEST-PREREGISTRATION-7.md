@@ -765,43 +765,11 @@ few thousandths of a degree while its gravity zero can sit whole degrees off, so
 from scatter alone would claim a bound no phone holds. `live-uncertainty.ts` therefore carries
 an explicit unquantified term, "Tilt zero point never checked", until a measurement exists, and
 the rule above then puts the vertical axis in `recorded-not-gated` by construction. The home
-session supplies the measurement at step 14, the field-of-view step: two taps on the real Sun,
-which `fitFovCalibration` solves for a pitch offset jointly with the scale, and
-`estimatePitchBias` reads that offset — with the trim already nudged in — as the bias. The
-two taps' disagreement through the fitted focal length is the spread. The older measurement,
-the sensed tilt against the Sun's altitude over the aiming steps, remains as the fallback when
-no fit on the Sun or the Moon was recorded. The band then charges the bias and the spread
-together, and the vertical axis is gated like the horizontal one.
-
-**Which measurements qualify to gate the vertical axis.** Not every stored tilt zero point
-closes the band. `qualifiesToGateVertical` (`src/live/recording.ts`) asks three things, and a
-measurement that fails any of them leaves the unquantified term in place and the vertical axis
-`recorded-not-gated`:
-
-1. **Enough independent readings.** Two or more taps when the figure came from the step-14
-   field-of-view fit, or three or more aiming steps when it came from the older measurement.
-   Two taps are the fewest that leave a residual at all; two aiming steps give a spread of
-   re-aims so thin that one hold's own wobble stands in for it.
-2. **A credible bias**, `|bias| ≤ 15°` (`MAX_CREDIBLE_PITCH_BIAS_DEG`). A larger figure is a
-   camera that was not pointing at the Sun, which is a missed aim rather than a measurement.
-3. **Readings that agree**, `spread ≤ 1.0°` (`MAX_QUALIFYING_TILT_SPREAD_DEG`). A tap is placed
-   to about 0.543° at 1σ per axis — term 9, one millimetre of finger on the glass. Two taps
-   give four scalar measurements against three unknowns, so one degree of freedom is left, and
-   `fitFovCalibration` reports `sqrt(SSR / taps)`. With `SSR ~ σ²χ²₁` over two taps that
-   statistic has `σ / √2 = 0.543 / √2 = 0.384°` for its own scale, so the 1.0° ceiling sits at
-   2.605σ and refuses about one honest pair in a hundred.
-
-When both measurements exist the taps win, which is what `estimatePitchBias` already does: the
-taps measure where the Sun really sat, while an aiming step charges every degree the person
-failed to centre it to the tilt sensor.
-
-**What this rests on.** n = 2 taps, n = 1 phone, n = 1 session. One pair of finger taps is the
-whole of the evidence that gates F2's vertical axis, and the 0.543° that sets the ceiling is a
-budgeted figure rather than a measured tap scatter. That is accepted for this field test: the
-alternative is a vertical axis that is never gated at all. The cross-check that would firm it up
-is a repeat on a second home session — a second pair of taps on the same phone, whose bias
-should land within the first pair's spread of it. Until that exists, the qualifying rule is
-`n = 1`.
+session supplies the measurement by pointing the camera at the Sun during the three aiming
+steps: the Sun centred in the frame puts the camera axis at the Sun's altitude, which
+`knownBearing.altitudeDeg` already carries, and `estimatePitchBias` reads the sensed tilt
+against it. The band then charges the bias and the re-aim spread together, and the vertical
+axis is gated like the horizontal one.
 
 **The same claim at the pose, where a gross compass error is visible.** F2 on the drawn
 markers cannot see one. A quarter-turn error puts every summit somewhere the annotators
@@ -1911,27 +1879,3 @@ read as a re-drag.
 The committed fixtures were regenerated for the wider movement budget. Every documented
 verdict is unchanged: `aligned` still passes `F4.c3` on three summits and fails nothing, and
 `stray` still fails exactly `F3.far`, `F5a` and `F5c`.
-
-### 2026-09-29 — which tilt measurements may gate F2's vertical axis
-
-Still before any field number exists. § 2.2 said the home session measures the tilt zero point
-over the three aiming steps, which stopped being how it is measured: the step-14 field-of-view
-taps do it, and the aiming steps are the fallback. § 2.2 now says so.
-
-**A stored measurement no longer gates the vertical axis by existing.**
-`qualifiesToGateVertical` asks for enough independent readings — two taps, or three aiming
-steps — a bias inside the 15° that a tilt sensor can be out by, and a spread within 1.0°. A
-measurement that fails any of the three leaves "Tilt zero point never checked" in the live band,
-so the axis stays `recorded-not-gated` and the screen names the figures that fell short rather
-than implying nothing was measured. The 1.0° ceiling is about 2.6σ on the statistic the fit
-reports, working from term 9's 0.543° tap placement: two taps leave one degree of freedom, and
-`sqrt(SSR / 2)` then has 0.384° for its own scale.
-
-**What the rule rests on is on the page.** n = 2 taps, n = 1 phone, n = 1 session, accepted for
-this field test because the alternative is an axis that is never gated. A repeat on a second
-home session is the cross-check that would firm it up.
-
-The stored measurement now carries which of the two sources it came from, since the two need
-different numbers of readings. A blob written before that field existed reads as no measurement,
-which is the conservative end: the band reports the term as unquantified and the next home
-session remeasures.
