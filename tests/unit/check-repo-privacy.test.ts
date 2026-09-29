@@ -95,6 +95,19 @@ const POSITION_FIX_KEYS = JSON.stringify(
   2,
 );
 
+/**
+ * A fix described in a sentence, not in JSON.
+ *
+ * The three keys are searched for across the whole file, so prose convicts a
+ * file exactly as an object literal does. Line 2 carries the coordinate pair and
+ * two of the keys; line 3 carries the third.
+ */
+const FIX_KEYS_IN_PROSE = [
+  'Notes on what the screen showed while the fix settled.',
+  `It reported latitude: ${LAT_DEG} and longitude: ${LON_DEG} while I stood there.`,
+  'The accuracy: figure beside them is a radius in metres, not a position.',
+].join('\n');
+
 /** Coordinates beside a wall clock: epoch seconds, and an ISO instant. */
 const EPOCH_AND_COORDS = JSON.stringify(
   {
@@ -140,6 +153,8 @@ describe('repository privacy gate', () => {
     await writeFile(join(root, 'fixtures/sensors/with-coords.json'), SENSOR_FIXTURE_WITH_COORDS);
     await writeFile(join(root, 'fixtures/sensors/epoch-coords.json'), EPOCH_AND_COORDS);
     await writeFile(join(root, 'fixtures/sensors/fix-keys.json'), POSITION_FIX_KEYS);
+    await mkdir(join(root, 'fixtures/notes'), { recursive: true });
+    await writeFile(join(root, 'fixtures/notes/fix-in-prose.txt'), FIX_KEYS_IN_PROSE);
     await writeFile(join(root, 'fixtures/public-peaks.json'), PUBLIC_PEAKS);
     await writeFile(join(root, 'fixtures/sensors/capture-01.json'), PUBLIC_PEAKS);
     await writeFile(join(root, 'fixtures/captures/session.json'), CLEAN_SENSOR_FIXTURE);
@@ -208,6 +223,30 @@ describe('repository privacy gate', () => {
     const problems = await audit(['fixtures/sensors/fix-keys.json']);
     expect(problems).toHaveLength(1);
     expect(problems[0]).toContain('position fix');
+  });
+
+  /**
+   * The line numbers come from the fixture's own layout, not from a run.
+   * `JSON.stringify(…, null, 2)` puts `{` on line 1 and then one key per line,
+   * in insertion order, so `latitude` is line 2, `longitude` line 3 and
+   * `accuracy` line 4.
+   */
+  it('names each fix key and its line, and says prose counts', async () => {
+    const problems = await audit(['fixtures/sensors/fix-keys.json']);
+    const message = problems[0] ?? '';
+    expect(message).toContain('"latitude": at line 2');
+    expect(message).toContain('"longitude": at line 3');
+    expect(message).toContain('"accuracy": at line 4');
+    expect(message).toContain('prose and comments count too');
+  });
+
+  it('refuses the same key set written as prose, and names those lines', async () => {
+    const problems = await audit(['fixtures/notes/fix-in-prose.txt']);
+    expect(problems).toHaveLength(1);
+    const message = problems[0] ?? '';
+    expect(message).toContain('latitude: at line 2');
+    expect(message).toContain('longitude: at line 2');
+    expect(message).toContain('accuracy: at line 3');
   });
 
   it('refuses coordinates sitting beside wall-clock timestamps', async () => {

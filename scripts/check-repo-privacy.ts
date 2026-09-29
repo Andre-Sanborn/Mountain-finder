@@ -51,7 +51,11 @@
  *        milliseconds. A committed sensor fixture carries timestamps relative to
  *        the start of the capture, so a wall clock beside a coordinate is the
  *        shape of a raw capture;
- *      - the `latitude` / `longitude` / `accuracy` key set of a position fix;
+ *      - the `latitude` / `longitude` / `accuracy` key set of a position fix.
+ *        These three are searched for across the whole file rather than beside
+ *        the pair, so prose and comments count as much as JSON does. The finding
+ *        names each key and the line it was found on, because a file convicted
+ *        by a sentence looks clean to anyone hunting for a fix object;
  *      - a capture-shaped path, such as a file named `capture*` or `session-*`.
  *
  * 3. Any file under a `captures/` or `bundles/` directory, whatever is in it.

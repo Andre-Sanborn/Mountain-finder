@@ -181,9 +181,22 @@ function keyPattern(name: string): RegExp {
   return new RegExp(`(?:^|[^A-Za-z])"?${name}"?\\s*:`, 'i');
 }
 
-const LATITUDE_KEY = keyPattern('latitude');
-const LONGITUDE_KEY = keyPattern('longitude');
-const ACCURACY_KEY = keyPattern('accuracy');
+/** The three keys a `GeolocationPosition.coords` object is recognised by. */
+const FIX_KEY_PATTERNS = [
+  { key: 'latitude', pattern: keyPattern('latitude') },
+  { key: 'longitude', pattern: keyPattern('longitude') },
+  { key: 'accuracy', pattern: keyPattern('accuracy') },
+] as const;
+
+/** Which line an offset falls on, counting from 1. */
+function lineAt(content: string, index: number): number {
+  let line = 1;
+  const limit = Math.min(index, content.length);
+  for (let i = 0; i < limit; i += 1) {
+    if (content.charCodeAt(i) === 10) line += 1;
+  }
+  return line;
+}
 
 /**
  * A timestamp-shaped key holding seconds or milliseconds since the epoch, from
@@ -211,13 +224,39 @@ function firstMatchNear(
   return undefined;
 }
 
+/** One of a position fix's three keys, as it was written and where. */
+export interface FixKeyMatch {
+  /** `latitude`, `longitude` or `accuracy`. */
+  readonly key: string;
+  /** The matched text, so a reader can see which spelling tripped the rule. */
+  readonly text: string;
+  readonly line: number;
+}
+
 export interface CaptureShape {
   /** A capture-shaped key sitting next to a coordinate pair. */
   readonly key?: string;
   /** A wall-clock timestamp sitting next to a coordinate pair. */
   readonly clock?: string;
-  /** The full `latitude` / `longitude` / `accuracy` key set of a fix. */
-  readonly fixKeys?: boolean;
+  /** All three of a fix's keys, in the order they are searched for. */
+  readonly fixKeys?: readonly FixKeyMatch[];
+}
+
+/**
+ * The three fix keys with their positions, or `undefined` when one is missing.
+ *
+ * The patterns are not global, so `exec` starts at the beginning each time and
+ * reports the first spelling in the file. Three passes over the text is cheap
+ * next to the coordinate scan that has already run.
+ */
+function findFixKeySet(content: string): readonly FixKeyMatch[] | undefined {
+  const matches: FixKeyMatch[] = [];
+  for (const { key, pattern } of FIX_KEY_PATTERNS) {
+    const match = pattern.exec(content);
+    if (match === null) return undefined;
+    matches.push({ key, text: match[0].trim(), line: lineAt(content, match.index) });
+  }
+  return matches;
 }
 
 /**
@@ -233,7 +272,7 @@ export function findCaptureShape(
   pairs: readonly CoordinatePair[],
 ): CaptureShape {
   if (pairs.length === 0) return {};
-  const shape: { key?: string; clock?: string; fixKeys?: boolean } = {};
+  const shape: { key?: string; clock?: string; fixKeys?: readonly FixKeyMatch[] } = {};
 
   const key = firstMatchNear(content, pairs, CAPTURE_KEY_PATTERN);
   if (key !== undefined) shape.key = key;
@@ -242,22 +281,36 @@ export function findCaptureShape(
     firstMatchNear(content, pairs, KEYED_EPOCH) ?? firstMatchNear(content, pairs, ISO_INSTANT);
   if (clock !== undefined) shape.clock = clock;
 
-  if (LATITUDE_KEY.test(content) && LONGITUDE_KEY.test(content) && ACCURACY_KEY.test(content)) {
-    shape.fixKeys = true;
-  }
+  const fixKeys = findFixKeySet(content);
+  if (fixKeys !== undefined) shape.fixKeys = fixKeys;
   return shape;
 }
 
+/**
+ * Why this text looks like a capture, in the words a person needs to act on it.
+ *
+ * The fix-key sentence names each key and its line, and says that prose counts.
+ * The rule searches the whole file for three keys that need not sit together, so
+ * a paragraph or a comment that writes `latitude:`, `longitude:` and `accuracy:`
+ * trips it exactly as a JSON fix does, and a reader hunting for a `coords` object
+ * that is not there has no way to work that out from the verdict alone.
+ */
 export function describeCaptureShape(shape: CaptureShape): string {
   const parts: string[] = [];
   if (shape.key !== undefined) parts.push(`capture-shaped key near coordinates (${shape.key})`);
   if (shape.clock !== undefined) parts.push(`wall clock near coordinates (${shape.clock})`);
-  if (shape.fixKeys === true) parts.push('latitude/longitude/accuracy key set of a position fix');
+  if (shape.fixKeys !== undefined) {
+    const where = shape.fixKeys.map((match) => `${match.text} at line ${match.line}`).join(', ');
+    parts.push(
+      'latitude/longitude/accuracy key set of a position fix ' +
+        `(${where}; these are matched anywhere in the file, so prose and comments count too)`,
+    );
+  }
   return parts.join('; ');
 }
 
 export function isCaptureShaped(shape: CaptureShape): boolean {
-  return shape.key !== undefined || shape.clock !== undefined || shape.fixKeys === true;
+  return shape.key !== undefined || shape.clock !== undefined || shape.fixKeys !== undefined;
 }
 
 /** Directory names a capture bundle lands in. Nothing under them is committable. */
