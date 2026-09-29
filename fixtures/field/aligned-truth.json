@@ -1,0 +1,290 @@
+{
+  "format": "mountain-finder/field-apex-truth@1",
+  "method": "Synthetic. Apex pixels were placed, not read; the two readings straddle the placed pixel so their midpoint is it exactly.",
+  "captures": [
+    {
+      "captureId": "c1",
+      "readings": [
+        {
+          "annotatorId": "agent-a",
+          "apexes": [
+            {
+              "summitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e",
+              "apexPx": {
+                "xPx": 518.5,
+                "yPx": 299
+              }
+            },
+            {
+              "summitId": "overture/c72b4af9-b589-392c-9a35-02880fb5bff9",
+              "apexPx": {
+                "xPx": 778.5,
+                "yPx": 329
+              }
+            },
+            {
+              "summitId": "overture/daf0b989-7a13-36e1-b4d0-b4ebfecf1e4c",
+              "apexPx": {
+                "xPx": 1038.5,
+                "yPx": 369
+              }
+            },
+            {
+              "summitId": "overture/f2a82749-a0cb-3cea-b08c-c3d2d6e87938",
+              "apexPx": {
+                "xPx": 1308.5,
+                "yPx": 409
+              }
+            },
+            {
+              "summitId": "overture/bb7147e9-f16f-3d21-a0cb-a60a47cc8873",
+              "apexPx": {
+                "xPx": 1538.5,
+                "yPx": 469
+              }
+            }
+          ]
+        },
+        {
+          "annotatorId": "agent-b",
+          "apexes": [
+            {
+              "summitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e",
+              "apexPx": {
+                "xPx": 521.5,
+                "yPx": 301
+              }
+            },
+            {
+              "summitId": "overture/c72b4af9-b589-392c-9a35-02880fb5bff9",
+              "apexPx": {
+                "xPx": 781.5,
+                "yPx": 331
+              }
+            },
+            {
+              "summitId": "overture/daf0b989-7a13-36e1-b4d0-b4ebfecf1e4c",
+              "apexPx": {
+                "xPx": 1041.5,
+                "yPx": 371
+              }
+            },
+            {
+              "summitId": "overture/f2a82749-a0cb-3cea-b08c-c3d2d6e87938",
+              "apexPx": {
+                "xPx": 1311.5,
+                "yPx": 411
+              }
+            },
+            {
+              "summitId": "overture/bb7147e9-f16f-3d21-a0cb-a60a47cc8873",
+              "apexPx": {
+                "xPx": 1541.5,
+                "yPx": 471
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "captureId": "c2",
+      "readings": [
+        {
+          "annotatorId": "agent-a",
+          "apexes": [
+            {
+              "summitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e",
+              "apexPx": {
+                "xPx": 518.5,
+                "yPx": 299
+              }
+            },
+            {
+              "summitId": "overture/c72b4af9-b589-392c-9a35-02880fb5bff9",
+              "apexPx": {
+                "xPx": 778.5,
+                "yPx": 329
+              }
+            },
+            {
+              "summitId": "overture/daf0b989-7a13-36e1-b4d0-b4ebfecf1e4c",
+              "apexPx": {
+                "xPx": 1038.5,
+                "yPx": 369
+              }
+            },
+            {
+              "summitId": "overture/f2a82749-a0cb-3cea-b08c-c3d2d6e87938",
+              "apexPx": {
+                "xPx": 1308.5,
+                "yPx": 409
+              }
+            },
+            {
+              "summitId": "overture/bb7147e9-f16f-3d21-a0cb-a60a47cc8873",
+              "apexPx": {
+                "xPx": 1538.5,
+                "yPx": 469
+              }
+            }
+          ]
+        },
+        {
+          "annotatorId": "agent-b",
+          "apexes": [
+            {
+              "summitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e",
+              "apexPx": {
+                "xPx": 521.5,
+                "yPx": 301
+              }
+            },
+            {
+              "summitId": "overture/c72b4af9-b589-392c-9a35-02880fb5bff9",
+              "apexPx": {
+                "xPx": 781.5,
+                "yPx": 331
+              }
+            },
+            {
+              "summitId": "overture/daf0b989-7a13-36e1-b4d0-b4ebfecf1e4c",
+              "apexPx": {
+                "xPx": 1041.5,
+                "yPx": 371
+              }
+            },
+            {
+              "summitId": "overture/f2a82749-a0cb-3cea-b08c-c3d2d6e87938",
+              "apexPx": {
+                "xPx": 1311.5,
+                "yPx": 411
+              }
+            },
+            {
+              "summitId": "overture/bb7147e9-f16f-3d21-a0cb-a60a47cc8873",
+              "apexPx": {
+                "xPx": 1541.5,
+                "yPx": 471
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "captureId": "c3",
+      "readings": [
+        {
+          "annotatorId": "agent-a",
+          "apexes": [
+            {
+              "summitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e",
+              "apexPx": {
+                "xPx": 188.5,
+                "yPx": 304
+              }
+            },
+            {
+              "summitId": "overture/c72b4af9-b589-392c-9a35-02880fb5bff9",
+              "apexPx": {
+                "xPx": 453.5,
+                "yPx": 335
+              }
+            },
+            {
+              "summitId": "overture/daf0b989-7a13-36e1-b4d0-b4ebfecf1e4c",
+              "apexPx": {
+                "xPx": 718.5,
+                "yPx": 374
+              }
+            }
+          ]
+        },
+        {
+          "annotatorId": "agent-b",
+          "apexes": [
+            {
+              "summitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e",
+              "apexPx": {
+                "xPx": 191.5,
+                "yPx": 306
+              }
+            },
+            {
+              "summitId": "overture/c72b4af9-b589-392c-9a35-02880fb5bff9",
+              "apexPx": {
+                "xPx": 456.5,
+                "yPx": 337
+              }
+            },
+            {
+              "summitId": "overture/daf0b989-7a13-36e1-b4d0-b4ebfecf1e4c",
+              "apexPx": {
+                "xPx": 721.5,
+                "yPx": 376
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "captureId": "c4",
+      "readings": [
+        {
+          "annotatorId": "agent-a",
+          "apexes": [
+            {
+              "summitId": "overture/daf0b989-7a13-36e1-b4d0-b4ebfecf1e4c",
+              "apexPx": {
+                "xPx": 1038.5,
+                "yPx": 129
+              }
+            },
+            {
+              "summitId": "overture/f2a82749-a0cb-3cea-b08c-c3d2d6e87938",
+              "apexPx": {
+                "xPx": 1308.5,
+                "yPx": 167
+              }
+            },
+            {
+              "summitId": "overture/bb7147e9-f16f-3d21-a0cb-a60a47cc8873",
+              "apexPx": {
+                "xPx": 1538.5,
+                "yPx": 225
+              }
+            }
+          ]
+        },
+        {
+          "annotatorId": "agent-b",
+          "apexes": [
+            {
+              "summitId": "overture/daf0b989-7a13-36e1-b4d0-b4ebfecf1e4c",
+              "apexPx": {
+                "xPx": 1041.5,
+                "yPx": 131
+              }
+            },
+            {
+              "summitId": "overture/f2a82749-a0cb-3cea-b08c-c3d2d6e87938",
+              "apexPx": {
+                "xPx": 1311.5,
+                "yPx": 169
+              }
+            },
+            {
+              "summitId": "overture/bb7147e9-f16f-3d21-a0cb-a60a47cc8873",
+              "apexPx": {
+                "xPx": 1541.5,
+                "yPx": 227
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

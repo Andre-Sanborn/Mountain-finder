@@ -1,0 +1,450 @@
+{
+  "format": "mountain-finder/field-bundle@1",
+  "timestampBasis": "ms-since-session-start",
+  "device": "synthetic/field-bundle-aligned",
+  "peakRegions": [
+    "idaho-bogus-basin"
+  ],
+  "captures": [
+    {
+      "captureId": "c1",
+      "role": "before-drag",
+      "tMs": 60000,
+      "framePath": "f1.jpg",
+      "framePx": {
+        "widthPx": 1920,
+        "heightPx": 884
+      },
+      "overlayPx": {
+        "widthPx": 956,
+        "heightPx": 440
+      },
+      "pose": {
+        "headingDeg": 280,
+        "pitchDeg": 0.5,
+        "rollDeg": 0,
+        "hFovDeg": 73.74,
+        "vFovDeg": 38.088,
+        "headingBasis": "true-model",
+        "trimHeadingDeg": 0,
+        "trimPitchDeg": 0
+      },
+      "trace": {
+        "headingSpreadDeg": 0.2,
+        "pitchSpreadDeg": 0.15,
+        "rollSpreadDeg": 0.3,
+        "sampleCount": 40,
+        "stillForMs": 2400,
+        "compassAccuracyDeg": 8,
+        "tickCount": 22,
+        "longestTickGapMs": 90
+      },
+      "track": {
+        "width": 1920,
+        "height": 884,
+        "frameRate": 30,
+        "facingMode": "environment"
+      },
+      "fovSource": "calibrated",
+      "sweepRadiusKm": 60,
+      "band": {
+        "horizontalDeg": 8.7,
+        "verticalDeg": 1.5,
+        "hasUnquantifiedHorizontal": false,
+        "hasUnquantifiedVertical": false
+      },
+      "overlay": {
+        "drawn": [
+          {
+            "summitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e",
+            "name": "Trinity Mountain",
+            "elevationM": 2880,
+            "distanceKm": 55,
+            "altitudeDeg": 6.1,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 308.7083333333333,
+              "yPx": 158.28054298642533
+            },
+            "labelled": true
+          },
+          {
+            "summitId": "overture/c72b4af9-b589-392c-9a35-02880fb5bff9",
+            "name": "Jackson Peak",
+            "elevationM": 2471,
+            "distanceKm": 30,
+            "altitudeDeg": 5.2,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 437.17083333333335,
+              "yPx": 174.20814479638008
+            },
+            "labelled": true
+          },
+          {
+            "summitId": "overture/daf0b989-7a13-36e1-b4d0-b4ebfecf1e4c",
+            "name": "Shafer Butte",
+            "elevationM": 2308,
+            "distanceKm": 12,
+            "altitudeDeg": 4.1,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 568.6208333333334,
+              "yPx": 192.1266968325792
+            },
+            "labelled": true
+          },
+          {
+            "summitId": "overture/f2a82749-a0cb-3cea-b08c-c3d2d6e87938",
+            "name": "Mores Mountain",
+            "elevationM": 2202,
+            "distanceKm": 5,
+            "altitudeDeg": 2.8,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 701.5645833333333,
+              "yPx": 214.52488687782807
+            },
+            "labelled": true
+          },
+          {
+            "summitId": "overture/bb7147e9-f16f-3d21-a0cb-a60a47cc8873",
+            "name": "Deer Point",
+            "elevationM": 2150,
+            "distanceKm": 2,
+            "altitudeDeg": 1.2,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 817.0812500000001,
+              "yPx": 243.39366515837105
+            },
+            "labelled": true
+          }
+        ],
+        "withheld": []
+      }
+    },
+    {
+      "captureId": "c2",
+      "role": "after-drag",
+      "tMs": 120000,
+      "framePath": "f2.jpg",
+      "framePx": {
+        "widthPx": 1920,
+        "heightPx": 884
+      },
+      "overlayPx": {
+        "widthPx": 956,
+        "heightPx": 440
+      },
+      "pose": {
+        "headingDeg": 280,
+        "pitchDeg": 0.5,
+        "rollDeg": 0,
+        "hFovDeg": 73.74,
+        "vFovDeg": 38.088,
+        "headingBasis": "true-model",
+        "trimHeadingDeg": -1.25,
+        "trimPitchDeg": 0.4
+      },
+      "trace": {
+        "headingSpreadDeg": 0.2,
+        "pitchSpreadDeg": 0.15,
+        "rollSpreadDeg": 0.3,
+        "sampleCount": 40,
+        "stillForMs": 2400,
+        "compassAccuracyDeg": 8,
+        "tickCount": 22,
+        "longestTickGapMs": 90
+      },
+      "track": {
+        "width": 1920,
+        "height": 884,
+        "frameRate": 30,
+        "facingMode": "environment"
+      },
+      "fovSource": "calibrated",
+      "sweepRadiusKm": 60,
+      "band": {
+        "horizontalDeg": 8.7,
+        "verticalDeg": 1.5,
+        "hasUnquantifiedHorizontal": false,
+        "hasUnquantifiedVertical": false
+      },
+      "overlay": {
+        "drawn": [
+          {
+            "summitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e",
+            "name": "Trinity Mountain",
+            "elevationM": 2880,
+            "distanceKm": 55,
+            "altitudeDeg": 6.1,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 263.3979166666667,
+              "yPx": 151.31221719457014
+            },
+            "labelled": true
+          },
+          {
+            "summitId": "overture/c72b4af9-b589-392c-9a35-02880fb5bff9",
+            "name": "Jackson Peak",
+            "elevationM": 2471,
+            "distanceKm": 30,
+            "altitudeDeg": 5.2,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 382.4,
+              "yPx": 167.73755656108597
+            },
+            "labelled": true
+          },
+          {
+            "summitId": "overture/daf0b989-7a13-36e1-b4d0-b4ebfecf1e4c",
+            "name": "Shafer Butte",
+            "elevationM": 2308,
+            "distanceKm": 12,
+            "altitudeDeg": 4.1,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 528.7875,
+              "yPx": 180.18099547511312
+            },
+            "labelled": true
+          },
+          {
+            "summitId": "overture/f2a82749-a0cb-3cea-b08c-c3d2d6e87938",
+            "name": "Mores Mountain",
+            "elevationM": 2202,
+            "distanceKm": 5,
+            "altitudeDeg": 2.8,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 643.3083333333334,
+              "yPx": 209.5475113122172
+            },
+            "labelled": true
+          },
+          {
+            "summitId": "overture/bb7147e9-f16f-3d21-a0cb-a60a47cc8873",
+            "name": "Deer Point",
+            "elevationM": 2150,
+            "distanceKm": 2,
+            "altitudeDeg": 1.2,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 784.21875,
+              "yPx": 221.99095022624434
+            },
+            "labelled": true
+          }
+        ],
+        "withheld": [
+          {
+            "summitId": "overture/53cb8f7e-49cf-3fb1-9481-c74a55614bb1",
+            "name": "Jackson Peak",
+            "distanceKm": 78,
+            "reason": "unmeasured"
+          },
+          {
+            "summitId": "overture/89e63b23-e42b-3a06-b025-722221840540",
+            "name": "Cougar Mountain",
+            "distanceKm": 18,
+            "reason": "off-frame"
+          }
+        ]
+      },
+      "dragAnchorSummitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e"
+    },
+    {
+      "captureId": "c3",
+      "role": "moved",
+      "tMs": 180000,
+      "framePath": "f3.jpg",
+      "framePx": {
+        "widthPx": 1920,
+        "heightPx": 884
+      },
+      "overlayPx": {
+        "widthPx": 956,
+        "heightPx": 440
+      },
+      "pose": {
+        "headingDeg": 280,
+        "pitchDeg": 0.5,
+        "rollDeg": 0,
+        "hFovDeg": 73.74,
+        "vFovDeg": 38.088,
+        "headingBasis": "true-model",
+        "trimHeadingDeg": -1.25,
+        "trimPitchDeg": 0.4
+      },
+      "trace": {
+        "headingSpreadDeg": 0.2,
+        "pitchSpreadDeg": 0.15,
+        "rollSpreadDeg": 0.3,
+        "sampleCount": 40,
+        "stillForMs": 2400,
+        "compassAccuracyDeg": 8,
+        "tickCount": 22,
+        "longestTickGapMs": 90
+      },
+      "track": {
+        "width": 1920,
+        "height": 884,
+        "frameRate": 30,
+        "facingMode": "environment"
+      },
+      "fovSource": "calibrated",
+      "sweepRadiusKm": 60,
+      "band": {
+        "horizontalDeg": 8.7,
+        "verticalDeg": 1.5,
+        "hasUnquantifiedHorizontal": false,
+        "hasUnquantifiedVertical": false
+      },
+      "overlay": {
+        "drawn": [
+          {
+            "summitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e",
+            "name": "Trinity Mountain",
+            "elevationM": 2880,
+            "distanceKm": 55,
+            "altitudeDeg": 6.1,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 101.575,
+              "yPx": 154.79638009049773
+            },
+            "labelled": true
+          },
+          {
+            "summitId": "overture/c72b4af9-b589-392c-9a35-02880fb5bff9",
+            "name": "Jackson Peak",
+            "elevationM": 2471,
+            "distanceKm": 30,
+            "altitudeDeg": 5.2,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 218.58541666666667,
+              "yPx": 171.71945701357467
+            },
+            "labelled": true
+          },
+          {
+            "summitId": "overture/daf0b989-7a13-36e1-b4d0-b4ebfecf1e4c",
+            "name": "Shafer Butte",
+            "elevationM": 2308,
+            "distanceKm": 12,
+            "altitudeDeg": 4.1,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 371.4458333333333,
+              "yPx": 181.67420814479638
+            },
+            "labelled": true
+          }
+        ],
+        "withheld": []
+      },
+      "dragAnchorSummitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e",
+      "movedFromCaptureId": "c2",
+      "panFromReferenceDeg": 20
+    },
+    {
+      "captureId": "c4",
+      "role": "moved",
+      "tMs": 240000,
+      "framePath": "f4.jpg",
+      "framePx": {
+        "widthPx": 1920,
+        "heightPx": 884
+      },
+      "overlayPx": {
+        "widthPx": 956,
+        "heightPx": 440
+      },
+      "pose": {
+        "headingDeg": 280,
+        "pitchDeg": 0.5,
+        "rollDeg": 0,
+        "hFovDeg": 73.74,
+        "vFovDeg": 38.088,
+        "headingBasis": "true-model",
+        "trimHeadingDeg": -1.25,
+        "trimPitchDeg": 0.4
+      },
+      "trace": {
+        "headingSpreadDeg": 0.2,
+        "pitchSpreadDeg": 0.15,
+        "rollSpreadDeg": 0.3,
+        "sampleCount": 40,
+        "stillForMs": 2400,
+        "compassAccuracyDeg": 8,
+        "tickCount": 22,
+        "longestTickGapMs": 90
+      },
+      "track": {
+        "width": 1920,
+        "height": 884,
+        "frameRate": 30,
+        "facingMode": "environment"
+      },
+      "fovSource": "calibrated",
+      "sweepRadiusKm": 60,
+      "band": {
+        "horizontalDeg": 8.7,
+        "verticalDeg": 1.5,
+        "hasUnquantifiedHorizontal": false,
+        "hasUnquantifiedVertical": false
+      },
+      "overlay": {
+        "drawn": [
+          {
+            "summitId": "overture/daf0b989-7a13-36e1-b4d0-b4ebfecf1e4c",
+            "name": "Shafer Butte",
+            "elevationM": 2308,
+            "distanceKm": 12,
+            "altitudeDeg": 4.1,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 527.29375,
+              "yPx": 71.17647058823529
+            },
+            "labelled": true
+          },
+          {
+            "summitId": "overture/f2a82749-a0cb-3cea-b08c-c3d2d6e87938",
+            "name": "Mores Mountain",
+            "elevationM": 2202,
+            "distanceKm": 5,
+            "altitudeDeg": 2.8,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 641.8145833333333,
+              "yPx": 76.15384615384616
+            },
+            "labelled": true
+          },
+          {
+            "summitId": "overture/bb7147e9-f16f-3d21-a0cb-a60a47cc8873",
+            "name": "Deer Point",
+            "elevationM": 2150,
+            "distanceKm": 2,
+            "altitudeDeg": 1.2,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 781.7291666666666,
+              "yPx": 125.42986425339367
+            },
+            "labelled": true
+          }
+        ],
+        "withheld": []
+      },
+      "dragAnchorSummitId": "overture/daf0b989-7a13-36e1-b4d0-b4ebfecf1e4c",
+      "movedFromCaptureId": "c2",
+      "tiltFromReferenceDeg": -10
+    }
+  ]
+}

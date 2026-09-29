@@ -1,0 +1,72 @@
+# fixtures/field/
+
+Synthetic field capture bundles and apex truth documents for
+`src/live/field-analysis.ts`. Nothing here was recorded from a phone, and
+nothing here came from a field session.
+
+## What is here
+
+Two pairs, each a bundle and the truth document that grades it:
+
+| pair | what it exercises |
+|---|---|
+| `aligned-bundle.json` + `aligned-truth.json` | a run where every criterion the data reaches either passes or reports `no-sample` |
+| `stray-bundle.json` + `stray-truth.json` | a run with three errors injected, failing exactly `F3.far`, `F5a` and `F5c` |
+
+Both are read by `src/live/field-analysis.test.ts`, and either can be run through
+the script a real bundle goes through:
+
+```
+npm run analyze:field -- fixtures/field/stray-bundle.json fixtures/field/stray-truth.json
+```
+
+## How the numbers were made
+
+`synthesiseFieldBundle` in `src/live/field-analysis.ts` built them. It does no
+angle arithmetic at all: an apex is placed at a pixel, the drawn marker is that
+pixel plus a stated pixel offset, and the two annotators' picks straddle the
+placed pixel so their midpoint is it exactly. What those pixels are worth in
+degrees is written out in the test file from the pinhole relation
+`θ = atan(offset / f)` with `f = (1920/2) / tan(73.74°/2) = 1279.995 px`, and
+never taken from a run of the grader.
+
+`src/core/projection.ts`'s own `projectToImage` is used as a second instrument on
+the conversion: it places two known bearings in the frame, and the grader must
+recover the angle between them.
+
+The frame is 1920 × 884 px at hFOV 73.74°, the geometry
+`docs/FIELD-TEST-PREREGISTRATION.md` § 1.2 computed the error budget on, so the
+committed thresholds apply to these fixtures unchanged.
+
+The errors injected into `stray-bundle.json`, and the criterion each one breaks:
+
+| injected | criterion |
+|---|---|
+| Far Mountain drawn 40 px off its apex, where the `far` band allows 29 px | `F3.far` |
+| Mid Peak drawn `visible` while both annotators report it absent | `F5a` |
+| Horizon Crag drawn with a verdict from 55 km, beyond the capture's 30 km sweep | `F5c` |
+
+To regenerate either pair, build a `SynthSpec` and write
+`synthesiseFieldBundle(spec).bundle` and `.truth` as JSON. The synthesiser is
+deterministic and takes no seed, so the files are byte-identical on any machine.
+
+## Privacy rules these files follow
+
+`AGENTS.md` § "Captures from the phone" governs anything recorded from a real
+device, and this directory follows the same rules even though its contents are
+synthetic:
+
+- No geolocation field, no latitude, no longitude, and **no bearings**. A bearing
+  and a distance to a named summit is a position fix, so the schema has nowhere
+  to put one.
+- Timestamps are milliseconds from the start of the session. A wall-clock stamp
+  dates a session as precisely as a coordinate places it.
+- The camera frame is referenced by file name. The bytes never enter the bundle,
+  and the parser refuses a string long enough to hide an encoded one.
+- **A real bundle is never committed.** It travels only by the human's own action
+  to their own account, and `npm run analyze:field` reads it from wherever they
+  put it and writes nothing.
+
+A real bundle does still locate the session, because it holds distances to named
+summits. That is why the rule above is absolute rather than a matter of review,
+and why the analyzer reports a summit's tolerance band instead of its distance.

@@ -37,8 +37,10 @@ after its self-check has run and passed here. The checks are in
 - [ ] Measure the real 42.55 MB download on the phone, and what iOS keeps after a week
 - [ ] Prefer the DEM's ground at the fix over GPS altitude on the live screen; the geoid gap reaches ~50 m
 - [ ] Calibrate the live field of view against the sun or a landmark at the home session, and store it
-- [ ] Build the capture bundle and `analyze:field`; bundles never enter the repository
-- [ ] Write the error budget and pre-register the field pass criteria
+- [x] Build the capture bundle schema and `analyze:field`; bundles never enter the repository
+- [ ] Have the live screen emit a field bundle in the field-bundle@1 shape (no bearings, no wall clock)
+- [ ] Record the phone's coords.accuracy per fix, to replace the n = 1 15 m observer term
+- [x] Write the error budget and pre-register the field pass criteria
 - [ ] Run the headless dress rehearsal on IMG_7270 and railroad-ridge-48mm with injected errors
 - [ ] Write the home-session steps; run the home session with the human
 - [ ] Turn the home-session recording into fixtures; fix any sign or FOV error it shows

@@ -976,3 +976,45 @@ Three mutations are caught: `--no-sites`, a missing `sw.js`, and a stubbed cache
 **Limits.** The status line and download button are not rendered yet; `useOfflineCache()` is
 ready for them. `CACHE_VERSION` is bumped by hand. The seven-day eviction cannot be prevented
 from script.
+
+## The field-test error budget and pre-registered criteria
+
+[docs/FIELD-TEST-PREREGISTRATION.md](docs/FIELD-TEST-PREREGISTRATION.md) fixes F1–F6 and the
+budget they come from. It was written before any field number existed. `src/live/field-analysis.ts`
+holds the bundle schema, a strict parser, `PREREGISTERED_THRESHOLDS` as data and the F2–F5
+graders. `npm run analyze:field -- <bundle> <truth>` prints the verdicts, and the grader takes no
+threshold argument.
+
+**A drag removes common-mode error, and the tolerance is what remains.** The budget frame is an
+iPhone 17 Pro Max in landscape: 956 × 440 CSS px, hFOV 73.74°, 11.12 px/deg. The error terms,
+taken 1σ at the frame edge:
+- drag precision 0.543°, which is 1 mm of finger
+- roll 0.322° vertical
+- calibrated FOV scale 0.275° horizontal
+- geodesy 0.716° horizontal at 2 km, 0.143° at 10 km, 0.024° at 60 km
+
+The combined (RSS) 1σ is 0.95° / 0.72° at 2 km and about 0.63° beyond 10 km. So the 2σ
+thresholds are 1.90° / 1.45° inside 3 km and 1.30° / 1.30° beyond 7 km. Term sources:
+- peak position 20 m, from the Overture cross-release RMS of 18.6 m
+- summit height 5.5 m RMS
+- observer horizontal 15 m, n = 1
+- observer height 10 m, with DEM ground
+- refraction, dropped at 0.0135°
+- heading lag, excluded by a 2 s hold
+
+**Preconditions the budget cannot absorb:**
+- Observer height must come from DEM ground. A 50 m geoid error is 1.441° at 2 km.
+- The field of view must be calibrated. A 10 % scale error is 2.75° at the edge, so the grader
+  refuses uncalibrated captures.
+
+**Truth** is two agents picking apexes independently on a frame at least 1920 px wide. Picks
+more than 0.30° apart are `truth-disputed` and excluded, never averaged. One site and one
+session give 8 to 16 graded observations. So the session can refute the budget but not confirm
+it, and a band with no sample is reported as such.
+
+**Privacy.** A bundle carries no bearings, because a bearing plus a distance fixes a position.
+The report prints band labels, never distances, and the parser refuses geolocation, epoch and
+ISO timestamps, bearings and camera ids.
+
+The suite has 57 tests. Seven mutations are caught, and three of them first survived and forced
+fixes. For example, the threshold comparison is now a single `withinThreshold`.

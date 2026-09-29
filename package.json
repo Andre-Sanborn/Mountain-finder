@@ -31,6 +31,7 @@
     "fixtures:peak-parquet": "tsx scripts/make-peak-parquet-fixture.ts",
     "annotate": "tsx scripts/annotate-photo.ts",
     "analyze:recording": "tsx scripts/analyze-recording.ts",
+    "analyze:field": "tsx scripts/analyze-field.ts",
     "site:package": "tsx scripts/make-site-package.ts"
   },
   "dependencies": {

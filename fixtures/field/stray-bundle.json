@@ -1,0 +1,116 @@
+{
+  "format": "mountain-finder/field-bundle@1",
+  "timestampBasis": "ms-since-session-start",
+  "device": "synthetic/field-bundle-stray",
+  "peakRegions": [
+    "idaho-bogus-basin"
+  ],
+  "captures": [
+    {
+      "captureId": "c1",
+      "role": "after-drag",
+      "tMs": 60000,
+      "framePath": "f1.jpg",
+      "framePx": {
+        "widthPx": 1920,
+        "heightPx": 884
+      },
+      "overlayPx": {
+        "widthPx": 956,
+        "heightPx": 440
+      },
+      "pose": {
+        "headingDeg": 280,
+        "pitchDeg": 0.5,
+        "rollDeg": 0,
+        "hFovDeg": 73.74,
+        "vFovDeg": 38.088,
+        "headingBasis": "true-model",
+        "trimHeadingDeg": -1.25,
+        "trimPitchDeg": 0.4
+      },
+      "trace": {
+        "headingSpreadDeg": 0.2,
+        "pitchSpreadDeg": 0.15,
+        "rollSpreadDeg": 0.3,
+        "sampleCount": 40,
+        "stillForMs": 2400,
+        "compassAccuracyDeg": 8,
+        "tickCount": 22,
+        "longestTickGapMs": 90
+      },
+      "track": {
+        "width": 1920,
+        "height": 884,
+        "frameRate": 30,
+        "facingMode": "environment"
+      },
+      "fovSource": "calibrated",
+      "sweepRadiusKm": 30,
+      "band": {
+        "horizontalDeg": 8.7,
+        "verticalDeg": 1.5,
+        "hasUnquantifiedHorizontal": false,
+        "hasUnquantifiedVertical": false
+      },
+      "overlay": {
+        "drawn": [
+          {
+            "summitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e",
+            "name": "Trinity Mountain",
+            "elevationM": 2880,
+            "distanceKm": 55,
+            "altitudeDeg": 6.1,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 262.9,
+              "yPx": 151.80995475113122
+            },
+            "labelled": true
+          },
+          {
+            "summitId": "overture/daf0b989-7a13-36e1-b4d0-b4ebfecf1e4c",
+            "name": "Shafer Butte",
+            "elevationM": 2308,
+            "distanceKm": 12,
+            "altitudeDeg": 4.1,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 537.75,
+              "yPx": 181.1764705882353
+            },
+            "labelled": true
+          },
+          {
+            "summitId": "overture/f2a82749-a0cb-3cea-b08c-c3d2d6e87938",
+            "name": "Mores Mountain",
+            "elevationM": 2202,
+            "distanceKm": 5,
+            "altitudeDeg": 2.8,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 647.2916666666666,
+              "yPx": 208.05429864253395
+            },
+            "labelled": true
+          },
+          {
+            "summitId": "overture/bb7147e9-f16f-3d21-a0cb-a60a47cc8873",
+            "name": "Deer Point",
+            "elevationM": 2150,
+            "distanceKm": 2,
+            "altitudeDeg": 1.2,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 777.7458333333334,
+              "yPx": 226.9683257918552
+            },
+            "labelled": true
+          }
+        ],
+        "withheld": []
+      },
+      "dragAnchorSummitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e"
+    }
+  ]
+}
