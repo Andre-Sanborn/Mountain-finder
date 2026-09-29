@@ -30,7 +30,7 @@ after its self-check has run and passed here. The checks are in
 - [x] Import a new Overture peak region covering Bogus Basin's 60 km disc; keep idaho-central unchanged
 - [ ] Decide fetch-peaks' default release now that 2026-06-17.0 is deleted upstream; pin --release in regenerate commands
 - [x] Stage site packages from package:deploy and publish Bogus Basin from pages.yml
-- [ ] Measure the 360° annotateScene under phone-class CPU throttling (unthrottled: 1.3–2.4 s in Chromium)
+- [x] Measure the 360° annotateScene under phone-class CPU throttling (60 km: 0.64 s at 1x, 4.5 s at 6x)
 - [x] Build the web AR screen in landscape: single-lens camera, live loop, drag, band, sun and moon discs
 - [x] Add a service worker to live.html, so the AR screen opens with no network after one visit
 - [ ] Render the offline status line and the "Download Bogus Basin" button on the live screen
@@ -50,7 +50,8 @@ after its self-check has run and passed here. The checks are in
 - [ ] Write the field-session steps; run the field test with the human
 
 - [ ] Take the live sweep range from the served site (60 km at Bogus Basin), not APP_SWEEP's 30 km
-- [ ] Measure the 60 km live sweep in Chromium under 4-6x CPU throttling; precondition of the field session
+- [x] Measure the 60 km live sweep in Chromium under 4-6x CPU throttling; precondition of the field session
+- [ ] Measure the live start on the phone: iOS Cache Storage read of 42.55 MB, permissions, fix, first paint
 - [ ] Fine-drag mode (4x slow) on the live screen; home session records drag and roll spread
 - [ ] Prereg: gate F3/F4 at one 2σ exceedance and no 3σ; F4 pan to frame edge; accuracy confidence; text fixes
 

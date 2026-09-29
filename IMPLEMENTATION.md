@@ -1100,3 +1100,31 @@ every change below is legitimate, and each lands in code and doc together.
   `no-sample`, and the doc says so now. F2 is conditional on calibration. The field steps say
   to stand within a few hundred metres of the site coordinate, because the cut has 0.5 km of
   margin.
+
+## The live sweep's cost in a browser, throttled
+
+Measured in Playwright Chromium against the Bogus Basin package, through `HttpTerrainStore` and
+the live screen's own `annotateScene` call. There were 5 runs per cell, in two passes that agree
+within 4 %, and the load average stayed between 0.56 and 1.43. Figures are the median, with the
+range in brackets.
+
+| CPU throttle | 30 km sweep | 60 km sweep | compute start, 60 km |
+|---|---|---|---|
+| 1× | 0.32 s | 0.64 s (0.62–0.66) | 0.81 s |
+| 4× | 1.49 s | 3.00 s (2.92–3.19) | 3.63 s |
+| 6× | 2.28 s | 4.52 s (4.38–4.68) | 5.53 s (worst 5.65 s) |
+
+The compute start counts the manifest, the 42.55 MB mosaic read and decode (0.91 s at 6×), the
+peak cells, and one full sweep. **F1 keeps 9.5 s of its 15 s at 6×.** Chrome names 4× "mid-tier"
+and 6× "low-tier" mobile, both relative to the host. By published Geekbench 6 single-core scores,
+read from search summaries, an A19 Pro is about 4.5× faster than this Xeon vCPU. So 6× is very
+pessimistic for the field phone.
+
+Still unmeasured: the Cache Storage read on iOS, the permissions, the fix and the first paint.
+After a forced collection the retained heap is 44 MB, which is the decoded grid plus about 1.5 MB
+of scene. The peak is 96–106 MB, while the fetched buffer and the decoded copy coexist.
+
+The scene matched the site package's own figures exactly: 720/720 rays, 78 labelled, 0 marginal.
+At 30 km the same call labels 32 summits and leaves 132 unmeasured.
+
+The harness lives outside the repository, in the session scratch directory.
