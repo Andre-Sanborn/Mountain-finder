@@ -17,6 +17,7 @@
     "test:e2e": "playwright test",
     "test:deploy": "playwright test --config scripts/deploy-check/playwright.config.ts",
     "package:deploy": "tsx scripts/package-deploy.ts",
+    "check:deploy-privacy": "tsx scripts/check-deploy-privacy.ts",
     "serve:dist": "tsx scripts/static-server.ts dist",
     "test:acceptance": "vitest run --config vitest.acceptance.config.ts --passWithNoTests",
     "demo": "tsx scripts/demo.ts",

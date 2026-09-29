@@ -10,7 +10,10 @@ after its self-check has run and passed here. The checks are in
 - [x] Build WMM2025 declination in src/core; reproduce NOAA's test values to 0.05°; cross-check a second source
 - [ ] Wire src/core/declination into the live heading policy, labelled "true (model)"
 - [ ] Build sun and moon position in src/core against Meeus worked examples
-- [ ] Deploy the web app to GitHub Pages from Actions, gated on test:deploy and a no-GPS privacy check
+- [x] Deploy the web app to GitHub Pages from Actions, gated on test:deploy and a no-GPS privacy check
+- [ ] Confirm the first Pages run on GitHub; if enablement fails, the human sets Source to GitHub Actions
+- [ ] Measure what the phone downloads from Pages; drop --gzip if the .gz siblings go unread
+- [ ] Add the Idaho field-site tiles to the Pages workflow's fetch:tiles line
 - [ ] Build the repository privacy check: no EXIF GPS or coordinate pairs in new files; wire into check
 - [ ] Build the web sensor adapter as a pure function of raw Safari and Chromium events
 - [ ] Build the Bogus Basin site package at 60 km radius, with seam and coverage tests

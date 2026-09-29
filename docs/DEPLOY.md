@@ -256,6 +256,49 @@ screen unscrolled, opaque, ≥ 4.5:1 contrast in both colour schemes, keyboard
 reachable) and one assertion in the deploy check below, which runs against the
 built bundle behind the static server.
 
+## The published site — GitHub Pages
+
+`.github/workflows/pages.yml` publishes this repository to GitHub Pages on every
+push to the development branch, and on demand from Actions → pages → Run
+workflow. A phone needs an HTTPS origin before the browser will grant camera,
+orientation or geolocation, and a Pages site is one at no cost in servers.
+
+It runs the three commands above, with three differences that matter:
+
+1. **It fetches the tiles first.** `npm run fetch:tiles -- N45E007` — tiles are
+   not in git, so the runner downloads the square degree the deployment serves.
+2. **It builds for a subpath.** A project site is served at
+   `https://<owner>.github.io/<repo>/`, so the build is
+   `npm run build -- --base=/<repo>/`. The app resolves `/terrain/manifest.json`
+   and `/peaks/` against that base at runtime (`src/app/base-path.ts`), because
+   Vite rewrites only the URLs it generated itself. The deployment check runs
+   against that same subpath build, through a directory that mounts `dist/`
+   under the repository name:
+
+   ```bash
+   mkdir -p _site-serve && ln -s "$PWD/dist" _site-serve/Mountain-finder
+   DEPLOY_CHECK_SERVE_DIR=_site-serve DEPLOY_CHECK_BASE_PATH=/Mountain-finder/ \
+     npm run test:deploy
+   ```
+
+3. **It refuses to publish photographs.** `npm run check:deploy-privacy` walks
+   the package and fails on anything named like or byte-identical to a file in
+   `fixtures/photos/real/`, and on any image carrying GPS EXIF. Nothing stages a
+   photograph today; the gate is what notices the day something does, before a
+   public URL makes it permanent.
+
+A failing deployment check or privacy gate stops the artifact being uploaded, so
+the live site keeps serving the last good build.
+
+**Pages has no `gzip_static` equivalent.** `--gzip` stages `.hgt.gz` siblings
+that nginx or Caddy would serve in place of `.hgt`; Pages serves the object that
+was asked for. So the app's request for `N45E007.hgt` gets the 25.93 MB file
+unless the Pages CDN happens to compress it on the fly, and the `.gz` siblings
+are 17.8 MB of artifact that may never be read. Measure what arrives on the
+phone before budgeting for the gzipped figure. Everything in "Reducing the 25 MB" below that needs no
+content negotiation — pre-cut windows, `Cache-Control` on a real host, a service
+worker — still applies.
+
 ## The self-check
 
 ```bash

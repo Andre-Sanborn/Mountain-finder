@@ -500,3 +500,32 @@ agrees with the IGRF-14 cross-check of +12.8° for 2026-09-29.
 - `heightM` is treated as ellipsoidal height. Using an SRTM orthometric height instead changes
   declination far less than the model's own error.
 - The module is not yet wired into the heading policy.
+
+## The web app publishes itself to GitHub Pages
+
+The phone can use its camera, orientation and location only on a secure origin. So
+`.github/workflows/pages.yml` publishes the app to `https://andre-sanborn.github.io/Mountain-finder/`
+on every push to the development branch, and on manual dispatch. The workflow:
+1. Builds with `--base=/Mountain-finder/`.
+2. Fetches `N45E007` from the S3 SRTM mirror at build time, because tiles stay out of git.
+3. Runs `package:deploy -- --gzip`.
+4. Runs two gates before uploading the artifact, so a failed gate leaves the last good build
+   live:
+   - `npm run check:deploy-privacy` refuses a file named like, or byte-identical to, anything
+     in `fixtures/photos/real/`, and any image carrying GPS EXIF.
+   - `test:deploy` runs against the subpath layout the site is published at.
+
+**The subpath was a real bug.** Vite's `base` rewrites only URLs Vite generated. Two strings in
+`main.tsx`, the terrain manifest URL and `/peaks`, asked the root of the domain and got 404.
+They now resolve against `import.meta.env.BASE_URL` through `src/app/base-path.ts`, and a root
+deployment is unchanged. Reverting the fix fails the subpath deploy check 2 of 5, with
+`No terrain index at /terrain/manifest.json (HTTP 404)`. The privacy gate fired on all three
+planted cases: a private photo by name, the same photo renamed, and an unrelated JPEG with GPS.
+
+**Actions are pinned to commit SHAs** because the workflow holds `id-token: write`.
+`configure-pages` with `enablement: true` needs `administration:write`, which the workflow token
+may lack. So that step continues on error and prints the manual steps in the job summary.
+
+**Limit: Pages has no `gzip_static`.** The `.gz` siblings may never be served, and a phone may
+download the full 25.93 MB tile. Measure what reaches the phone before budgeting on the
+gzipped size.

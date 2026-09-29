@@ -36,6 +36,8 @@ import { fileURLToPath } from 'node:url';
 
 import { expect, test, type Page, type Response } from '@playwright/test';
 
+import { BASE_PATH, servedUrl } from './serving.js';
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');
 const DIST = resolve(ROOT, 'dist');
@@ -85,7 +87,7 @@ test('the served files are the packaged files — nothing is generated per reque
 }) => {
   // The dev server BUILDS manifest.json on every request. A deployment cannot,
   // so the decisive check is byte identity with what packaging wrote.
-  const response = await page.request.get('/terrain/manifest.json');
+  const response = await page.request.get(servedUrl('/terrain/manifest.json'));
   expect(response.status()).toBe(200);
   const served = await response.body();
   const onDisk = await readFile(resolve(DIST, 'terrain/manifest.json'));
@@ -100,14 +102,17 @@ test('the served files are the packaged files — nothing is generated per reque
 
   // Every grid the index promises is actually reachable, with the right length.
   for (const grid of manifest.grids) {
-    const head = await page.request.fetch(`/terrain/${grid.url}`, { method: 'HEAD' });
-    expect(head.status(), `${grid.name} → /terrain/${grid.url}`).toBe(200);
+    const head = await page.request.fetch(servedUrl(`/terrain/${grid.url}`), { method: 'HEAD' });
+    expect(head.status(), `${grid.name} → ${servedUrl(`/terrain/${grid.url}`)}`).toBe(200);
   }
 
   // And the page itself is the built one: no Vite client, no module graph.
-  const html = await (await page.request.get('/')).text();
+  const html = await (await page.request.get(BASE_PATH)).text();
   expect(html).not.toContain('/@vite/client');
-  expect(html).toMatch(/\/assets\/index-[A-Za-z0-9_-]+\.js/);
+  // BASE_PATH comes from the environment, so it is escaped before it becomes a
+  // pattern — an unescaped `.` in a repository name would match anything.
+  const basePattern = BASE_PATH.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  expect(html).toMatch(new RegExp(`${basePattern}assets/index-[A-Za-z0-9_-]+\\.js`));
 });
 
 test('a statically served build draws a real overlay from a real photo', async ({ page }) => {
@@ -134,7 +139,7 @@ test('a statically served build draws a real overlay from a real photo', async (
     if (response.url().includes('/terrain/tiles/')) terrain.push(response);
   });
 
-  await page.goto('/');
+  await page.goto(BASE_PATH);
   await expect(page.getByTestId('app-title')).toHaveText('Mountain Finder');
 
   await pickPhoto(page, GORNERGRAT);
@@ -201,7 +206,7 @@ test('a viewpoint the deployment has no tile for is named, not silently blank', 
   const names = await packagedGridNames();
   test.skip(names.includes('N45E006'), 'this deployment now holds N45E006');
 
-  await page.goto('/');
+  await page.goto(BASE_PATH);
   await pickPhoto(page, CHAMONIX);
   await page.getByTestId('input-assumptions').check();
 
@@ -229,7 +234,7 @@ test('the packaged peak cells are served in the layout TiledPeakStore expects', 
   expect(first, 'packaging staged no peak regions').toBeDefined();
   if (first === undefined) return;
 
-  const indexResponse = await page.request.get(`/peaks/${first.name}/index.json`);
+  const indexResponse = await page.request.get(servedUrl(`/peaks/${first.name}/index.json`));
   expect(indexResponse.status()).toBe(200);
   const index = (await indexResponse.json()) as {
     peakCount: number;
@@ -242,7 +247,7 @@ test('the packaged peak cells are served in the layout TiledPeakStore expects', 
   expect(cell).toBeDefined();
   if (cell === undefined) return;
   // `file` is relative to the index — the same resolution the store performs.
-  const cellResponse = await page.request.get(`/peaks/${first.name}/${cell.file}`);
+  const cellResponse = await page.request.get(servedUrl(`/peaks/${first.name}/${cell.file}`));
   expect(cellResponse.status()).toBe(200);
   const body = (await cellResponse.json()) as { cell: string; peaks: unknown[] };
   expect(body.cell).toBe(cell.name);
@@ -258,7 +263,7 @@ test('the deployed page displays the ODbL notice, and it matches ATTRIBUTION.txt
   // reads. `tests/e2e/attribution.spec.ts` proves the footer is legible and on
   // screen; this proves the built artefact carries it and that the two
   // renderings of the same citation records agree.
-  await page.goto('/');
+  await page.goto(BASE_PATH);
   const footer = page.getByTestId('attribution');
   await expect(footer).toBeVisible();
   await expect(footer).toContainText('OpenStreetMap contributors');

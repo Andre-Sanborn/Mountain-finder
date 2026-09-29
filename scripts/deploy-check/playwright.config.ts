@@ -18,9 +18,15 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig, devices } from '@playwright/test';
 
+import { BASE_PATH, SERVE_DIR } from './serving.js';
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');
 const PORT = 5210;
+
+// A subpath deployment serves the same package from a different URL prefix;
+// `serving.ts` says where that comes from.
+
 
 /** Same rule as the root config: prefer this environment's Chromium. */
 const preinstalledChromium = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium';
@@ -41,9 +47,9 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], launchOptions } }],
   webServer: {
-    command: `npx tsx scripts/static-server.ts dist --port ${PORT}`,
+    command: `npx tsx scripts/static-server.ts ${SERVE_DIR} --port ${PORT}`,
     cwd: ROOT,
-    url: `http://localhost:${PORT}/terrain/manifest.json`,
+    url: `http://localhost:${PORT}${BASE_PATH}terrain/manifest.json`,
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
   },

@@ -5,6 +5,10 @@ coverage/
 test-results/
 playwright-report/
 
+# dist/ mounted under the repository name, so the deployment check can drive the
+# subpath build the Pages workflow publishes
+_site-serve/
+
 .env
 .env.*
 

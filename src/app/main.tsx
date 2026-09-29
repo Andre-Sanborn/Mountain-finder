@@ -34,18 +34,27 @@ import { DEFAULT_TERRAIN_MANIFEST_URL } from '../providers/terrain-manifest';
 import { TileElevationProvider } from '../providers/tile-elevation';
 import { App, type AppProps } from './App';
 import { createTrimSuggester } from './auto-trim';
+import { resolveFromBase } from './base-path';
 import { compositePng } from './composite-export';
 import { bundledRegionIndexes } from './data-credits';
 import { createOverlayBuilder, type TerrainSource } from './overlay-builder';
 import './styles.css';
 
-const store = new HttpTerrainStore(DEFAULT_TERRAIN_MANIFEST_URL);
+// Both data paths are resolved against the path this build is served from, so
+// the same code works at a site root and under a GitHub Pages project subpath
+// like /Mountain-finder/ — see base-path.ts. BASE_URL is '/' by default, which
+// leaves these URLs exactly as they are written.
+const base = import.meta.env.BASE_URL;
+
+const store = new HttpTerrainStore(resolveFromBase(base, DEFAULT_TERRAIN_MANIFEST_URL));
 const terrain: TerrainSource = {
   elevation: new TileElevationProvider(store),
   coverage: (lat, lon) => store.coverage(lat, lon),
 };
 
-const peaks = createRegionPeakSource(bundledRegionIndexes(), '/peaks', (url) => fetch(url));
+const peaks = createRegionPeakSource(bundledRegionIndexes(), resolveFromBase(base, '/peaks'), (url) =>
+  fetch(url),
+);
 
 const props: AppProps = {
   overlayBuilder: createOverlayBuilder({ terrain, peaks }),

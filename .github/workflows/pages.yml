@@ -1,0 +1,152 @@
+# Publish the web app to GitHub Pages, so a phone can open it over HTTPS.
+#
+# The device APIs this app wants — camera, orientation, geolocation — are only
+# granted to a secure origin, and `http://<laptop-ip>:5173` is not one. A Pages
+# site is, and it costs no server: a deployment is one static directory
+# (docs/DEPLOY.md), and every request the running app makes is same-origin
+# (decision D7).
+#
+# WHAT IS PUBLISHED, AND WHAT IS NOT. `vite build` emits the app with no
+# elevation data at all, so this workflow fetches the SRTM tiles the deployment
+# needs at build time and stages them with `npm run package:deploy`. Tiles are
+# 25.93 MB each and are deliberately not in git (.gitignore); the download from
+# the AWS open-data mirror is the one network step, and it happens here rather
+# than in anybody's repository.
+#
+# TWO GATES BEFORE ANYTHING IS PUBLISHED, both of which fail the deploy:
+#   • `npm run test:deploy` drives the packaged directory in real Chromium
+#     behind a plain static server, and proves the Matterhorn lands within 12 px
+#     of its closed-form position. It runs against the SUBPATH build, which is
+#     the artefact actually published — see the base-path steps below.
+#   • `npm run check:deploy-privacy` refuses a package carrying a personal
+#     photograph or any image with GPS EXIF. A published photograph cannot be
+#     unpublished (AGENTS.md, "Privacy").
+#
+# Actions are pinned to full commit SHAs. A tag is a movable ref, and `@v5` on a
+# workflow with `id-token: write` means trusting whoever can move that tag.
+name: pages
+
+on:
+  push:
+    branches: ['claude/gifted-lamport-3tyh5g']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time, and never cancel one in flight: a half-applied Pages
+# deployment is a site serving a bundle whose terrain is not there yet.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build, package and prove the deployable directory
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Node 22 with the npm cache, the same as .github/workflows/check.yml.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Try to switch Pages on. `enablement: true` needs a token with
+      # administration:write, which GITHUB_TOKEN does not have, so this step is
+      # expected to fail on a repository where Pages has never been enabled —
+      # and a failure here must not hide the rest of the build. The deploy job
+      # is what actually reports the consequence.
+      - name: Configure Pages
+        id: configure-pages
+        continue-on-error: true
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+        with:
+          enablement: true
+
+      - name: Say what to do if Pages is not enabled
+        if: steps.configure-pages.outcome != 'success'
+        run: |
+          {
+            echo '### GitHub Pages is not enabled yet'
+            echo
+            echo 'One manual step, once, by a repository admin:'
+            echo
+            echo '1. Open <https://github.com/'"$GITHUB_REPOSITORY"'/settings/pages>'
+            echo '2. Under **Build and deployment** → **Source**, choose **GitHub Actions**'
+            echo '3. Re-run this workflow (Actions → pages → Run workflow)'
+            echo
+            echo 'The site then appears at the URL printed by the deploy job.'
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat "$GITHUB_STEP_SUMMARY"
+
+      # A project site is served at https://<owner>.github.io/<repo>/, so the
+      # bundle has to be built for that subpath. Taken from the repository name
+      # rather than from the step above, which is allowed to fail.
+      - name: Work out the subpath this site is served at
+        run: echo "BASE_PATH=/${GITHUB_REPOSITORY#*/}/" >> "$GITHUB_ENV"
+
+      # The only network step: SRTM tiles for the deployment. N45E007 is the
+      # Zermatt square degree the deploy check's Gornergrat proof needs, and the
+      # default deployment in docs/DEPLOY.md.
+      - name: Fetch the SRTM tiles this deployment serves
+        run: npm run fetch:tiles -- N45E007
+
+      - name: Build for the subpath
+        run: npm run build -- --base="$BASE_PATH"
+
+      - name: Package the deployable directory
+        run: npm run package:deploy -- --gzip
+
+      - name: List what is in the package
+        run: |
+          du -sh dist
+          find dist -type f -printf '%10s  %p\n' | sort -k2
+
+      # Runs before the browser check, because a privacy breach is not something
+      # to discover after a 120 s overlay test. Also runs before publication, by
+      # being in the job that produces the artifact at all.
+      - name: Privacy gate
+        run: npm run check:deploy-privacy
+
+      - name: Install Chromium for the deployment check
+        run: npx playwright install --with-deps chromium
+
+      # `test:deploy` serves a directory with a plain static server. Mounting
+      # dist/ under the repository name inside `_site-serve/` reproduces the
+      # published URL shape, so the suite exercises the subpath build rather
+      # than a root build that is never published.
+      - name: Mount the package at its published subpath
+        run: |
+          rm -rf _site-serve
+          mkdir -p _site-serve
+          ln -s "$GITHUB_WORKSPACE/dist" "_site-serve/${GITHUB_REPOSITORY#*/}"
+
+      - name: Deployment check against the packaged subpath build
+        env:
+          CI: '1'
+          DEPLOY_CHECK_SERVE_DIR: _site-serve
+          DEPLOY_CHECK_BASE_PATH: ${{ env.BASE_PATH }}
+        run: npm run test:deploy
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: dist
+
+  deploy:
+    name: deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      # Fails with a Pages API error if Pages is still not enabled for this
+      # repository. The build job's summary says what to click.
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
