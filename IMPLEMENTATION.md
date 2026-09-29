@@ -1304,3 +1304,24 @@ F2 fails because the headless sensors report no compass accuracy, so the band st
 a 16:9 viewport makes `object-fit: cover` show a 75 % crop. `residualOf` would then scale
 horizontal residuals by 2.4 where the truth is 1.8, about a shifted centre, and nothing detects
 it. This must be fixed before the field session.
+
+## The overlay is drawn over a crop of the stored frame
+
+The AR screen draws the camera at `object-fit: cover`. The frame is scaled by
+`max(viewW/trackW, viewH/trackH)`, and the overflow is cut evenly off the axis that
+overflows. On screen that leaves 81.8 % of a 16:9 stream's height in the 956 × 440 viewport,
+and 75 % of a 4:3 stream's. The grader now maps a drawn marker onto the stored frame through
+the same crop, and takes angles with the whole frame's FOV, which is the pose's visible-box
+FOV read back through the crop.
+
+The crop is computed from the aspect ratios, so the uncropped axis is exactly 1 and the
+equal-aspect case is unchanged bit for bit. A grid test holds it to `videoBoxGeometry`. A
+capture with no track size is refused.
+
+The old plain ratio scaled vertical residuals by 1080/440 = 2.45, where the truth is
+1920/956 = 2.01, and about a centre 98 px away. So residuals were 22 % too large, silently.
+The rehearsal never saw it, because its camera and viewport were both 16:9.
+
+The fixtures were re-placed through the mapping. `analyze:field` output is unchanged except for
+one 0.849° → 0.850° line, which is a real 0.03 % FOV effect. Ten mutations are caught. The
+report now prints "not graded" separately from "graded, with a caveat".

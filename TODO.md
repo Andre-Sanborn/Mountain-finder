@@ -46,7 +46,8 @@ after its self-check has run and passed here. The checks are in
 - [x] Write the error budget and pre-register the field pass criteria
 - [x] Run the headless dress rehearsal at Bogus Basin on IMG_7270 with injected compass and pitch error
 - [ ] Grade the rehearsal against apex truth from two independent annotators
-- [ ] Map overlay to stored frame through the cover crop in the grader; a 4:3 camera in a 16:9 view mis-scales residuals
+- [x] Map overlay to stored frame through the cover crop in the grader; a 4:3 camera in a 16:9 view mis-scales residuals
+- [ ] State the overlay-to-frame mapping in the prereg's § 2.0 and Part 3 bodies, not only its revision history
 - [ ] Run the home session with the human (steps: docs/HOME-SESSION-GUIDE.md)
 - [ ] Turn the home-session recording into fixtures; fix any sign or FOV error it shows
 - [x] Lock the railroad-ridge CV result as a regression test, labelled n = 1
@@ -70,7 +71,7 @@ after its self-check has run and passed here. The checks are in
 - [ ] Redesign field truth: agent annotators named 0 of 17 summits on the rehearsal frame (n = 1)
 - [ ] Add a measured pitch-bias term to the live vertical band; until measured, F2 vertical is not gated
 - [ ] Re-run the rehearsal at a 956x440 viewport over a 1920x1080 camera, without cropToAspect
-- [ ] Separate refusals from notes in the field report
+- [x] Separate refusals from notes in the field report
 
 ## Other open work
 

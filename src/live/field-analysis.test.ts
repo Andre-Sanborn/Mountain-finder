@@ -17,6 +17,7 @@
 
 import { describe, expect, it } from 'vitest';
 
+import { croppedFovDeg, videoBoxGeometry } from '../app/live/video-box.js';
 import { projectToImage } from '../core/projection.js';
 import type { Peak } from '../core/types.js';
 import {
@@ -25,10 +26,12 @@ import {
   bandFor,
   bandLimitsFor,
   bandSigmaFor,
+  coverVisibleFraction,
   MAX_OBSERVER_ACCURACY_M,
   MAX_TRUTH_DISAGREEMENT_DEG,
   MAX_TWO_SIGMA_EXCEEDANCES,
   observerSigmaFromAccuracyM,
+  overlayToFramePx,
   PAN_ANCHOR_EDGE_OFFSET,
   parseFieldBundle,
   parseFieldTruth,
@@ -37,8 +40,10 @@ import {
   renderFieldReport,
   residualOf,
   synthesiseFieldBundle,
+  uncroppedFovDeg,
   withinThreshold,
   type BandId,
+  type Capture,
   type Criterion,
   type FieldBundle,
   type SynthCapture,
@@ -135,6 +140,20 @@ function summit(overrides: Partial<SynthSummit> & Pick<SynthSummit, 'summitId'>)
   };
 }
 
+/** One synthesised capture, for the geometry tests that need nothing else. */
+function captureWith(
+  geometry: Pick<SynthCapture, 'framePx' | 'overlayPx' | 'track'>,
+): Capture {
+  const { bundle } = synthesiseFieldBundle({
+    captures: [
+      { captureId: 'c1', role: 'after-drag', summits: [summit({ summitId: FAR })], ...geometry },
+    ],
+  });
+  const capture = bundle.captures[0];
+  if (capture === undefined) throw new Error('the synthesiser produced no capture');
+  return capture;
+}
+
 function run(captures: readonly SynthCapture[]): ReturnType<typeof analyseFieldRun> {
   const { bundle, truth } = synthesiseFieldBundle({ captures });
   return analyseFieldRun(bundle, truth, lookup);
@@ -222,11 +241,336 @@ describe('pixels to frame angles', () => {
       capture.overlay.drawn[0]?.summitPx ?? { xPx: 0, yPx: 0 },
       { xPx: 960, yPx: 442 },
     );
+    expect(residual).toBeDefined();
+    if (residual === undefined) return;
     // Truth is the frame centre in x, so the horizontal residual is atan(30/f).
     expect(residual.horizontalDeg).toBeCloseTo(degreesAcross(0, 30), 9);
     expect(residual.horizontalDeg).toBeCloseTo(1.34263, 5);
     expect(residual.horizontalPx).toBeCloseTo(30, 9);
     expect(residual.verticalPx).toBeCloseTo(-12, 9);
+  });
+});
+
+/**
+ * THE CROP BETWEEN THE VIEWPORT AND THE STORED FRAME.
+ *
+ * The screen draws the camera at `object-fit: cover`: the frame is scaled by
+ * `max(viewW/trackW, viewH/trackH)` and the overflow is cut evenly off the two
+ * ends of the axis that overflows. Every expectation below is that arithmetic
+ * done by hand, with the numbers written out, and the mapped point is checked
+ * against the crop's own invariants — the two axes carry ONE scale factor, the
+ * visible window is centred on the frame centre, and the corners of the
+ * viewport land on the corners of that window.
+ */
+describe('overlay pixels through the cover crop', () => {
+  it('crops the height of a 4:3 track in a 16:9 viewport, to three quarters', () => {
+    // 800/450 = 1.77778 against 1920/1440 = 1.33333: the viewport is the wider
+    // shape, so cover matches the widths and the height overflows.
+    const fraction = coverVisibleFraction(
+      { widthPx: 800, heightPx: 450 },
+      { width: 1920, height: 1440 },
+    );
+    expect(fraction).toEqual({ x: 1, y: 0.75 });
+  });
+
+  it('crops the width of a 16:9 track in a portrait-ish viewport, to one half', () => {
+    // 400/450 = 0.88889 against 1.77778: the viewport is the taller shape, so
+    // cover matches the heights and the width overflows. 0.88889/1.77778 = 0.5.
+    const fraction = coverVisibleFraction(
+      { widthPx: 400, heightPx: 450 },
+      { width: 1920, height: 1080 },
+    );
+    expect(fraction).toEqual({ x: 0.5, y: 1 });
+  });
+
+  it('leaves both axes whole when the viewport and the track share an aspect', () => {
+    expect(
+      coverVisibleFraction({ widthPx: 800, heightPx: 450 }, { width: 1920, height: 1080 }),
+    ).toEqual({ x: 1, y: 1 });
+  });
+
+  it('refuses a capture that records no camera track size', () => {
+    expect(
+      coverVisibleFraction({ widthPx: 956, heightPx: 440 }, { width: 0, height: 0 }),
+    ).toBeUndefined();
+  });
+
+  it('maps a 4:3 track in a 16:9 viewport onto the frame by hand', () => {
+    // Stored frame 1920 x 1440, viewport 800 x 450, fraction (1, 0.75).
+    //   x: 1920/800 = 2.4 across, nothing cropped, so xFrame = 2.4 x.
+    //   y: (1440/450) x 0.75 = 2.4 down, and the strip cut off the top is
+    //      1440 x 0.25 / 2 = 180 px, so yFrame = 2.4 y + 180.
+    const capture = captureWith({
+      framePx: { widthPx: 1920, heightPx: 1440 },
+      overlayPx: { widthPx: 800, heightPx: 450 },
+      track: { width: 1920, height: 1440 },
+    });
+    const fraction = { x: 1, y: 0.75 };
+    const at = (xPx: number, yPx: number) => overlayToFramePx(capture, { xPx, yPx }, fraction);
+
+    expect(at(0, 0)).toEqual({ xPx: 0, yPx: 180 });
+    expect(at(800, 450)).toEqual({ xPx: 1920, yPx: 1260 });
+    // The optical axis: the centre of the viewport is the centre of the frame.
+    expect(at(400, 225)).toEqual({ xPx: 960, yPx: 720 });
+    // One scale on both axes, which is what `cover` means.
+    expect(at(100, 100).xPx).toBeCloseTo(240, 12);
+    expect(at(100, 100).yPx).toBeCloseTo(2.4 * 100 + 180, 12);
+    // The plain ratio the grader used before: 1440/450 = 3.2 down, no offset.
+    expect(at(100, 100).yPx).not.toBeCloseTo(3.2 * 100, 6);
+  });
+
+  it('maps the phone case — a 16:9 stream in the registered 956 x 440 — by hand', () => {
+    // 956/440 = 2.172727 against 1920/1080 = 1.777778, so the height is cropped
+    // to 1.777778 / 2.172727 = (16 x 440) / (9 x 956) = 7040/8604 = 0.8182241.
+    //   scale: (1080/440) x 0.8182241 = 2.0083682 = 1920/956, one factor for
+    //          both axes.
+    //   strip: 1080 x (1 - 0.8182241) / 2 = 98.15900 px off the top and bottom.
+    const fractionY = 7040 / 8604;
+    const fraction = coverVisibleFraction(
+      { widthPx: 956, heightPx: 440 },
+      { width: 1920, height: 1080 },
+    );
+    expect(fraction?.x).toBe(1);
+    expect(fraction?.y).toBeCloseTo(fractionY, 15);
+    expect(fraction?.y).toBeCloseTo(0.8182241, 7);
+
+    const capture = captureWith({
+      framePx: { widthPx: 1920, heightPx: 1080 },
+      overlayPx: { widthPx: 956, heightPx: 440 },
+      track: { width: 1920, height: 1080 },
+    });
+    const scale = 1920 / 956;
+    const strip = (1080 * (1 - fractionY)) / 2;
+    expect(scale).toBeCloseTo(2.0083682, 7);
+    expect(strip).toBeCloseTo(98.15900, 5);
+
+    const at = (xPx: number, yPx: number) =>
+      overlayToFramePx(capture, { xPx, yPx }, fraction ?? { x: 1, y: 1 });
+    expect(at(0, 0).xPx).toBeCloseTo(0, 12);
+    expect(at(0, 0).yPx).toBeCloseTo(strip, 10);
+    expect(at(478, 220).xPx).toBeCloseTo(960, 10);
+    expect(at(478, 220).yPx).toBeCloseTo(540, 10);
+    expect(at(956, 440).yPx).toBeCloseTo(1080 - strip, 10);
+    expect(at(956, 440).yPx).toBeCloseTo(981.841, 3);
+    // Scaling by the plain ratio of heights, 1080/440 = 2.4545, would put the
+    // bottom of the viewport at the bottom of a frame it never reached.
+    expect(at(956, 440).yPx).not.toBeCloseTo(1080, 3);
+  });
+
+  it('maps a 16:9 track in a taller viewport onto the frame by hand', () => {
+    // Stored frame 1920 x 1080, viewport 400 x 450, fraction (0.5, 1).
+    //   y: 1080/450 = 2.4 down, nothing cropped, so yFrame = 2.4 y.
+    //   x: (1920/400) x 0.5 = 2.4 across, and the strip cut off the left is
+    //      1920 x 0.5 / 2 = 480 px, so xFrame = 2.4 x + 480.
+    const capture = captureWith({
+      framePx: { widthPx: 1920, heightPx: 1080 },
+      overlayPx: { widthPx: 400, heightPx: 450 },
+      track: { width: 1920, height: 1080 },
+    });
+    const fraction = { x: 0.5, y: 1 };
+    const at = (xPx: number, yPx: number) => overlayToFramePx(capture, { xPx, yPx }, fraction);
+
+    expect(at(0, 0)).toEqual({ xPx: 480, yPx: 0 });
+    expect(at(400, 450)).toEqual({ xPx: 1440, yPx: 1080 });
+    expect(at(200, 225)).toEqual({ xPx: 960, yPx: 540 });
+    // Without the strip the left edge of the screen would be read as the left
+    // edge of the frame, 480 px from where the viewer was looking.
+    expect(at(0, 0).xPx).not.toBeCloseTo(0, 6);
+  });
+
+  it('is the plain ratio, bit for bit, when the two share an aspect', () => {
+    // 800 x 450 over a 1920 x 1080 frame: nothing is cropped, so the mapping is
+    // the ratio of widths and of heights, and the same floating-point product
+    // the grader computed before the crop was accounted for.
+    const capture = captureWith({
+      framePx: { widthPx: 1920, heightPx: 1080 },
+      overlayPx: { widthPx: 800, heightPx: 450 },
+      track: { width: 1920, height: 1080 },
+    });
+    const fraction = coverVisibleFraction(capture.overlayPx, capture.track);
+    expect(fraction).toEqual({ x: 1, y: 1 });
+    for (const point of [
+      { xPx: 0, yPx: 0 },
+      { xPx: 1, yPx: 1 },
+      { xPx: 137.4, yPx: 299.6 },
+      { xPx: 400, yPx: 225 },
+      { xPx: 800, yPx: 450 },
+    ]) {
+      const mapped = overlayToFramePx(capture, point, fraction ?? { x: 1, y: 1 });
+      expect(Object.is(mapped.xPx, point.xPx * (1920 / 800))).toBe(true);
+      expect(Object.is(mapped.yPx, point.yPx * (1080 / 450))).toBe(true);
+    }
+  });
+
+  it('uncrops the field of view by the tangent, not by the angle', () => {
+    // The frame is 1920 x 1440 at f = 1279.99524 px, so it spans
+    //   2 atan(720 / 1279.99524) = 58.71569° top to bottom,
+    // and three quarters of that height spans 2 atan(540 / 1279.99524) =
+    // 45.74748°. Read back through the same crop, 45.74748° is 58.71569° again.
+    // Scaling the ANGLE instead would give 45.74748 / 0.75 = 60.99664°, 2.3°
+    // out.
+    const frameVFovDeg = 2 * Math.atan(720 / FOCAL_PX) * (180 / Math.PI);
+    expect(frameVFovDeg).toBeCloseTo(58.71569, 5);
+    const visibleVFovDeg = 2 * Math.atan(540 / FOCAL_PX) * (180 / Math.PI);
+    expect(visibleVFovDeg).toBeCloseTo(45.74748, 5);
+    expect(uncroppedFovDeg(visibleVFovDeg, 0.75)).toBeCloseTo(frameVFovDeg, 10);
+    expect(uncroppedFovDeg(visibleVFovDeg, 0.75)).not.toBeCloseTo(visibleVFovDeg / 0.75, 3);
+  });
+
+  it('returns an uncropped axis unchanged, bit for bit', () => {
+    expect(Object.is(uncroppedFovDeg(73.74, 1), 73.74)).toBe(true);
+    expect(Object.is(uncroppedFovDeg(38.088, 1), 38.088)).toBe(true);
+  });
+
+  it('recovers a residual injected in frame pixels, through a cropped viewport', () => {
+    // The frame is 1920 x 1440 at f = 1279.99524 px, shown in an 800 x 450
+    // viewport that keeps three quarters of its height. The marker is drawn
+    // 30 px right of and 30 px below the apex IN FRAME PIXELS, and the apex is
+    // the frame centre, so each residual is atan(30 / 1279.99524) = 1.34263°.
+    const visibleVFovDeg = 2 * Math.atan(540 / FOCAL_PX) * (180 / Math.PI);
+    const { bundle } = synthesiseFieldBundle({
+      captures: [
+        {
+          captureId: 'c1',
+          role: 'after-drag',
+          framePx: { widthPx: 1920, heightPx: 1440 },
+          overlayPx: { widthPx: 800, heightPx: 450 },
+          track: { width: 1920, height: 1440 },
+          vFovDeg: visibleVFovDeg,
+          summits: [
+            summit({
+              summitId: FAR,
+              truthPx: { xPx: 960, yPx: 720 },
+              errorPx: { xPx: 30, yPx: 30 },
+            }),
+          ],
+        },
+      ],
+    });
+    const capture = bundle.captures[0];
+    expect(capture).toBeDefined();
+    if (capture === undefined) return;
+    const residual = residualOf(capture, capture.overlay.drawn[0]?.summitPx ?? { xPx: 0, yPx: 0 }, {
+      xPx: 960,
+      yPx: 720,
+    });
+    expect(residual).toBeDefined();
+    if (residual === undefined) return;
+    expect(residual.horizontalPx).toBeCloseTo(30, 9);
+    expect(residual.verticalPx).toBeCloseTo(30, 9);
+    expect(residual.horizontalDeg).toBeCloseTo(1.34263, 5);
+    expect(residual.verticalDeg).toBeCloseTo(1.34263, 5);
+  });
+
+  it('recovers a residual injected in frame pixels through a cropped WIDTH', () => {
+    // The same 1920 x 1080 frame at f = 1279.99524 px, in a 400 x 450 viewport
+    // that keeps half its width. On screen that half spans
+    //   2 atan(480 / 1279.99524) = 41.11223°,
+    // and the marker is drawn 30 px right of and below the apex in FRAME
+    // pixels, so each residual is atan(30 / 1279.99524) = 1.34263° again.
+    const visibleHFovDeg = 2 * Math.atan(480 / FOCAL_PX) * (180 / Math.PI);
+    const visibleVFovDeg = 2 * Math.atan(540 / FOCAL_PX) * (180 / Math.PI);
+    expect(visibleHFovDeg).toBeCloseTo(41.11223, 5);
+    const { bundle } = synthesiseFieldBundle({
+      captures: [
+        {
+          captureId: 'c1',
+          role: 'after-drag',
+          framePx: { widthPx: 1920, heightPx: 1080 },
+          overlayPx: { widthPx: 400, heightPx: 450 },
+          track: { width: 1920, height: 1080 },
+          hFovDeg: visibleHFovDeg,
+          vFovDeg: visibleVFovDeg,
+          summits: [
+            summit({
+              summitId: FAR,
+              truthPx: { xPx: 960, yPx: 540 },
+              errorPx: { xPx: 30, yPx: 30 },
+            }),
+          ],
+        },
+      ],
+    });
+    const capture = bundle.captures[0];
+    expect(capture).toBeDefined();
+    if (capture === undefined) return;
+    // The drawn marker sits in the viewport's own half-width space: 990 frame
+    // px is (990 - 480) / 2.4 = 212.5 px from the left of the screen.
+    expect(capture.overlay.drawn[0]?.summitPx.xPx).toBeCloseTo(212.5, 9);
+    const residual = residualOf(capture, capture.overlay.drawn[0]?.summitPx ?? { xPx: 0, yPx: 0 }, {
+      xPx: 960,
+      yPx: 540,
+    });
+    expect(residual).toBeDefined();
+    if (residual === undefined) return;
+    expect(residual.horizontalPx).toBeCloseTo(30, 9);
+    expect(residual.verticalPx).toBeCloseTo(30, 9);
+    expect(residual.horizontalDeg).toBeCloseTo(1.34263, 5);
+    expect(residual.verticalDeg).toBeCloseTo(1.34263, 5);
+  });
+
+  it('refuses to measure a residual it cannot place on the frame', () => {
+    const { bundle } = synthesiseFieldBundle({
+      captures: [
+        {
+          captureId: 'c1',
+          role: 'after-drag',
+          track: { width: 0, height: 0 },
+          summits: [summit({ summitId: FAR })],
+        },
+      ],
+    });
+    const capture = bundle.captures[0];
+    expect(capture).toBeDefined();
+    if (capture === undefined) return;
+    expect(residualOf(capture, { xPx: 100, yPx: 100 }, { xPx: 960, yPx: 442 })).toBeUndefined();
+  });
+
+  it('agrees with the geometry the screen lays the video out with', () => {
+    // `src/app/live/video-box.ts` is what the AR screen measures the element box
+    // with. The grader computes the same crop from the aspect ratios instead, so
+    // the two are held together here on a grid of viewports and streams.
+    const viewports = [
+      { widthPx: 956, heightPx: 440 },
+      { widthPx: 800, heightPx: 450 },
+      { widthPx: 400, heightPx: 450 },
+      { widthPx: 390, heightPx: 844 },
+      { widthPx: 1024, heightPx: 768 },
+      { widthPx: 844, heightPx: 390 },
+    ];
+    const streams = [
+      { width: 1920, height: 1080 },
+      { width: 1920, height: 1440 },
+      { width: 1280, height: 720 },
+      { width: 640, height: 480 },
+      { width: 1080, height: 1920 },
+    ];
+    for (const viewport of viewports) {
+      for (const stream of streams) {
+        const mine = coverVisibleFraction(viewport, stream);
+        expect(mine).toBeDefined();
+        if (mine === undefined) continue;
+        const theirs = videoBoxGeometry(viewport, {
+          widthPx: stream.width,
+          heightPx: stream.height,
+        });
+        expect(mine.x).toBeCloseTo(theirs.visibleFraction.x, 12);
+        expect(mine.y).toBeCloseTo(theirs.visibleFraction.y, 12);
+        // The strip cut off each side, in the stream's own pixels.
+        expect((stream.width * (1 - mine.x)) / 2).toBeCloseTo(
+          theirs.overflowPx.xPx / theirs.scale,
+          9,
+        );
+        expect((stream.height * (1 - mine.y)) / 2).toBeCloseTo(
+          theirs.overflowPx.yPx / theirs.scale,
+          9,
+        );
+        // And the field of view: cropping and uncropping is a round trip.
+        const cropped = croppedFovDeg({ hFovDeg: 73.74, vFovDeg: 58.71569 }, mine);
+        expect(uncroppedFovDeg(cropped.hFovDeg, mine.x)).toBeCloseTo(73.74, 9);
+        expect(uncroppedFovDeg(cropped.vFovDeg, mine.y)).toBeCloseTo(58.71569, 9);
+      }
+    }
   });
 });
 
@@ -338,6 +682,8 @@ describe('F3 against the registered thresholds', () => {
       xPx: FRAME_WIDTH_PX / 2,
       yPx: FRAME_HEIGHT_PX / 2,
     });
+    expect(residual).toBeDefined();
+    if (residual === undefined) return;
     expect(residual.horizontalDeg).toBeCloseTo(1.3, 12);
     expect(analyseFieldRun(bundle, truth, lookup).criteria.find((c) => c.id === 'F3.far')?.outcome).toBe(
       'pass',
@@ -1091,7 +1437,7 @@ describe('preconditions', () => {
         summits: [summit({ summitId: FAR })],
       },
     ]);
-    expect(analysis.refusals.join('\n')).toContain('viewport');
+    expect(analysis.notes.join('\n')).toContain('viewport');
   });
 
   it('reads the viewport terms off the overlay, not off the stored frame', () => {
@@ -1107,7 +1453,7 @@ describe('preconditions', () => {
         summits: [summit({ summitId: FAR })],
       },
     ]);
-    expect(analysis.refusals.join('\n')).not.toContain('viewport');
+    expect(analysis.notes.join('\n')).not.toContain('viewport');
   });
 
   it('reports a stored frame narrower than the registered 1920 px', () => {
@@ -1119,7 +1465,7 @@ describe('preconditions', () => {
         summits: [summit({ summitId: FAR })],
       },
     ]);
-    expect(analysis.refusals.join('\n')).toContain('1280 px across');
+    expect(analysis.notes.join('\n')).toContain('1280 px across');
   });
 
   it('reports a stored frame whose aspect is not the camera track’s', () => {
@@ -1134,7 +1480,7 @@ describe('preconditions', () => {
         summits: [summit({ summitId: FAR })],
       },
     ]);
-    expect(analysis.refusals.join('\n')).toContain('25.0% off the camera track');
+    expect(analysis.notes.join('\n')).toContain('25.0% off the camera track');
   });
 
   it('accepts a stored frame whose aspect is the track’s to within a rounded pixel', () => {
@@ -1149,7 +1495,7 @@ describe('preconditions', () => {
         summits: [summit({ summitId: FAR })],
       },
     ]);
-    expect(analysis.refusals.join('\n')).not.toContain('camera track');
+    expect(analysis.notes.join('\n')).not.toContain('camera track');
   });
 
   it('says so when a capture records no camera track size to check against', () => {
@@ -1174,7 +1520,7 @@ describe('preconditions', () => {
         ],
       },
     ]);
-    expect(analysis.refusals.join('\n')).toContain('not in the committed peak data');
+    expect(analysis.notes.join('\n')).toContain('not in the committed peak data');
   });
 
   it('reports a height the bundle and the committed data disagree on', () => {
@@ -1185,7 +1531,7 @@ describe('preconditions', () => {
         summits: [{ ...summit({ summitId: FAR }), elevationM: 2338 }],
       },
     ]);
-    expect(analysis.refusals.join('\n')).toContain('30 m apart');
+    expect(analysis.notes.join('\n')).toContain('30 m apart');
   });
 });
 
@@ -1352,6 +1698,40 @@ describe('the report', () => {
   it('says what a pass at this n does and does not mean', () => {
     const text = renderFieldReport(analysis).join('\n');
     expect(text).toContain('nothing here contradicts the error budget at this n');
+  });
+
+  it('keeps a capture that was not graded apart from one graded with a caveat', () => {
+    // Two captures, one problem each: c1's field of view is a guess, so it is
+    // not graded at all; c2 is graded, and its stored frame is 640 px narrower
+    // than § 2.0 registers.
+    const mixed = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        fovSource: 'spec-sheet-guess',
+        summits: [summit({ summitId: FAR })],
+      },
+      {
+        captureId: 'c2',
+        role: 'after-drag',
+        framePx: { widthPx: 1280, heightPx: 720 },
+        track: { width: 1280, height: 720 },
+        summits: [summit({ summitId: FAR, truthPx: { xPx: 640, yPx: 360 } })],
+      },
+    ]);
+    expect(mixed.refusals.join('\n')).toContain('spec-sheet guess');
+    expect(mixed.refusals.join('\n')).not.toContain('1280 px across');
+    expect(mixed.notes.join('\n')).toContain('1280 px across');
+    expect(mixed.notes.join('\n')).not.toContain('spec-sheet guess');
+
+    const text = renderFieldReport(mixed).join('\n');
+    expect(text).toContain('not graded:');
+    expect(text).toContain('graded, with a caveat:');
+    // The graded capture's caveat is not filed under "not graded", which is
+    // what made a run of 8 notes read as 8 lost captures.
+    const notGraded = text.slice(text.indexOf('not graded:'), text.indexOf('graded, with a caveat:'));
+    expect(notGraded).not.toContain('1280 px across');
+    expect(mixed.graded.map((row) => row.captureId)).toEqual(['c2']);
   });
 
   it('brief mode drops the evidence and keeps the table', () => {

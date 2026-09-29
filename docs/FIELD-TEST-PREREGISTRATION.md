@@ -846,3 +846,35 @@ works in two, and the grader checked the wrong one against it.
   which is the two frames being different sizes rather than anything wrong with either.
 
 Nothing about the thresholds, the bands or the criteria moved.
+
+### 2026-09-29 — the overlay is drawn over a crop of the stored frame
+
+Still before any field number exists. § 2.0 registered the two frames apart and the grader
+checked each against its own registration, but it still converted between them by a plain
+ratio of widths and of heights. That is right only when the two share an aspect ratio, and
+on a phone they do not.
+
+- **The mapping goes through the crop the screen makes (§ 2.0, § 3).** The AR screen draws
+  the camera at `object-fit: cover`: the frame is scaled by `max(viewW/trackW, viewH/trackH)`
+  and the overflow is cut evenly off the two ends of whichever axis overflows. A 16:9 stream
+  in the registered 956 × 440 viewport puts 81.8 % of the frame's height on screen, and a
+  4:3 stream puts 75 % of it there. A drawn marker is placed on the stored frame through
+  that same geometry, and the angles are taken with the whole frame's field of view rather
+  than the visible box's, which is what the pose carries.
+- **What the plain ratio was doing.** For the 1920 × 1080 stream this session expects, it
+  scaled a vertical offset by 1080/440 = 2.45 where the truth is 1920/956 = 2.01, about a
+  centre 98 px from the one the overlay was drawn about. A vertical residual came out
+  roughly 22 % too large, and grew with distance from the frame centre. Nothing in the
+  output said so.
+- **A capture that records no camera track size is refused (§ 2.0).** The crop cannot be
+  recovered from anything else the bundle carries, and a guess that nothing was cropped is
+  the error above.
+- **A capture graded with a caveat is reported apart from one not graded at all (§ 3).** A
+  frame deviation or a summit whose height disagrees with the committed peak data leaves the
+  geometry measurable; it says what the measurement is worth. Both were printed under "not
+  graded", so a run reported captures as lost that it had in fact graded.
+
+Nothing about the thresholds, the bands or the criteria moved. `analyze:field` on the two
+committed fixture pairs is unchanged except for one vertical residual, 0.849° to 0.850°:
+those fixtures' viewport and stored frame are 0.036 % apart in aspect, so the whole frame's
+vertical field of view is 0.03 % wider than the visible box's.

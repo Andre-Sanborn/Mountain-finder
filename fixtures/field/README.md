@@ -40,6 +40,13 @@ that `docs/FIELD-TEST-PREREGISTRATION.md` § 1.2 computed the error budget on, s
 the committed thresholds apply to these fixtures unchanged. The frame is stored at
 1920 × 884 px, over § 2.0's 1920 px floor and at the camera track's own aspect.
 
+A drawn marker is placed in the viewport through the crop `object-fit: cover`
+makes, which is the mapping the grader inverts. Here that crop is almost
+nothing: 1920/884 = 2.17195 against the viewport's 956/440 = 2.17273, so 99.96 %
+of the frame's height is on screen and the strip cut off each end is 0.16 px.
+The injected errors below are pixel offsets on the STORED FRAME, and they come
+back off the grader as those offsets whatever the crop.
+
 The errors injected into `stray-bundle.json`, and the criterion each one breaks:
 
 | injected | criterion |

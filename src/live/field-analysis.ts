@@ -70,6 +70,23 @@
  * two are different sizes on every real capture, because a phone letterboxes a
  * 16:9 stream into whatever viewport Safari leaves.
  *
+ * ── AND THE SCREEN SHOWS PART OF ONE INSIDE THE OTHER ──────────────────────
+ * The `<video>` is drawn at `object-fit: cover`, so the viewport holds a
+ * CENTRED CROP of the camera frame: the frame is scaled by
+ * `max(viewW/trackW, viewH/trackH)` and the overflow is cut evenly off the two
+ * ends of whichever axis overflows. A 16:9 stream in the registered 956 × 440
+ * viewport shows 81.8 % of the frame's height, and a 4:3 stream shows 75 % of
+ * it. So a drawn marker goes through {@link overlayToFramePx} to reach the
+ * space a truth apex is picked in, and the angles are taken with the whole
+ * frame's field of view ({@link uncroppedFovDeg}) rather than the pose's, which
+ * is the visible box's. Both steps reduce to the ratio of the two sizes when
+ * the viewport and the frame share an aspect, which is the case a headless
+ * rehearsal produces and no phone does.
+ *
+ * The crop is recoverable only from the camera track's size, so a capture that
+ * records none is refused rather than graded on the guess that nothing was
+ * cropped.
+ *
  * ── THE SYNTHESISER IS AN INDEPENDENT INSTRUMENT ───────────────────────────
  * `synthesiseFieldBundle` builds bundles by placing a truth apex at a pixel and
  * displacing the drawn marker from it by a stated pixel offset. It never calls
@@ -462,9 +479,9 @@ export interface PixelPoint {
  * A summit as the overlay drew it.
  *
  * `summitPx` is in the overlay's own drawing space, which is the CSS viewport
- * rather than the stored frame; `Capture.overlayPx` and `Capture.framePx` give
- * the two sizes and the grader scales between them. No bearing is carried; see
- * this file's header.
+ * rather than the stored frame; `Capture.overlayPx`, `Capture.framePx` and
+ * `Capture.track` are what the grader maps between them with. No bearing is
+ * carried; see this file's header.
  */
 export interface DrawnSummit {
   readonly summitId: string;
@@ -1512,6 +1529,97 @@ export function pixelsPerDegreeAtCentre(fovDeg: number, sizePx: number): number 
   return ((sizePx / 2) * RAD_PER_DEG) / Math.tan((fovDeg / 2) * RAD_PER_DEG);
 }
 
+/**
+ * The fraction of each axis of the camera frame the viewport showed.
+ *
+ * One of the two is always 1: `object-fit: cover` crops one axis and shows the
+ * other whole.
+ */
+export interface VisibleFraction {
+  readonly x: number;
+  readonly y: number;
+}
+
+/**
+ * How much of the camera frame reached the screen, from the two aspect ratios.
+ *
+ * The AR screen draws the video at `object-fit: cover`, which scales the frame
+ * by `max(viewW/trackW, viewH/trackH)` and throws away the overflow evenly on
+ * both sides of the axis that overflows. A viewport relatively wider than the
+ * track keeps the whole width and loses height; a relatively taller one loses
+ * width. A 4:3 track in a 16:9 viewport keeps 75 % of the frame's height, and
+ * the 16:9 track this session records keeps 81.8 % of it in the registered
+ * 956 × 440 viewport.
+ *
+ * Read off the aspect ratios rather than off the two scale factors, so the
+ * uncropped axis comes back as exactly 1 and the mapping and the field of view
+ * below are left untouched on a capture whose viewport and frame share an
+ * aspect. `src/app/live/video-box.ts` computes the same geometry for the screen
+ * from the pixel sizes, and a test holds the two to agreement — the grader does
+ * not import it, because the grader needs fractions of the STORED frame, which
+ * is a recording of the track at another size, and because a capture is graded
+ * from what the bundle says rather than from a module the app lays out with.
+ *
+ * `undefined` when the capture records no usable camera track size. The crop is
+ * not recoverable from anything else in the bundle, so the capture is refused
+ * rather than graded through a guess.
+ */
+export function coverVisibleFraction(
+  viewportPx: { readonly widthPx: number; readonly heightPx: number },
+  track: TrackGeometry,
+): VisibleFraction | undefined {
+  const viewAspect = viewportPx.widthPx / viewportPx.heightPx;
+  const trackAspect = track.width / track.height;
+  if (!(viewAspect > 0) || !Number.isFinite(viewAspect)) return undefined;
+  if (!(trackAspect > 0) || !Number.isFinite(trackAspect)) return undefined;
+  return viewAspect >= trackAspect
+    ? { x: 1, y: trackAspect / viewAspect }
+    : { x: viewAspect / trackAspect, y: 1 };
+}
+
+/**
+ * An overlay pixel placed on the stored frame, through the crop the screen made.
+ *
+ * The overlay is drawn over the visible part of the frame only, so a viewport
+ * pixel maps to the visible window of the stored frame and not to the whole of
+ * it: the window is `fraction` of the frame, centred, and the offset is the
+ * strip `cover` cut off the leading edge. The stored frame's aspect equals the
+ * track's to within the 2 % of § 2.0, which is what lets the crop be computed
+ * from the track and then applied to the frame's own pixel sizes.
+ */
+export function overlayToFramePx(
+  capture: Capture,
+  point: PixelPoint,
+  fraction: VisibleFraction,
+): PixelPoint {
+  const { widthPx, heightPx } = capture.framePx;
+  const xScale = widthPx / capture.overlayPx.widthPx;
+  const yScale = heightPx / capture.overlayPx.heightPx;
+  return {
+    xPx: point.xPx * xScale * fraction.x + (widthPx * (1 - fraction.x)) / 2,
+    yPx: point.yPx * yScale * fraction.y + (heightPx * (1 - fraction.y)) / 2,
+  };
+}
+
+/**
+ * The whole frame's field of view, from the visible box's.
+ *
+ * The pose carries the field of view of what is ON SCREEN — `LiveScreen` hands
+ * `croppedFovDeg`'s answer to the pose, and the overlay is drawn with it — while
+ * a truth apex is a pixel on the whole stored frame. The inverse of that crop is
+ * the relation `croppedFovDeg` applies forwards, read the other way:
+ *
+ *     tan(full/2) = tan(visible/2) / fraction
+ *
+ * An uncropped axis is returned unchanged rather than passed through
+ * `atan(tan(·))`, which is the identity in arithmetic but not in floating point.
+ */
+export function uncroppedFovDeg(visibleFovDeg: number, fraction: number): number {
+  if (!(fraction > 0) || fraction >= 1) return visibleFovDeg;
+  if (!(visibleFovDeg > 0) || visibleFovDeg >= 180) return visibleFovDeg;
+  return (2 * Math.atan(Math.tan((visibleFovDeg / 2) * RAD_PER_DEG) / fraction)) / RAD_PER_DEG;
+}
+
 /** A signed residual on both axes, in frame angles and in stored-frame pixels. */
 export interface Residual {
   readonly horizontalDeg: number;
@@ -1521,20 +1629,30 @@ export interface Residual {
 }
 
 /**
- * Drawn minus truth, in frame angles.
+ * Drawn minus truth, in frame angles, or `undefined` for a capture whose crop
+ * cannot be recovered.
  *
- * The overlay is drawn in the CSS viewport and the truth apex is read off the
- * stored frame, so the drawn point is scaled into the frame's space first. Both
- * spaces share the optical axis and the field of view, because the overlay box
- * is centred on the principal point (`video-box.ts`), so the scale is a plain
- * ratio of widths.
+ * The overlay is drawn in the CSS viewport over the part of the camera frame
+ * `object-fit: cover` left visible, and the truth apex is read off the whole
+ * stored frame. The two spaces share the optical axis — the overlay box is
+ * centred on the principal point (`video-box.ts`) — but not their extent, so
+ * the drawn point goes through the crop ({@link overlayToFramePx}) and the
+ * angles are taken with the whole frame's field of view rather than the visible
+ * box's ({@link uncroppedFovDeg}). Where the viewport and the frame share an
+ * aspect, `cover` crops nothing and both steps reduce to the plain ratio of
+ * widths and of heights.
  */
-export function residualOf(capture: Capture, drawn: PixelPoint, truth: PixelPoint): Residual {
-  const xScale = capture.framePx.widthPx / capture.overlayPx.widthPx;
-  const yScale = capture.framePx.heightPx / capture.overlayPx.heightPx;
-  const drawnFrame = { xPx: drawn.xPx * xScale, yPx: drawn.yPx * yScale };
+export function residualOf(
+  capture: Capture,
+  drawn: PixelPoint,
+  truth: PixelPoint,
+): Residual | undefined {
+  const fraction = coverVisibleFraction(capture.overlayPx, capture.track);
+  if (fraction === undefined) return undefined;
+  const drawnFrame = overlayToFramePx(capture, drawn, fraction);
   const { widthPx, heightPx } = capture.framePx;
-  const { hFovDeg, vFovDeg } = capture.pose;
+  const hFovDeg = uncroppedFovDeg(capture.pose.hFovDeg, fraction.x);
+  const vFovDeg = uncroppedFovDeg(capture.pose.vFovDeg, fraction.y);
   const horizontalDeg =
     angularOffsetDeg(drawnFrame.xPx - widthPx / 2, widthPx, hFovDeg) -
     angularOffsetDeg(truth.xPx - widthPx / 2, widthPx, hFovDeg);
@@ -1606,12 +1724,18 @@ export function reduceTruth(
   const dyPx = first.yPx - second.yPx;
   const disagreementPx = Math.hypot(dxPx, dyPx);
   const { widthPx, heightPx } = capture.framePx;
+  // Both picks are pixels on the whole stored frame, so they are converted with
+  // the whole frame's field of view, as a residual is.
+  const fraction = coverVisibleFraction(capture.overlayPx, capture.track);
+  if (fraction === undefined) return undefined;
+  const hFovDeg = uncroppedFovDeg(capture.pose.hFovDeg, fraction.x);
+  const vFovDeg = uncroppedFovDeg(capture.pose.vFovDeg, fraction.y);
   const dxDeg =
-    angularOffsetDeg(first.xPx - widthPx / 2, widthPx, capture.pose.hFovDeg) -
-    angularOffsetDeg(second.xPx - widthPx / 2, widthPx, capture.pose.hFovDeg);
+    angularOffsetDeg(first.xPx - widthPx / 2, widthPx, hFovDeg) -
+    angularOffsetDeg(second.xPx - widthPx / 2, widthPx, hFovDeg);
   const dyDeg =
-    angularOffsetDeg(first.yPx - heightPx / 2, heightPx, capture.pose.vFovDeg) -
-    angularOffsetDeg(second.yPx - heightPx / 2, heightPx, capture.pose.vFovDeg);
+    angularOffsetDeg(first.yPx - heightPx / 2, heightPx, vFovDeg) -
+    angularOffsetDeg(second.yPx - heightPx / 2, heightPx, vFovDeg);
   const disagreementDeg = Math.hypot(dxDeg, dyDeg);
   if (disagreementDeg > MAX_TRUTH_DISAGREEMENT_DEG) {
     return {
@@ -1694,6 +1818,15 @@ export interface FieldAnalysis {
   readonly graded: readonly GradedSummit[];
   /** Problems that stop a capture being graded at all. */
   readonly refusals: readonly string[];
+  /**
+   * Problems on a capture that WAS graded, and the caveat its verdicts carry.
+   *
+   * A deviation from a registered frame, or a summit whose height disagrees with
+   * the committed peak data, does not stop the geometry being measured. It says
+   * what the measurement is worth. Kept apart from the refusals because a reader
+   * counting the captures a run lost cannot tell the two apart in one list.
+   */
+  readonly notes: readonly string[];
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -1748,6 +1881,9 @@ function isGradable(capture: Capture): string | undefined {
   if (capture.fovSource !== 'calibrated') {
     return `${capture.captureId}: the field of view is a spec-sheet guess, so the scale term is unquantified and the capture is not graded (pre-registration § 1.3 term 6)`;
   }
+  if (coverVisibleFraction(capture.overlayPx, capture.track) === undefined) {
+    return `${capture.captureId}: the capture records no camera track size, so the crop the screen made cannot be recovered and an overlay pixel cannot be placed on the stored frame (pre-registration § 2.0)`;
+  }
   const accuracyM = capture.horizontalAccuracyM;
   if (accuracyM !== undefined && accuracyM > MAX_OBSERVER_ACCURACY_M) {
     return `${capture.captureId}: the fix reports ${accuracyM.toFixed(1)} m of horizontal accuracy, over the ${MAX_OBSERVER_ACCURACY_M} m the protocol accepts, so the capture is not graded (pre-registration § 1.3 term 3a)`;
@@ -1791,12 +1927,9 @@ function storedFrameDeviations(capture: Capture): readonly string[] {
     );
   }
   const { width, height } = capture.track;
-  if (width <= 0 || height <= 0) {
-    out.push(
-      `${capture.captureId}: the capture records no camera track size, so the stored frame's aspect could not be checked against the frames the camera delivered`,
-    );
-    return out;
-  }
+  // A capture with no track size never reaches here: `isGradable` refuses it,
+  // because the crop the overlay was drawn over is unrecoverable without it.
+  if (width <= 0 || height <= 0) return out;
   const trackAspect = width / height;
   const frameAspect = widthPx / heightPx;
   const off = Math.abs(frameAspect - trackAspect) / trackAspect;
@@ -1829,6 +1962,7 @@ function gradedSummitOf(
   if (threshold === undefined) return undefined;
   const limits = bandLimitsFor(threshold, capture.horizontalAccuracyM);
   const residual = residualOf(capture, summit.summitPx, apexPx);
+  if (residual === undefined) return undefined;
   const exceedances = exceedancesOf(residual, limits);
   return {
     captureId: capture.captureId,
@@ -1879,8 +2013,9 @@ function gradeF2(observations: readonly Observation[]): Criterion {
   for (const { capture, summit, truth } of observations) {
     if (capture.role !== 'before-drag') continue;
     if (truth.kind !== 'located') continue;
-    graded += 1;
     const residual = residualOf(capture, summit.summitPx, truth.apexPx);
+    if (residual === undefined) continue;
+    graded += 1;
     const band = capture.band;
     const axes: readonly {
       readonly name: string;
@@ -2184,6 +2319,7 @@ export function analyseFieldRun(
   peaks: PeakLookup,
 ): FieldAnalysis {
   const refusals: string[] = [];
+  const notes: string[] = [];
   const gradable: Capture[] = [];
   for (const capture of bundle.captures) {
     const refusal = isGradable(capture);
@@ -2192,9 +2328,9 @@ export function analyseFieldRun(
       continue;
     }
     const deviation = viewportDeviation(capture);
-    if (deviation !== undefined) refusals.push(deviation);
-    refusals.push(...storedFrameDeviations(capture));
-    refusals.push(...provenanceProblems(capture, peaks));
+    if (deviation !== undefined) notes.push(deviation);
+    notes.push(...storedFrameDeviations(capture));
+    notes.push(...provenanceProblems(capture, peaks));
     gradable.push(capture);
   }
 
@@ -2243,6 +2379,7 @@ export function analyseFieldRun(
     criteria,
     graded,
     refusals,
+    notes,
   };
 }
 
@@ -2267,6 +2404,11 @@ export function renderFieldReport(analysis: FieldAnalysis, options: { brief?: bo
     lines.push('');
     lines.push('not graded:');
     for (const refusal of analysis.refusals) lines.push(`  ! ${refusal}`);
+  }
+  if (analysis.notes.length > 0) {
+    lines.push('');
+    lines.push('graded, with a caveat:');
+    for (const note of analysis.notes) lines.push(`  ~ ${note}`);
   }
   lines.push('');
 
@@ -2379,8 +2521,24 @@ export function synthesiseFieldBundle(spec: SynthSpec): {
   spec.captures.forEach((synth, index) => {
     const framePx = synth.framePx ?? SYNTH_FRAME;
     const overlayPx = synth.overlayPx ?? SYNTH_OVERLAY;
+    const track = synth.track ?? {
+      width: framePx.widthPx,
+      height: framePx.heightPx,
+      frameRate: 30,
+      facingMode: 'environment',
+    };
     const xScale = overlayPx.widthPx / framePx.widthPx;
     const yScale = overlayPx.heightPx / framePx.heightPx;
+    // A frame pixel put back where the screen would have drawn it: the inverse
+    // of the grader's `overlayToFramePx`, so a marker placed `errorPx` from an
+    // apex is `errorPx` from it when the grader reads the bundle back. The
+    // synthesiser still does no angle arithmetic — what those pixels are worth
+    // in degrees is written out in the tests.
+    const fraction = coverVisibleFraction(overlayPx, track) ?? { x: 1, y: 1 };
+    const toOverlayPx = (point: PixelPoint): PixelPoint => ({
+      xPx: ((point.xPx - (framePx.widthPx * (1 - fraction.x)) / 2) / fraction.x) * xScale,
+      yPx: ((point.yPx - (framePx.heightPx * (1 - fraction.y)) / 2) / fraction.y) * yScale,
+    });
 
     const drawn: DrawnSummit[] = synth.summits.map((summit) => ({
       summitId: summit.summitId,
@@ -2389,10 +2547,10 @@ export function synthesiseFieldBundle(spec: SynthSpec): {
       distanceKm: summit.distanceKm,
       altitudeDeg: summit.altitudeDeg,
       visibility: summit.visibility ?? 'visible',
-      summitPx: {
-        xPx: (summit.truthPx.xPx + summit.errorPx.xPx) * xScale,
-        yPx: (summit.truthPx.yPx + summit.errorPx.yPx) * yScale,
-      },
+      summitPx: toOverlayPx({
+        xPx: summit.truthPx.xPx + summit.errorPx.xPx,
+        yPx: summit.truthPx.yPx + summit.errorPx.yPx,
+      }),
       labelled: summit.labelled ?? true,
     }));
 
@@ -2452,12 +2610,7 @@ export function synthesiseFieldBundle(spec: SynthSpec): {
         tickCount: 22,
         longestTickGapMs: 90,
       },
-      track: synth.track ?? {
-        width: framePx.widthPx,
-        height: framePx.heightPx,
-        frameRate: 30,
-        facingMode: 'environment',
-      },
+      track,
       fovSource: synth.fovSource ?? 'calibrated',
       sweepRadiusKm: synth.sweepRadiusKm ?? 60,
       band: synth.band ?? {
