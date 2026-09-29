@@ -149,26 +149,65 @@ export interface FakeCameraOptions {
   readonly heightPx?: number;
   /** Rebuild even when the file already exists. */
   readonly force?: boolean;
+  /**
+   * Centre-crop the photograph to the target aspect ratio before resampling.
+   *
+   * Without it the photograph is stretched to whatever shape is asked for,
+   * which is harmless for scenery and wrong for a spec that reads angles off
+   * the picture: a 4:3 frame squeezed into 16:9 no longer matches the lens its
+   * EXIF names. Cropping keeps the horizontal field and throws away the top and
+   * bottom, which is what a phone's 16:9 video preview does to a 4:3 sensor.
+   */
+  readonly cropToAspect?: boolean;
+}
+
+/** Centre-crop the source to `widthPx:heightPx`, keeping the longer field. */
+function centreCrop(source: Rgba, widthPx: number, heightPx: number): Rgba {
+  const wanted = widthPx / heightPx;
+  const have = source.width / source.height;
+  const cropWidth = have > wanted ? Math.round(source.height * wanted) : source.width;
+  const cropHeight = have > wanted ? source.height : Math.round(source.width / wanted);
+  const x0 = Math.floor((source.width - cropWidth) / 2);
+  const y0 = Math.floor((source.height - cropHeight) / 2);
+  const data = new Uint8Array(cropWidth * cropHeight * 4);
+  for (let y = 0; y < cropHeight; y += 1) {
+    for (let x = 0; x < cropWidth; x += 1) {
+      const from = ((y + y0) * source.width + (x + x0)) * 4;
+      const to = (y * cropWidth + x) * 4;
+      data[to] = source.data[from] ?? 0;
+      data[to + 1] = source.data[from + 1] ?? 0;
+      data[to + 2] = source.data[from + 2] ?? 0;
+      data[to + 3] = 255;
+    }
+  }
+  return { width: cropWidth, height: cropHeight, data };
 }
 
 /**
  * Write the `.y4m` and return its absolute path.
  *
  * Cached: a HEIC decode of a 12 megapixel frame costs about 1.5 s, and the
- * output depends only on the committed source. `force` rebuilds it.
+ * output depends only on the committed source. `force` rebuilds it. A named
+ * photograph puts its own basename in the file name, so two specs shooting
+ * different scenes at the same size do not share one cache entry.
  */
 export async function writeFakeCameraVideo(options: FakeCameraOptions = {}): Promise<string> {
   const photo = options.photo ?? 'fixtures/photos/real/railroad-ridge-48mm.heic';
   const widthPx = (options.widthPx ?? FAKE_FRAME.widthPx) & ~1;
   const heightPx = (options.heightPx ?? FAKE_FRAME.heightPx) & ~1;
-  const target = resolve(FAKE_CAMERA_DIR, `fake-camera-${widthPx}x${heightPx}.y4m`);
+  const stem =
+    options.photo === undefined
+      ? 'fake-camera'
+      : `fake-camera-${(options.photo.split('/').pop() ?? options.photo).replace(/\.[^.]+$/, '')}`;
+  const target = resolve(FAKE_CAMERA_DIR, `${stem}-${widthPx}x${heightPx}.y4m`);
 
   if (options.force !== true) {
     const existing = await stat(target).catch(() => undefined);
     if (existing !== undefined && existing.size > 0) return target;
   }
 
-  const source = await decodePhoto(resolve(ROOT, photo));
+  const decoded = await decodePhoto(resolve(ROOT, photo));
+  const source = options.cropToAspect === true ? centreCrop(decoded, widthPx, heightPx) : decoded;
   const rgba = resample(source, widthPx, heightPx);
   await mkdir(FAKE_CAMERA_DIR, { recursive: true });
   await writeFile(

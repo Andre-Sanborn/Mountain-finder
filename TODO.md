@@ -45,7 +45,9 @@ after its self-check has run and passed here. The checks are in
 - [ ] Decide from the home session's drag scatter whether the field session drags in fine mode
 - [ ] Trim the field bundle: overlay.withheld repeats ~940 unmeasured summits per capture (2.4 MB for 8)
 - [x] Write the error budget and pre-register the field pass criteria
-- [ ] Run the headless dress rehearsal on IMG_7270 and railroad-ridge-48mm with injected errors
+- [x] Run the headless dress rehearsal at Bogus Basin on IMG_7270 with injected compass and pitch error
+- [ ] Grade the rehearsal against apex truth from two independent annotators
+- [ ] Map overlay to stored frame through the cover crop in the grader; a 4:3 camera in a 16:9 view mis-scales residuals
 - [ ] Write the home-session steps; run the home session with the human
 - [ ] Turn the home-session recording into fixtures; fix any sign or FOV error it shows
 - [x] Lock the railroad-ridge CV result as a regression test, labelled n = 1

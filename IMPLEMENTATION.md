@@ -1272,3 +1272,35 @@ These are for iOS 26:
 each for camera and location, and forum and how-to sources for motion. The home session will
 settle motion. `docs/FIELD-SESSION-GUIDE.md` now quotes `field-session.ts` verbatim, checked by
 a script.
+
+## The headless dress rehearsal at Bogus Basin
+
+`tests/e2e/rehearsal.spec.ts` runs the whole `?session=field` sequence against:
+- the packaged 60 km mosaic
+- the `idaho-bogus-basin` peaks
+- IMG_7270's EXIF position and heading
+- IMG_7270 itself as the camera, centre-cropped to 16:9
+
+The sensors carry +8° compass and −2° pitch. The test is skipped when the site package is not
+built. Outputs go to gitignored `out/rehearsal/`, and nothing derived from the photograph is
+committed.
+
+The anchor is chosen by a rule fixed before the run: the greatest apparent height among the
+drawn named summits more than 1 km away with u ≤ 0.6. That gives Crown Point, 1574 m at 20.09
+km. The drag target comes from the EXIF pose and the committed peak coordinate, never from the
+overlay. Three drags closed to under 1 px. The 60 km sweep took 2 562 ms, 720/720 rays, with 8
+summits labelled at the raw pose. The pans reached u = 0.850.
+
+**What it cannot decide:**
+- The fake camera is a still image, and all eight frames are byte-identical. So F4 here tests
+  the overlay arithmetic only.
+- EXIF has no pitch, so the drag target assumes 0°.
+- Whether Crown Point can be identified in the photo is the annotators' question.
+
+A smoke test with synthetic truth from the injected pose gave 9 pass, 1 fail and 4 no-sample.
+F2 fails because the headless sensors report no compass accuracy, so the band stays narrow.
+
+**Found: the grader assumes the overlay and the stored frame share an aspect.** A 4:3 camera in
+a 16:9 viewport makes `object-fit: cover` show a 75 % crop. `residualOf` would then scale
+horizontal residuals by 2.4 where the truth is 1.8, about a shifted centre, and nothing detects
+it. This must be fixed before the field session.
