@@ -239,17 +239,35 @@ export function grossHeadingWarning(
   );
 }
 
-/** How far the compass has moved since the re-anchor, and whether that matters. */
+/** Whether the compass has drifted away from the anchor, and by how much. */
 export interface AnchorDrift {
-  /** Sensed heading now, less the sensed heading when the anchor was set. */
+  /** Compass now, less the compass when the anchor was set. */
   readonly gapDeg: number;
-  /** True once the gap is wider than the band the screen claims. */
+  /** How far the phone itself has turned over the same stretch, degrees. */
+  readonly turnDeg: number | undefined;
+  /** `gapDeg − turnDeg`: what the compass did that the phone did not. */
+  readonly driftDeg: number | undefined;
+  /** True once the drift is wider than the band the screen claims. */
   readonly beyondBand: boolean;
   readonly text: string;
 }
 
+/** What the drift check needs at the anchor and now. */
+export interface AnchorDriftInput {
+  /** Sensed compass heading now, degrees. */
+  readonly sensedHeadingDeg: number;
+  /** Sensed compass heading when the direction was fixed, degrees. */
+  readonly anchoredAtSensedHeadingDeg: number;
+  /** Camera yaw now, in the device's own azimuth frame. */
+  readonly yawDeg: number | undefined;
+  /** Camera yaw when the direction was fixed, same frame. */
+  readonly anchoredAtYawDeg: number | undefined;
+  /** The horizontal uncertainty the screen is already claiming, degrees. */
+  readonly bandDeg: number;
+}
+
 /**
- * The live gap between the compass and the anchor.
+ * Whether the compass has come adrift from the anchor.
  *
  * A re-anchor is one instant's correction. If the compass error was a transient
  * — a magnet near the phone, a calibration that settled afterwards — the
@@ -257,23 +275,65 @@ export interface AnchorDrift {
  * moved. Nothing else on this screen would notice, because the labels are drawn
  * from the anchored heading and look exactly as confident as before.
  *
- * `bandDeg` is the horizontal uncertainty the screen is already claiming, so
- * the warning fires exactly when the drift has outgrown the band beside it.
+ * ── WHY THE COMPASS ALONE CANNOT SAY ───────────────────────────────────────
+ * The compass also moves when the person turns, which is most of what anyone
+ * does with this app. Reading the compass on its own fired on every deliberate
+ * pan: the rehearsal's two F4 pans, 48.9° and −16.1°, both raised the warning
+ * with nothing wrong.
+ *
+ * So the compass is measured against the phone's own turn. `yawDeg` comes off
+ * the orientation sensor's rotation in the device's own azimuth frame, which
+ * follows a turn and owes nothing to the magnetometer. Turn deliberately and
+ * both move together; suffer a compass fault while standing still and only the
+ * compass moves.
+ *
+ *     drift = Δcompass − Δyaw, folded onto (−180, 180]
+ *
+ * and only that is compared with the band.
+ *
+ * ── WHEN THE PLATFORM GIVES NO YAW ─────────────────────────────────────────
+ * Some platforms deliver no relative alpha at all, and the camera's yaw has no
+ * meaning within a degree of straight up or down. Then a turn and a fault look
+ * identical, and the text says so in those words instead of raising a warning
+ * the screen cannot stand behind.
  */
-export function anchorDrift(
-  sensedHeadingDeg: number,
-  anchoredAtSensedHeadingDeg: number,
-  bandDeg: number,
-): AnchorDrift {
-  const gapDeg = foldSigned(sensedHeadingDeg - anchoredAtSensedHeadingDeg);
-  const magnitude = Math.abs(gapDeg);
+export function anchorDrift(input: AnchorDriftInput): AnchorDrift {
+  const { bandDeg } = input;
+  const gapDeg = foldSigned(input.sensedHeadingDeg - input.anchoredAtSensedHeadingDeg);
+  const gapText = `${Math.abs(gapDeg).toFixed(1)}°`;
+
+  if (
+    input.yawDeg === undefined ||
+    input.anchoredAtYawDeg === undefined ||
+    !Number.isFinite(input.yawDeg) ||
+    !Number.isFinite(input.anchoredAtYawDeg)
+  ) {
+    return {
+      gapDeg,
+      turnDeg: undefined,
+      driftDeg: undefined,
+      beyondBand: false,
+      text:
+        `The compass has moved ${gapText} since you fixed the direction. This phone does not ` +
+        'report how far it has turned, so turning on purpose cannot be told apart from the ' +
+        'compass drifting. If you have not turned, fix the direction again.',
+    };
+  }
+
+  const turnDeg = foldSigned(input.yawDeg - input.anchoredAtYawDeg);
+  const driftDeg = foldSigned(gapDeg - turnDeg);
+  const magnitude = Math.abs(driftDeg);
   const beyondBand = bandDeg > 0 && magnitude > bandDeg;
   return {
     gapDeg,
+    turnDeg,
+    driftDeg,
     beyondBand,
     text: beyondBand
-      ? `The compass has moved ${magnitude.toFixed(1)}° since you fixed the direction, which is ` +
-        `more than the ${bandDeg.toFixed(1)}° this screen allows for. Fix the direction again.`
-      : `The compass has moved ${magnitude.toFixed(1)}° since you fixed the direction.`,
+      ? `The compass has drifted ${magnitude.toFixed(1)}° from the way the phone has actually ` +
+        `turned, which is more than the ${bandDeg.toFixed(1)}° this screen allows for. ` +
+        'Fix the direction again.'
+      : `The compass has moved ${gapText} since you fixed the direction, and the phone has ` +
+        `turned ${Math.abs(turnDeg).toFixed(1)}°. They still agree to ${magnitude.toFixed(1)}°.`,
   };
 }

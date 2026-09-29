@@ -122,6 +122,16 @@ export interface OverlayOptions {
    * labels of decision D8.
    */
   maxLabels?: number | 'auto';
+  /**
+   * Peaks that must be named whatever the budget says. Default none.
+   *
+   * A caller names a peak here when the person has asked for that summit by
+   * name — the field session's drag anchor is the case this exists for. A
+   * forced peak is exempt from the budget cut and is placed before every other
+   * label, so it takes the space it needs and the rest lay out around it. It is
+   * still subject to D8: a peak the pipeline refuses is never drawn.
+   */
+  alwaysLabelPeakIds?: readonly string[];
   /** Padding inside a label's reserved box, px. Default `0.35 × nameFontPx`. */
   labelPaddingPx?: number;
   /** Gap between the top of a pole and the bottom of its label, px. Default 3. */

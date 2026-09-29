@@ -1587,3 +1587,42 @@ Both annotators fitted a focal length on Deer Point and predicted the others fro
 bearings before looking for a feature. That is their own model, not the app's projection,
 but it shares the idea of a pinhole camera over the same bearings.
 
+## The field anchor picker offers every summit in the picture
+
+The picker listed `layout.markers`, the labelled summits only. On an 800 px frame the label
+budget runs out before the summits do, so Deer Point came out as an unnamed dot and could not be
+picked. The picker now lists `layout.markers` and `layout.crowdedOutSummits` together
+(`src/app/live/anchor-choices.ts`), which is every summit drawn. Summits with a blank name are
+left out, because the list is read by name.
+
+The list runs nearest the middle of the frame first, then by name, then by id. A person naming
+the summit they lined up is looking at the middle of their picture. The tie-break is a plain
+code-unit comparison, not `localeCompare`, so the order is the same on every host.
+
+Picking a crowded-out summit puts its name back on the picture. `layoutOverlay` takes
+`alwaysLabelPeakIds`: a peak named there skips the `maxLabels` cut and is placed before every
+other label. D8 still refuses it first, so this cannot name a summit that is not in the picture.
+Raising the budget was rejected because it makes every frame denser to fix one summit.
+
+## `anchorDrift` measures the compass against the phone's own turn
+
+The drift check compares the change in compass heading with the change in device yaw, and warns
+on the difference: `drift = fold(Δcompass − Δyaw)`. Comparing the compass alone warned on every
+deliberate turn; the rehearsal's two F4 pans, 48.9° and −16.1°, both raised it.
+
+`deviceYawDeg` is the rear camera's bearing from the orientation event's rotation, taken only
+from events whose alpha is not earth-referenced (`absolute !== true`). A relative alpha follows
+the phone's turn and does not come from the magnetometer, so a turn moves both terms and a
+compass fault moves only the first. iOS fires only relative `deviceorientation`; Chromium fires a
+relative event beside its absolute one.
+
+With no usable yaw at either end, the check does not warn. It says a deliberate turn cannot be
+told apart from compass drift, and to fix the direction again if the person has not turned.
+Platforms without a relative alpha therefore lose the warning.
+
+The gravity ring buffer holds 360 samples, up from 120. On Chromium three streams feed it, and 120
+covered only 1.33 s of the 1.5 s fusion window at 30 Hz each. Its memory cost is not measured.
+
+The e2e pump dispatches the relative event before the absolute one. Code that read whichever
+event arrived last would then take the magnetometer's answer and fail the compass-jump test.
+

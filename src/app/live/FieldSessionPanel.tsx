@@ -46,6 +46,7 @@ import {
   type Capture,
   type FieldBundle,
 } from '../../live/field-analysis';
+import { anchorChoices, findAnchorChoice } from './anchor-choices';
 import {
   BRACE_HOLD_MS,
   FIELD_BUNDLE_FILE_NAME,
@@ -136,6 +137,8 @@ export interface FieldSessionPanelProps {
   readonly setDragMode: (mode: DragMode) => void;
   /** Put the labels back where the sensors say, before a repeated drag. */
   readonly resetTrim: () => void;
+  /** Which summit is the drag anchor, so the screen keeps its name on. */
+  readonly onAnchorSummit?: (peakId: string | undefined) => void;
 }
 
 type Phase = 'explaining' | 'running' | 'finished';
@@ -237,19 +240,39 @@ export function FieldSessionPanel(props: FieldSessionPanelProps): JSX.Element {
   }, [plan.length]);
 
   /* ── the anchor, and where it is drawn right now ────────────────────────── */
-  const anchorMarker = useMemo(() => {
-    if (anchorSummitId === undefined) return undefined;
-    return context?.layout.markers.find((marker) => marker.peak.id === anchorSummitId);
-  }, [anchorSummitId, context]);
+  /**
+   * Every summit in the picture, named or not.
+   *
+   * A crowded-out summit is offered on the same footing as a labelled one. On a
+   * phone-width frame the label budget is small enough to drop the summit the
+   * protocol is anchored on, and a dot with no name cannot be picked.
+   */
+  const choices = useMemo(
+    () => (context === undefined ? [] : anchorChoices(context.layout, context.overlayPx.widthPx)),
+    [context],
+  );
+
+  const anchorChoice = findAnchorChoice(choices, anchorSummitId);
 
   const anchorU =
-    anchorMarker === undefined || context === undefined
+    anchorChoice === undefined || context === undefined
       ? undefined
-      : anchorOffsetU(anchorMarker.summitPx.xPx, context.overlayPx.widthPx);
+      : anchorOffsetU(anchorChoice.summitPx.xPx, context.overlayPx.widthPx);
   const side =
-    anchorMarker === undefined || context === undefined
+    anchorChoice === undefined || context === undefined
       ? undefined
-      : anchorSide(anchorMarker.summitPx.xPx, context.overlayPx.widthPx);
+      : anchorSide(anchorChoice.summitPx.xPx, context.overlayPx.widthPx);
+
+  /**
+   * Tell the screen which summit is the anchor, so it forces that name on.
+   *
+   * A summit the person picked out of the crowded-out list has no label until
+   * the layout is told to keep one for it.
+   */
+  const { onAnchorSummit } = props;
+  useEffect(() => {
+    onAnchorSummit?.(anchorSummitId);
+  }, [onAnchorSummit, anchorSummitId]);
 
   /** The after-drag capture the pan and the tilt are measured from. */
   const reference = useMemo(
@@ -514,20 +537,22 @@ export function FieldSessionPanel(props: FieldSessionPanelProps): JSX.Element {
                     : 'Lined up on:'}
                 </p>
                 {anchorSummitId === undefined ? (
-                  (context?.layout.markers ?? []).map((marker) => (
+                  choices.map((choice) => (
                     <button
-                      key={marker.peak.id}
+                      key={choice.id}
                       type="button"
                       data-testid="field-session-anchor-choice"
-                      data-summit-id={marker.peak.id}
-                      onClick={() => setAnchorSummitId(marker.peak.id)}
+                      data-summit-id={choice.id}
+                      data-crowded-out={String(choice.crowdedOut)}
+                      onClick={() => setAnchorSummitId(choice.id)}
                     >
-                      {marker.peak.name}
+                      {choice.name}
+                      {choice.crowdedOut ? ' (dot only)' : ''}
                     </button>
                   ))
                 ) : (
                   <p data-testid="field-session-anchor-name">
-                    {anchorMarker?.peak.name ?? anchorSummitId}
+                    {anchorChoice?.name ?? anchorSummitId}
                   </p>
                 )}
                 {entry.repeat > 1 && (

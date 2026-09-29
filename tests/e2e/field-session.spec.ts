@@ -9,6 +9,7 @@ import {
   parseFieldBundle,
 } from '../../src/live/field-analysis';
 import { FAKE_CAMERA_DIR, writeFakeCameraVideo } from './support/fake-camera';
+import { holdStillForReanchor, tapReanchorAt } from './support/field-run';
 import {
   FRAME,
   GORNERGRAT,
@@ -19,6 +20,7 @@ import {
   bearingDeg,
   dragPicture,
   eventAnglesFor,
+  expectedSummitPx,
   installSensorPump,
   magneticBearingFor,
   poseNumber,
@@ -716,5 +718,174 @@ test.describe('the field session', () => {
         2,
       )}\n`,
     );
+  });
+
+  test('offers the summits the frame had no room to name, and names the one picked', async ({
+    page,
+  }) => {
+    // On this 800 px frame the label budget is smaller than the number of
+    // summits in view, so the overlay leaves some of them a dot and no name.
+    // The protocol's anchor can be one of those, and a dot cannot be picked by
+    // name. The picker therefore offers every summit in the picture, and the
+    // layout keeps a label for whichever one is named.
+    //
+    // The pan at the end is the second thing this proves: a deliberate turn
+    // moves the compass and the phone's own yaw together, so it is not drift.
+    test.setTimeout(SCENE_TIMEOUT_MS + 240_000);
+
+    await installBundleShareStub(page);
+    await installSensorPump(page);
+    await page.goto('/live.html?session=field');
+    await page.getByTestId('live-start').click();
+    await expect(page.getByTestId('live-root')).toHaveAttribute('data-phase', 'running');
+
+    const aim = async (trueHeadingDeg: number, pitchDeg: number): Promise<void> => {
+      await pumpSet(page, eventAnglesFor(magneticBearingFor(trueHeadingDeg, new Date()), pitchDeg));
+    };
+    await aim(TRUE_HEADING_DEG, 0);
+    await expect(page.getByTestId('live-scene-state')).toHaveAttribute('data-scene', 'ready', {
+      timeout: SCENE_TIMEOUT_MS,
+    });
+
+    const session = page.getByTestId('field-session');
+    await expect(page.getByTestId('field-session-start')).toBeEnabled({ timeout: 30_000 });
+    await page.getByTestId('field-session-start').click();
+
+    /* ── to the first drag, by the shortest legal route ───────────────────── */
+    await expect(session).toHaveAttribute('data-step-id', 'stand');
+    await page.getByTestId('field-session-next').click();
+
+    await expect(session).toHaveAttribute('data-step-id', 'fov-check');
+    const dots = await summitDots(page);
+    const spread = [...dots].sort((a, b) => a.cx - b.cx);
+    const left = spread[0];
+    const right = spread[spread.length - 1];
+    expect(left, 'no summit dots to calibrate against').toBeDefined();
+    expect(right).toBeDefined();
+    if (left === undefined || right === undefined) return;
+    await fieldTapAt(page, left.cx, left.cy);
+    await fieldTapAt(page, right.cx, right.cy);
+    await page.getByTestId('field-session-use-fit').click();
+    await expect(page.getByTestId('live-fov-label')).toHaveAttribute(
+      'data-fov-source',
+      'calibrated',
+      { timeout: 15_000 },
+    );
+    await page.getByTestId('field-session-next').click();
+
+    /* ── the direction is fixed on a summit, so the drift line exists ─────── */
+    // A summit rather than the sun: the sun is below the horizon for part of
+    // every day and this test must not depend on the hour it runs at. The tap
+    // lands on the summit's own drawn dot, so the correction is about nothing
+    // and the anchor is what the step is for.
+    await expect(session).toHaveAttribute('data-step-id', 'fix-direction');
+    await holdStillForReanchor(page);
+    await page.getByTestId('live-reanchor-summit').click();
+    const picker = page.getByTestId('live-reanchor-summit-name');
+    const matterhornId = await picker
+      .locator('option', { hasText: 'Matterhorn' })
+      .first()
+      .getAttribute('value');
+    expect(matterhornId).not.toBeNull();
+    await picker.selectOption(matterhornId ?? '');
+    const summitPx = expectedSummitPx(TRUE_HEADING_DEG);
+    await tapReanchorAt(page, summitPx.xPx, summitPx.yPx);
+    await page.getByTestId('live-reanchor-confirm-yes').click();
+    await expect(page.getByTestId('live-reanchor')).toHaveAttribute(
+      'data-anchor-source',
+      'summit',
+    );
+    await page.getByTestId('field-session-next').click();
+
+    await expect(session).toHaveAttribute('data-step-id', 'fix');
+    await page.getByTestId('field-session-next').click();
+
+    await expect(session).toHaveAttribute('data-step-id', 'brace');
+    await holdStill(page);
+    await page.getByTestId('field-session-next').click();
+
+    await expect(session).toHaveAttribute('data-step-id', 'capture-raw');
+    await holdStill(page);
+    await capture(page, 1);
+
+    /* ── the picker at the drag step, on a view that crowds ───────────────── */
+    // Which way to look for a crowded view depends on the field of view, and
+    // this session has just measured its own. So the test turns until the
+    // overlay reports summits it had no room to name, rather than assuming a
+    // heading that crowded under some other lens.
+    await expect(session).toHaveAttribute('data-step-id', 'drag');
+    const labels = page.getByTestId('live-labels');
+    const settled = async (): Promise<{ labelled: number; crowded: number }> => {
+      // The pose is fused over a 1.5 s window, so the counts mean nothing until
+      // that window holds only samples from the new heading.
+      await page.waitForTimeout(1800);
+      return {
+        labelled: Number(await labels.getAttribute('data-label-count')),
+        crowded: Number(await labels.getAttribute('data-crowded-out-count')),
+      };
+    };
+    let counts = { labelled: 0, crowded: 0 };
+    let crowdedHeadingDeg = 0;
+    for (let headingDeg = 0; headingDeg < 360; headingDeg += 10) {
+      await aim(headingDeg, 0);
+      counts = await settled();
+      crowdedHeadingDeg = headingDeg;
+      if (counts.crowded > 0) {
+        console.log(
+          `crowding at ${headingDeg}°: ${counts.labelled} named, ${counts.crowded} left as dots`,
+        );
+        break;
+      }
+    }
+    expect(
+      counts.crowded,
+      'no heading in this scene spent the label budget, so there is no crowding to pick out of',
+    ).toBeGreaterThan(0);
+    const labelledCount = counts.labelled;
+    const crowdedOutCount = counts.crowded;
+
+    const choices = page.getByTestId('field-session-anchor-choice');
+    // Every summit in the picture is offered, named or not. The two counts are
+    // the layout's own, so this is the picker against the frame it came from.
+    // Summits with no name at all are left out, so the picker may offer fewer.
+    expect(await choices.count()).toBeGreaterThan(labelledCount);
+    expect(await choices.count()).toBeLessThanOrEqual(labelledCount + crowdedOutCount);
+
+    const firstDotted = page
+      .locator('[data-testid="field-session-anchor-choice"][data-crowded-out="true"]')
+      .first();
+    await expect(firstDotted).toBeVisible();
+    const dottedName = ((await firstDotted.textContent()) ?? '').replace(' (dot only)', '').trim();
+    expect(dottedName).not.toBe('');
+    // It has a dot and no name right now: the overlay does not list it.
+    expect(await labels.textContent()).not.toContain(dottedName);
+
+    /* ── naming it puts it on the picture ─────────────────────────────────── */
+    await firstDotted.click();
+    await expect(page.getByTestId('field-session-anchor-name')).toContainText(dottedName);
+    await expect(labels).toContainText(dottedName, { timeout: 15_000 });
+    // It spent no other summit's slot: the frame names at least as many as before.
+    expect(Number(await labels.getAttribute('data-label-count'))).toBeGreaterThanOrEqual(
+      labelledCount,
+    );
+
+    /* ── and a deliberate pan is not drift ────────────────────────────────── */
+    const drift = page.getByTestId('live-anchor-drift');
+    await expect(drift).toHaveAttribute('data-beyond-band', 'false');
+    // A further 30° of turn. The pose is fused over a window, so the compass
+    // reading lags the turn by a few tenths of a second; the poll waits for it
+    // to arrive before the two are compared.
+    await aim(crowdedHeadingDeg + 30, 0);
+    await expect
+      .poll(async () => Math.abs(Number(await drift.getAttribute('data-turn-deg'))), {
+        timeout: 20_000,
+      })
+      .toBeGreaterThan(29.5);
+    await expect
+      .poll(async () => Math.abs(Number(await drift.getAttribute('data-drift-deg'))), {
+        timeout: 20_000,
+      })
+      .toBeLessThan(1);
+    await expect(drift).toHaveAttribute('data-beyond-band', 'false');
   });
 });

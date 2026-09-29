@@ -227,6 +227,8 @@ type ReanchorMode = 'off' | 'sun' | 'summit';
 interface Anchor {
   /** The sensed heading at the instant the anchor was set, degrees. */
   readonly sensedHeadingDeg: number;
+  /** The camera's yaw at that instant, in the device's own azimuth frame. */
+  readonly yawDeg: number | undefined;
   /** What the direction was taken from, for the field bundle and the screen. */
   readonly source: 'sun' | 'summit';
   readonly referenceName: string;
@@ -289,6 +291,13 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
   const [reanchorNote, setReanchorNote] = useState<string | undefined>(undefined);
   /** The warning raised when a tap says the compass is grossly wrong. */
   const [grossWarning, setGrossWarning] = useState<string | undefined>(undefined);
+  /**
+   * The summit the field session is anchored on, by peak id.
+   *
+   * The layout keeps a label for it whatever the frame's budget says, so a
+   * summit the person picked out of the crowded-out list has a name on screen.
+   */
+  const [fieldAnchorSummitId, setFieldAnchorSummitId] = useState<string | undefined>(undefined);
   const [dragMode, setDragMode] = useState<DragMode>('normal');
   /** The last drag that finished, for the home session's repeated-drag trials. */
   const [completedDrag, setCompletedDrag] = useState<CompletedDrag | undefined>(undefined);
@@ -650,9 +659,12 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
     if (liveFrame?.ok !== true || scene === undefined) return undefined;
     return layoutOverlay(
       { ...liveFrame.overlay, peaks: selectOverlayPeaks(scene, true) },
-      { frameMarginPx: Math.max(geometry.labelMarginPx, framePx.widthPx * 0.01) },
+      {
+        frameMarginPx: Math.max(geometry.labelMarginPx, framePx.widthPx * 0.01),
+        alwaysLabelPeakIds: fieldAnchorSummitId === undefined ? [] : [fieldAnchorSummitId],
+      },
     );
-  }, [liveFrame, scene, geometry.labelMarginPx, framePx.widthPx]);
+  }, [liveFrame, scene, geometry.labelMarginPx, framePx.widthPx, fieldAnchorSummitId]);
 
   const overlaySvg = useMemo(
     () => (layout === undefined ? undefined : buildOverlaySvgFromLayout(layout)),
@@ -762,6 +774,7 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
       setTrim((current) => ({ ...current, headingDeg: 0, pitchDeg: value.pitchTrimDeg }));
       setAnchor({
         sensedHeadingDeg: poseResult.value.sensedPose.headingDeg,
+        yawDeg: tracesRef.current?.status().deviceYawDeg,
         source,
         referenceName: reference.name,
         offsetDeg: value.grossHeadingOffsetDeg,
@@ -866,12 +879,14 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
   /** How far the compass has moved since the anchor was set. */
   const drift = useMemo(() => {
     if (anchor === undefined || poseResult?.ok !== true) return undefined;
-    return anchorDrift(
-      poseResult.value.sensedPose.headingDeg,
-      anchor.sensedHeadingDeg,
-      band?.measuredDeg.horizontal ?? 0,
-    );
-  }, [anchor, poseResult, band]);
+    return anchorDrift({
+      sensedHeadingDeg: poseResult.value.sensedPose.headingDeg,
+      anchoredAtSensedHeadingDeg: anchor.sensedHeadingDeg,
+      yawDeg: sensorStatus?.deviceYawDeg,
+      anchoredAtYawDeg: anchor.yawDeg,
+      bandDeg: band?.measuredDeg.horizontal ?? 0,
+    });
+  }, [anchor, poseResult, band, sensorStatus?.deviceYawDeg]);
 
   /** Put everything the person has changed back where the sensors say. */
   const clearAllTrim = useCallback(() => {
@@ -1406,6 +1421,7 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
             dragMode={dragMode}
             setDragMode={setDragMode}
             resetTrim={resetTrim}
+            onAnchorSummit={setFieldAnchorSummitId}
           />
         )}
 
@@ -1692,6 +1708,8 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
                 className={drift.beyondBand ? 'live__warn' : undefined}
                 data-testid="live-anchor-drift"
                 data-gap-deg={drift.gapDeg}
+                data-turn-deg={drift.turnDeg ?? ''}
+                data-drift-deg={drift.driftDeg ?? ''}
                 data-beyond-band={String(drift.beyondBand)}
               >
                 Direction fixed on {anchor.referenceName}, {Math.abs(anchor.offsetDeg).toFixed(0)}°{' '}

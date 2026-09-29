@@ -118,6 +118,7 @@ import {
   poseNumber,
   preinstalled,
   projectIndependently,
+  pumpCompassOnly,
   pumpSet,
   rangeM,
   summitDots,
@@ -1631,15 +1632,79 @@ test('turning the phone after a re-anchor warns that the fix has gone stale', as
   await tapReanchorAt(page, FRAME.widthPx / 2, FRAME.heightPx / 2);
   await expect(reanchor).toHaveAttribute('data-anchor-source', 'sun');
 
+  const drift = page.getByTestId('live-anchor-drift');
+  await expect(drift).toHaveAttribute('data-beyond-band', 'false');
+
   // The compass now reads 30° further round with the phone held where it was:
-  // a transient error baked into the anchor looks exactly like this.
+  // a transient error baked into the anchor looks exactly like this. Only the
+  // compass moves, so the relative alpha still says the phone has not turned.
+  await pumpCompassOnly(
+    page,
+    eventAnglesFor(magneticBearingFor(sun.azimuthDeg + GROSS_ERROR_DEG + 30, now), sun.altitudeDeg),
+  );
+  await expect(drift).toHaveAttribute('data-beyond-band', 'true', { timeout: 20_000 });
+  await expect(drift).toContainText('Fix the direction again');
+  // The compass moved 30° and the phone turned none of it.
+  await expect
+    .poll(async () => Math.abs(Number(await drift.getAttribute('data-drift-deg'))))
+    .toBeGreaterThan(25);
+  expect(Math.abs(Number(await drift.getAttribute('data-turn-deg')))).toBeLessThan(1);
+});
+
+test('turning the phone on purpose after a re-anchor raises no drift warning', async ({ page }) => {
+  // The same 30°, made by turning rather than by the compass going wrong. The
+  // compass and the phone's own yaw move together, so the fix is still good and
+  // the screen must not say otherwise.
+  test.setTimeout(SCENE_TIMEOUT_MS + 120_000);
+  const now = new Date();
+  const sun = sunPosition(
+    now,
+    { lat: GORNERGRAT.lat, lon: GORNERGRAT.lon, heightM: OBSERVER_EYE_M },
+    { refraction: true },
+  );
+  if (sun.altitudeDeg < 5) {
+    console.log('the sun is below the working window at this instant; nothing to anchor on');
+    test.skip();
+    return;
+  }
+
+  await startLive(page, {
+    trueHeadingDeg: sun.azimuthDeg + GROSS_ERROR_DEG,
+    pitchDeg: sun.altitudeDeg,
+  });
+  await expect(page.getByTestId('live-heading-basis')).toHaveAttribute(
+    'data-basis',
+    'true-model',
+    { timeout: 30_000 },
+  );
+  const reanchor = page.getByTestId('live-reanchor');
+  await expect
+    .poll(async () => Number(await reanchor.getAttribute('data-still-ms')), { timeout: 40_000 })
+    .toBeGreaterThanOrEqual(10_000);
+  await page.getByTestId('live-reanchor-sun').click();
+  await tapReanchorAt(page, FRAME.widthPx / 2, FRAME.heightPx / 2);
+  await expect(reanchor).toHaveAttribute('data-anchor-source', 'sun');
+
   await pumpSet(
     page,
     eventAnglesFor(magneticBearingFor(sun.azimuthDeg + GROSS_ERROR_DEG + 30, now), sun.altitudeDeg),
   );
   const drift = page.getByTestId('live-anchor-drift');
-  await expect(drift).toHaveAttribute('data-beyond-band', 'true', { timeout: 20_000 });
-  await expect(drift).toContainText('Fix the direction again');
+  // The phone's yaw follows the turn at once; the compass reading is fused over
+  // a window and arrives a few tenths of a second later. So the turn is waited
+  // for first, and then the compass, before the two are compared.
+  await expect
+    .poll(async () => Math.abs(Number(await drift.getAttribute('data-turn-deg'))), {
+      timeout: 20_000,
+    })
+    .toBeGreaterThan(29.5);
+  await expect
+    .poll(async () => Math.abs(Number(await drift.getAttribute('data-drift-deg'))), {
+      timeout: 20_000,
+    })
+    .toBeLessThan(1);
+  await expect(drift).toHaveAttribute('data-beyond-band', 'false');
+  expect(Math.abs(Number(await drift.getAttribute('data-gap-deg')))).toBeGreaterThan(29);
 });
 
 test('a tap on the real sun says how far off the compass is', async ({ page }) => {

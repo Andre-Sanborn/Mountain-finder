@@ -84,6 +84,12 @@
  *    dotted-and-reported, off-frame-and-reported, or refused by D8 and
  *    reported, and the four lists partition the input exactly.
  *
+ * 8. **`alwaysLabelPeakIds` exempts a peak from both.** A summit the person has
+ *    named is placed before every other label and spends no slot of the budget,
+ *    so asking for it by name always puts it on the picture. Everything else
+ *    lays out around it, and one more label in a crowded frame costs one of the
+ *    ranked names, never the one that was asked for.
+ *
  * Rule 5 used to read "place it anyway and flag `overlapped`", and that was
  * right when it was written: there was no channel through which a withheld name
  * could be reported, so an overlapping label was the only alternative to a
@@ -215,6 +221,7 @@ export function resolveOverlayOptions(
       options.maxPoleLengthPx ??
       Math.max(basePoleLengthPx, Math.round(scene.heightPx * MAX_POLE_HEIGHT_FRACTION)),
     maxLabels: options.maxLabels ?? 'auto',
+    alwaysLabelPeakIds: options.alwaysLabelPeakIds ?? [],
     labelPaddingPx,
     labelGapPx: options.labelGapPx ?? 3,
     frameMarginPx: options.frameMarginPx ?? Math.max(2, Math.round(scene.widthPx * 0.01)),
@@ -557,11 +564,16 @@ export function layoutOverlay(
       ? labelSlotCapacity(scene.widthPx, meanLabelWidthPx(sightings), resolved)
       : Math.max(0, Math.floor(resolved.maxLabels));
 
+  // A forced peak is named whatever the budget says, and spends no slot of it.
+  const forcedIds = new Set(resolved.alwaysLabelPeakIds);
+  const forced = sightings.filter((sighting) => forcedIds.has(sighting.peak.id));
+  const optional = sightings.filter((sighting) => !forcedIds.has(sighting.peak.id));
+
   const crowdedOutSummits: UnlabelledSummit[] = [];
   let labelled = sightings;
-  if (sightings.length > budget) {
-    const ranked = [...sightings].sort((a, b) => compareLabelPriority(a.peak, b.peak));
-    labelled = ranked.slice(0, budget);
+  if (optional.length > budget) {
+    const ranked = [...optional].sort((a, b) => compareLabelPriority(a.peak, b.peak));
+    labelled = [...forced, ...ranked.slice(0, budget)];
     for (const sighting of ranked.slice(budget)) {
       crowdedOutSummits.push({
         peak: sighting.peak,
@@ -582,7 +594,14 @@ export function layoutOverlay(
   // never `localeCompare`, whose ordering depends on the host's locale data —
   // so the order is total, is fixed by the peaks themselves, and cannot depend
   // on the order the database happened to return them in.
-  const placement = [...labelled].sort((a, b) => compareLabelPriority(a.peak, b.peak));
+  // Forced peaks go first, so the space around a summit the person named is
+  // claimed before any ranking gets a say in it.
+  const placement = [...labelled].sort((a, b) => {
+    const aForced = forcedIds.has(a.peak.id);
+    const bForced = forcedIds.has(b.peak.id);
+    if (aForced !== bForced) return aForced ? -1 : 1;
+    return compareLabelPriority(a.peak, b.peak);
+  });
 
   const levels = reachableStackLevels(resolved);
   const directions: readonly LabelDirection[] = ['up', 'down'];

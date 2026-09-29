@@ -232,9 +232,27 @@ export function eventAnglesFor(
 export async function installSensorPump(page: Page): Promise<void> {
   await page.addInitScript(() => {
     const DEG_LOCAL = Math.PI / 180;
-    const state = { alpha: 0, beta: 90, gamma: 0, timer: 0 };
+    // The device frame's arbitrary azimuth zero. Any constant does; a round
+    // number would hide a place that confused the two frames.
+    const YAW_ZERO_OFFSET = 137;
+    const state = { alpha: 0, yawAlpha: -YAW_ZERO_OFFSET, beta: 90, gamma: 0, timer: 0 };
 
     const dispatch = (): void => {
+      // Chromium fires both events: the absolute one carries the
+      // magnetometer's alpha, and this one carries the relative alpha the phone
+      // integrates from its own rotation. They move together when the phone
+      // turns and apart when the compass is at fault.
+      //
+      // The relative one goes FIRST, so a reader that took whichever event
+      // arrived last would take the magnetometer's answer and be caught.
+      window.dispatchEvent(
+        new DeviceOrientationEvent('deviceorientation', {
+          alpha: ((state.yawAlpha % 360) + 360) % 360,
+          beta: state.beta,
+          gamma: state.gamma,
+          absolute: false,
+        }),
+      );
       window.dispatchEvent(
         new DeviceOrientationEvent('deviceorientationabsolute', {
           alpha: state.alpha,
@@ -268,6 +286,14 @@ export async function installSensorPump(page: Page): Promise<void> {
     (window as unknown as Record<string, unknown>).__mfSensors = {
       set(alpha: number, beta: number, gamma: number): void {
         state.alpha = alpha;
+        state.yawAlpha = alpha + YAW_ZERO_OFFSET;
+        state.beta = beta;
+        state.gamma = gamma;
+        dispatch();
+      },
+      /** Move the compass alone: the phone has not turned, the reading has. */
+      setCompassOnly(alpha: number, beta: number, gamma: number): void {
+        state.alpha = alpha;
         state.beta = beta;
         state.gamma = gamma;
         dispatch();
@@ -287,14 +313,32 @@ export async function installSensorPump(page: Page): Promise<void> {
 
 interface SensorPumpApi {
   set(alpha: number, beta: number, gamma: number): void;
+  setCompassOnly(alpha: number, beta: number, gamma: number): void;
   start(): void;
   stop(): void;
 }
 
+/** Aim the phone: the compass reading and the device's own yaw move together. */
 export async function pumpSet(page: Page, angles: { alpha: number; beta: number; gamma: number }): Promise<void> {
   await page.evaluate((next) => {
     const api = (window as unknown as { __mfSensors: SensorPumpApi }).__mfSensors;
     api.set(next.alpha, next.beta, next.gamma);
+    api.start();
+  }, angles);
+}
+
+/**
+ * Move the compass while the phone stands still — a magnet, or a calibration
+ * that settled late. The relative alpha stays where it was, so the screen can
+ * tell this from a deliberate turn.
+ */
+export async function pumpCompassOnly(
+  page: Page,
+  angles: { alpha: number; beta: number; gamma: number },
+): Promise<void> {
+  await page.evaluate((next) => {
+    const api = (window as unknown as { __mfSensors: SensorPumpApi }).__mfSensors;
+    api.setCompassOnly(next.alpha, next.beta, next.gamma);
     api.start();
   }, angles);
 }

@@ -39,6 +39,7 @@
 
 import {
   detectMotionGravityConvention,
+  rearCameraBearing,
   webMotionSample,
   webOrientationSample,
   type WebGravityConvention,
@@ -48,8 +49,13 @@ import {
 import type { GravitySample, HeadingSample } from '../../live/sensors';
 import type { TrackSettingsLike } from './lens-log';
 
-/** Samples kept per trace: two seconds at 60 Hz, past the 1.5 s fusion window. */
-export const TRACE_CAPACITY = 120;
+/**
+ * Samples kept per trace, past the 1.5 s fusion window.
+ *
+ * Two seconds at 60 Hz, times the three event streams that feed gravity:
+ * Chromium's absolute and relative orientation events and its motion event.
+ */
+export const TRACE_CAPACITY = 360;
 
 export type MotionPermission = 'granted' | 'denied' | 'unsupported' | 'error';
 
@@ -118,6 +124,19 @@ export interface SensorStatus {
   readonly motionConvention: WebGravityConvention | undefined;
   /** True once `deviceorientationabsolute` has delivered an earth-referenced alpha. */
   readonly sawAbsoluteOrientation: boolean;
+  /**
+   * Where the camera points in the device's own azimuth frame, degrees.
+   *
+   * Read off the RELATIVE alpha, so it follows how far the phone has turned and
+   * owes nothing to the magnetometer. Undefined where no relative-alpha event
+   * arrives, or while the camera points within a degree of straight up or down,
+   * which is where a bearing off the rotation matrix has no meaning.
+   *
+   * The zero is arbitrary and changes between sessions, so only differences of
+   * it mean anything. `anchorDrift` is what reads it: the compass moving while
+   * this stays put is a compass fault, and the two moving together is a turn.
+   */
+  readonly deviceYawDeg: number | undefined;
 }
 
 /**
@@ -176,6 +195,7 @@ export class BrowserSensorTraces {
   private headingRefusal: WebSampleRefusal | undefined;
   private motionConvention: WebGravityConvention | undefined;
   private sawAbsoluteOrientation = false;
+  private deviceYawDeg: number | undefined;
   private lastOrientationEvent: WebOrientationEventLike | undefined;
   private attached = false;
 
@@ -227,6 +247,7 @@ export class BrowserSensorTraces {
     this.orientationCount += 1;
     this.lastOrientationEvent = event;
     if (event.absolute === true) this.sawAbsoluteOrientation = true;
+    this.noteDeviceYaw(event);
     this.sink?.onRawEvent({ kind: 'orientation', type, tMs, screenAngleDeg, event });
 
     const sample = webOrientationSample(event, screenAngleDeg, tMs);
@@ -245,6 +266,24 @@ export class BrowserSensorTraces {
     // overwrite a refusal the screen would act on.
     if (this.sawAbsoluteOrientation && sample.heading.refusal === 'relative-alpha') return;
     this.headingRefusal = sample.heading.refusal;
+  }
+
+  /**
+   * Keep the camera's yaw in the device's own azimuth frame.
+   *
+   * Only an event whose alpha is NOT earth-referenced is read. An absolute
+   * alpha is the magnetometer's own answer, so a compass fault would move it in
+   * step with the compass and the drift check would see nothing. Both browsers
+   * deliver a relative alpha: iOS on `deviceorientation`, which is all it fires,
+   * and Chromium on `deviceorientation` beside its absolute event.
+   */
+  private noteDeviceYaw(event: WebOrientationEventLike): void {
+    if (event.absolute === true) return;
+    const { alpha, beta, gamma } = event;
+    if (alpha === null || beta === null || gamma === null) return;
+    if (!Number.isFinite(alpha) || !Number.isFinite(beta) || !Number.isFinite(gamma)) return;
+    const bearing = rearCameraBearing(alpha, beta, gamma);
+    this.deviceYawDeg = bearing.ok ? bearing.value.headingDeg : undefined;
   }
 
   ingestMotion(event: Parameters<typeof webMotionSample>[0], type = 'devicemotion'): void {
@@ -285,6 +324,7 @@ export class BrowserSensorTraces {
       screenAngleDeg: this.screenAngleDeg(),
       motionConvention: this.motionConvention,
       sawAbsoluteOrientation: this.sawAbsoluteOrientation,
+      deviceYawDeg: this.deviceYawDeg,
     };
   }
 }

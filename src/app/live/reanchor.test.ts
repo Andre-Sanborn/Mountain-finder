@@ -249,24 +249,78 @@ describe('grossHeadingWarning', () => {
 });
 
 describe('anchorDrift', () => {
-  it('is quiet while the compass stays inside the band the screen claims', () => {
-    const drift = anchorDrift(222.4, 222, 1.2);
-    expect(drift.gapDeg).toBeCloseTo(0.4, 10);
-    expect(drift.beyondBand).toBe(false);
+  /** A drift check with the two headings and the two yaws named. */
+  const drift = (
+    compass: [number, number],
+    yaw: [number, number] | undefined,
+    bandDeg: number,
+  ): ReturnType<typeof anchorDrift> =>
+    anchorDrift({
+      anchoredAtSensedHeadingDeg: compass[0],
+      sensedHeadingDeg: compass[1],
+      anchoredAtYawDeg: yaw?.[0],
+      yawDeg: yaw?.[1],
+      bandDeg,
+    });
+
+  it('stays quiet through a deliberate 45° turn, where both move together', () => {
+    // The compass reads 45° further round and the phone turned 45°, so the
+    // compass did nothing the phone did not: 45 − 45 = 0.
+    const turned = drift([200, 245], [100, 145], 1.2);
+    expect(turned.gapDeg).toBeCloseTo(45, 10);
+    expect(turned.turnDeg).toBeCloseTo(45, 10);
+    expect(turned.driftDeg).toBeCloseTo(0, 10);
+    expect(turned.beyondBand).toBe(false);
   });
 
-  it('warns once the compass has moved further than the band', () => {
-    const drift = anchorDrift(225, 222, 1.2);
-    expect(drift.beyondBand).toBe(true);
-    expect(drift.text).toContain('3.0°');
-    expect(drift.text).toContain('Fix the direction again');
+  it('warns on a 30° compass fault with the phone standing still', () => {
+    // 30 − 0 = 30, against a 1.2° band.
+    const faulty = drift([200, 230], [100, 100], 1.2);
+    expect(faulty.driftDeg).toBeCloseTo(30, 10);
+    expect(faulty.beyondBand).toBe(true);
+    expect(faulty.text).toContain('30.0°');
+    expect(faulty.text).toContain('Fix the direction again');
   });
 
-  it('takes the short way round north rather than reporting 359°', () => {
-    expect(anchorDrift(1, 359, 5).gapDeg).toBeCloseTo(2, 10);
+  it('keeps a turn with a small compass error inside the band', () => {
+    // A 45° turn the compass read as 45.5°: 0.5° of error, inside 1.2°.
+    const nearly = drift([200, 245.5], [100, 145], 1.2);
+    expect(nearly.driftDeg).toBeCloseTo(0.5, 10);
+    expect(nearly.beyondBand).toBe(false);
+  });
+
+  it('takes the short way round north on both angles', () => {
+    // Compass 359 → 1 is +2°; yaw 350 → 359 is +9°. The compass fell 7° behind.
+    const wrapped = drift([359, 1], [350, 359], 5);
+    expect(wrapped.gapDeg).toBeCloseTo(2, 10);
+    expect(wrapped.turnDeg).toBeCloseTo(9, 10);
+    expect(wrapped.driftDeg).toBeCloseTo(-7, 10);
+    expect(wrapped.beyondBand).toBe(true);
+    expect(wrapped.text).toContain('7.0°');
   });
 
   it('cannot warn when the screen claims no band at all', () => {
-    expect(anchorDrift(280, 222, 0).beyondBand).toBe(false);
+    expect(drift([222, 280], [100, 100], 0).beyondBand).toBe(false);
+  });
+
+  it('says a turn cannot be told apart when the phone reports no yaw', () => {
+    const blind = drift([200, 230], undefined, 1.2);
+    expect(blind.turnDeg).toBeUndefined();
+    expect(blind.driftDeg).toBeUndefined();
+    expect(blind.beyondBand).toBe(false);
+    expect(blind.text).toContain('30.0°');
+    expect(blind.text).toContain('cannot be told apart');
+  });
+
+  it('is equally blind when only one end of the pair has a yaw', () => {
+    expect(
+      anchorDrift({
+        anchoredAtSensedHeadingDeg: 200,
+        sensedHeadingDeg: 230,
+        anchoredAtYawDeg: 100,
+        yawDeg: undefined,
+        bandDeg: 1.2,
+      }).beyondBand,
+    ).toBe(false);
   });
 });

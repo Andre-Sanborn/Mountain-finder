@@ -883,6 +883,82 @@ describe('layoutOverlay — real peak density', () => {
     expect(layout.crowdedOutSummits.map((entry) => entry.peak.name)).toEqual(['Two', 'One']);
   });
 
+  it('names a summit the caller asked for, however low it rides', () => {
+    // The same five peaks and the same room for three. 'One' rides lowest and
+    // loses on every ranking, so asking for it by name is the only way it gets
+    // a label — and it must not cost one of the three the budget bought.
+    const peaks = [
+      peak({ id: 'node/1', name: 'One', bearingDeg: 70, altitudeDeg: 1 }),
+      peak({ id: 'node/5', name: 'Five', bearingDeg: 80, altitudeDeg: 5 }),
+      peak({ id: 'node/2', name: 'Two', bearingDeg: 90, altitudeDeg: 2 }),
+      peak({ id: 'node/4', name: 'Four', bearingDeg: 100, altitudeDeg: 4 }),
+      peak({ id: 'node/3', name: 'Three', bearingDeg: 110, altitudeDeg: 3 }),
+    ];
+    const layout = layoutOverlay(scene({ peaks }), {
+      ...PINNED,
+      maxLabels: 3,
+      alwaysLabelPeakIds: ['node/1'],
+    });
+
+    expect(layout.markers.map((marker) => marker.nameText).sort()).toEqual([
+      'Five',
+      'Four',
+      'One',
+      'Three',
+    ]);
+    expect(layout.crowdedOutSummits.map((entry) => entry.peak.name)).toEqual(['Two']);
+  });
+
+  it('gives the summit it was asked for first claim on the space around it', () => {
+    // Two peaks 4 px apart in bearing terms cannot both hold a level-0 label.
+    // The higher one wins by ranking; naming the lower one flips that, and the
+    // higher is the one that has to climb.
+    const peaks = [
+      peak({ id: 'node/high', name: 'High', bearingDeg: 90, altitudeDeg: 5 }),
+      peak({ id: 'node/low', name: 'Low', bearingDeg: 90.4, altitudeDeg: 4.9 }),
+    ];
+    const options: OverlayOptions = { ...PINNED, maxLabels: 8 };
+    const ranked = layoutOverlay(scene({ peaks }), options);
+    expect(markerNamed(ranked.markers, 'High').stackLevel).toBe(0);
+    expect(markerNamed(ranked.markers, 'Low').stackLevel).toBeGreaterThan(0);
+
+    const asked = layoutOverlay(scene({ peaks }), {
+      ...options,
+      alwaysLabelPeakIds: ['node/low'],
+    });
+    expect(markerNamed(asked.markers, 'Low').stackLevel).toBe(0);
+    expect(markerNamed(asked.markers, 'High').stackLevel).toBeGreaterThan(0);
+  });
+
+  it('cannot name a peak D8 refused, whatever the caller asks for', () => {
+    const layout = layoutOverlay(
+      scene({
+        peaks: [
+          {
+            ...peak({ id: 'node/1', name: 'Ben Nevis', bearingDeg: 90, altitudeDeg: 9 }),
+            visibility: 'foreground-occluded' as const,
+          },
+          peak({ id: 'node/2', name: 'Cow Hill', bearingDeg: 100, altitudeDeg: 1 }),
+        ],
+      }),
+      { ...PINNED, maxLabels: 5, alwaysLabelPeakIds: ['node/1'] },
+    );
+    expect(layout.markers.map((marker) => marker.nameText)).toEqual(['Cow Hill']);
+    expect(layout.foregroundOccludedPeaks.map((entry) => entry.name)).toEqual(['Ben Nevis']);
+  });
+
+  it('leaves a frame alone when the id it is given is not in it', () => {
+    const peaks = spread(40);
+    const options: OverlayOptions = { ...PINNED, maxPoleLengthPx: 200 };
+    const plain = layoutOverlay(scene({ peaks }), options);
+    const named = layoutOverlay(scene({ peaks }), {
+      ...options,
+      alwaysLabelPeakIds: ['node/not-here'],
+    });
+    expect(named.markers).toEqual(plain.markers);
+    expect(named.crowdedOutSummits).toEqual(plain.crowdedOutSummits);
+  });
+
   it('is still independent of the order the peaks arrive in when the frame is full', () => {
     const peaks = spread(40);
     const options: OverlayOptions = { ...PINNED, maxPoleLengthPx: 200 };

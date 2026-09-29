@@ -80,8 +80,9 @@ after its self-check has run and passed here. The checks are in
 
 - [x] Re-run the Bogus Basin rehearsal at the solved pose (187.9°, −4.94°), Deer Point as anchor, grade other features
 - [ ] Grade the re-run rehearsal against @2 truth from two independent annotators
-- [ ] Let the field anchor picker offer crowded-out summits, so a hidden label cannot block the anchor
-- [ ] Make the anchor-drift warning allow for a deliberate turn
+- [x] Let the field anchor picker offer crowded-out summits, and force-label the one picked
+- [x] Make the anchor-drift warning compare the compass change with the phone's own turn
+- [ ] Refresh the rehearsal spec's drift-line notes; they still describe the compass-only check
 - [ ] Make `npm run annotate` warn when GPSImgDirection is the only heading source (X-10)
 - [ ] Renumber the duplicate X-7 and X-8 ids in docs/FINDINGS.md
 
