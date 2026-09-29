@@ -73,8 +73,13 @@ after its self-check has run and passed here. The checks are in
 - [ ] Re-run the rehearsal at a 956x440 viewport over a 1920x1080 camera, without cropToAspect
 - [x] Separate refusals from notes in the field report
 
+- [ ] Re-run the Bogus Basin rehearsal at the solved pose (188°, ≈ −4.9°), Deer Point as anchor, grade other features
+- [ ] Make `npm run annotate` warn when GPSImgDirection is the only heading source (X-10)
+- [ ] Renumber the duplicate X-7 and X-8 ids in docs/FINDINGS.md
+
 ## Other open work
 
+- [ ] Find a real photograph that exercises D8's self-occlusion rule; it has never fired on one
 - [ ] Re-check CV-2/CV-8's 14 mm figures via `npm run annotate`: suggestPoseTrim now reads coverage 66.6 %, not 0 %
 - [ ] Settle long-side vs CIPA-diagonal 35 mm equivalence against the solved Railroad Ridge pose (~2°, 3% scale)
 - [ ] Get the human's answer on whether the seven photos in fixtures/photos/real/ stay public.

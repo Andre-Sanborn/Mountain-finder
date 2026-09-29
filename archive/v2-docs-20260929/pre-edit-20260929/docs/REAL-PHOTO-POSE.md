@@ -199,78 +199,46 @@ Also worth recording: `IMG_1371.HEIC` is a **JPEG with a `.HEIC` extension**. Th
 carrying only `GPSVersionID`, `GPSAltitudeRef` and `GPSHPositioningError`: a third distinct
 stripping mode, alongside "everything gone" and "everything intact".
 
-## Two new viewpoints
+## Two new viewpoints — and the chain works cold
 
-Both refused files carry a position, a heading and a lens, both sit on SRTM tiles already in
-`data/tiles/`, and both are inside the committed `idaho-central` peak region. Neither had ever
-been seen by any part of this system.
+Both refused files carry a full pose, both sit on SRTM tiles already in `data/tiles/`, and both
+are inside the committed `idaho-central` peak region. Neither had ever been seen by any part of
+this system.
 
 | | IMG_7270 | IMG_6594 |
 |---|---|---|
 | position | 43.77148 N, 116.08862 W | 44.08528 N, 115.90669 W |
-| `GPSImgDirection` | 280.336° T | 253.046° T |
-| heading the picture shows | **188° ± 1°** | not solved; consistent with the sun |
+| heading | **280.336° T** | **253.046° T** |
 | lens | 24 mm-eq, hFOV 73.74° | 24 mm-eq, hFOV 73.74° |
 | frame | 8064 × 6048 | 8064 × 6048 |
 | GPS altitude vs SRTM | 2313.1 m vs 2308.3 m (**+4.8 m**) | 1444.1 m vs 1453.1 m (**−9.0 m**) |
 | summits within 30 km | 41 | 28 |
-| labelled in frame | not re-run at the solved heading | 1 |
+| labelled in frame | **7** | **1** |
 
 The GPS-altitude agreement is the useful number: a phone's altitude is the weakest thing it
 records, and landing within 5 and 9 m of what the DEM reads at the phone's own stated coordinate
 means the position is right to well inside a DEM posting. Neither figure was tuned; both are the
 first run.
 
-### IMG_7270 — a compass reading 92° out
-
-**The frame looks south from Shafer Butte towards Deer Point.** Deer Point's committed summit
-sits under its masts at x ≈ 1335 of the 1920 × 1080 working frame, read off the picture by two
-annotators independently. That summit bears 204.32° at 2.024 km, apparent altitude −4.53°, so
-the optical axis points at **188° ± 1°**. Matching the masts at y ≈ 535 needs a pitch near
-**−4.9°**. The sun is the second instrument and it agrees: at the recorded time (2026-05-31
-15:41:43 −06:00) the sun stands at azimuth 238.3°, elevation 57.1°, and it flares from the
-top-right corner — 50.3° right of a 188° axis. A camera facing 280.336° would have the sun 42.0°
-to its left, outside a 73.74° frame altogether, and no flare could enter from the right.
-
-**`GPSImgDirection` reads 280.336° T, +92.3° from the heading the picture shows.** The tag is
-recorded against true north (`GPSImgDirectionRef T`) and the frame is upright (`Orientation 1`),
-so neither a magnetic-to-true conversion nor a rotated frame explains the gap. Idaho's
-declination is about +11.7°, an eighth of it. The phone was moving: `GPSSpeed` 1.59 m/s, on an
-iPhone 17 Pro Max running iOS 26.5. **The cause is unresolved.** A Mapillary iOS release note
-reports compass angles a quarter-turn out on iOS 26.x while the device is moving, which matches
-the size and the conditions; a steel railing at the viewpoint is the other candidate. The two
-have not been separated, and nothing here distinguishes them.
-
-Every summit the 280° heading put in frame lies in the 251–325° sector — Prospect Peak at
-295.95°, Crown Point at 301.84°, and the rest — and that whole sector is outside a 74° frame
-centred on 188°. **Decision D8's self-occlusion rule has never fired on a real photograph.** Its
-evidence is the Fort William acceptance case (finding X-3), where a greyed `summit obscured`
-label is checked against terrain rather than against a picture.
-
-The position is sound: SRTM reads 2308.3 m against the phone's 2313.1 m, and the committed
-Shafer Butte node sits 30 m from the fix.
-
-**n = 1.** One frame, one phone, one moment. Six other real photographs were checked the same
-way, and each agrees with its own sun or its solved pose — Railroad Ridge's 48 mm frame records
-174.089° against a solved 174.686°. So nothing yet says how often an iPhone heading is wrong,
-only that this one is.
-
-### IMG_6594
+**IMG_7270** (Bogus Basin, looking WNW over the Boise front) is the strongest single image this
+project has produced. Seven labelled summits across a 74° frame, the horizon line tracking the
+distant hazy skyline rather than the near foreground ridge, and **Prospect Peak drawn greyed and
+captioned `summit obscured`** — decision D8's self-occlusion rule firing on a real photograph for
+the first time, on a summit that genuinely stands behind its own shoulder.
 
 **IMG_6594** looks WSW across a valley. One summit in frame, Charters Mountain at 10.2 km, and
 the horizon line follows the crest along the whole ridge and then drops correctly into the
-saddle where the valley fog sits. Its 253.046° heading is checked only against the sun in the
-frame, at n = 1; no summit in it has been solved for a pose.
+saddle where the valley fog sits.
 
-## What the viewpoints agree about
+## What three viewpoints agree about
 
-**A hand-held mountain photograph points slightly down.** Railroad Ridge's pitch is solved at
-−3.520° (Part 1) and Bogus Basin's at about −4.9°, both from summits read off the picture.
-IMG_6594's downward tilt is an eyeball reading of where the drawn horizon sits against the true
-skyline, and is recorded as such. The reason is structural: **EXIF carries no pitch**,
-`--pitch` defaults to zero, and the foreground only gets into a frame if the camera tips down.
-Anyone reading an annotated image should read a vertical offset as the missing pitch, not as a
-terrain error.
+In all three photographs the drawn horizon sits **slightly below** the true skyline. Only
+Railroad Ridge has been measured (−3.52°, Part 1); the other two are eyeball readings and are
+recorded as such. But the direction is the same every time, and the reason is structural rather
+than a bug: **EXIF carries no pitch**, `--pitch` defaults to zero, and a hand-held photograph of
+mountains is nearly always tilted slightly down — that is how the foreground gets into the
+frame. Anyone reading these images should read the vertical offset as the missing pitch, not as
+a terrain error.
 
 Neither new viewpoint is an acceptance case. They have one position source each and no
 independent cross-check beyond the DEM, no summit has been identified by anyone who knows the

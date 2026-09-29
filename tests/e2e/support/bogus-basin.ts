@@ -15,16 +15,19 @@
  * definition, written from scratch, exactly as `gornergrat.ts` writes it, so an
  * expectation is never the output of `src/core/projection.ts`.
  *
- * ── THE POSE THIS HARNESS TREATS AS DOCUMENTED ─────────────────────────────
- * `fixtures/photos/real/hdr-gainmap-7270.heic` carries a position, a true
- * heading and a 35 mm-equivalent focal length in its EXIF, read by
- * `src/exif/heif.ts` and asserted in `src/exif/heif.test.ts`. It carries **no
- * pitch**, because EXIF has no field for one. So the documented pose's pitch is
- * zero, which is what `npm run annotate` defaults to, and
- * `docs/REAL-PHOTO-POSE.md` records that all three Idaho viewpoints look
- * slightly downward by an amount only Railroad Ridge has measured (−3.520°).
- * For IMG_7270 that reading is an eyeball one at n = 1 and carries no number, so
- * nothing here pretends to know it.
+ * ── THE POSE THIS HARNESS DRIVES THE SCREEN WITH ───────────────────────────
+ * `fixtures/photos/real/hdr-gainmap-7270.heic` carries a position, a heading and
+ * a 35 mm-equivalent focal length in its EXIF, read by `src/exif/heif.ts` and
+ * asserted in `src/exif/heif.test.ts`. The position and the lens are sound. The
+ * heading is not: the file records 280.336° T and the camera faced 188° ± 1°,
+ * solved from Deer Point's summit in the frame and confirmed by the sun
+ * (`docs/REAL-PHOTO-POSE.md` § IMG_7270, finding X-10). `PHOTO_POSE` below still
+ * carries the EXIF value, so a rehearsal driven from it points the screen 92.3°
+ * away from what the photograph shows.
+ *
+ * EXIF carries **no pitch**, because it has no field for one. Bogus Basin's own
+ * pitch solves to about −4.9° from the masts in the frame; `PHOTO_POSE.pitchDeg`
+ * is zero, which is what `npm run annotate` defaults to.
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
@@ -57,12 +60,16 @@ export const SITE_PACKAGE_MANIFEST = resolve(
 export const PHOTO_PATH = 'fixtures/photos/real/hdr-gainmap-7270.heic';
 
 /**
- * IMG_7270's EXIF pose, and what is missing from it.
+ * IMG_7270's EXIF pose, and where it disagrees with the photograph.
  *
  * Position, heading and the 24 mm-equivalent lens are the file's own bytes
  * (`src/exif/heif.test.ts` asserts the heading and the focal length against
  * them). `pitchDeg` is not: EXIF records no pitch, and zero is what the rest of
  * this repository assumes in its absence.
+ *
+ * `headingDeg` is the EXIF tag, and the tag is 92.3° off the true heading of
+ * 188° ± 1° (finding X-10). Whatever reads this is pointing at ground the
+ * photograph does not cover.
  */
 export const PHOTO_POSE = {
   lat: 43.77148,
