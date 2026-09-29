@@ -1,5 +1,5 @@
 /**
- * SCENE 1 — FLAT PLANE, RAISED OBSERVER  (PLAN.md P6.1 "plateau")
+ * SCENE 1 — FLAT PLANE, RAISED OBSERVER  (archive/v2-docs-20260929/PLAN.md P6.1 "plateau")
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Terrain: elevationM = 0 everywhere. Nothing else. The observer's eye sits
@@ -65,7 +65,7 @@
  *
  * Two constructions that share no algebra agree to 1.8e-6°. That is the
  * cross-check: neither number was produced by running pipeline code, and the
- * residual is 5 500× smaller than PLAN.md's 0.01° tolerance.
+ * residual is 5 500× smaller than archive/v2-docs-20260929/PLAN.md's 0.01° tolerance.
  *
  * ── Horizon distance ────────────────────────────────────────────────────────
  *     small-angle:  s* = √(2 R_eff h)  = 38 270.09 m

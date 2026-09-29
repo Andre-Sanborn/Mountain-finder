@@ -1,6 +1,6 @@
 /**
  * `npm run record:fixtures` — the ONLY code permitted to hit live APIs
- * (CLAUDE.md rule 2, PLAN.md P2.4).
+ * (AGENTS.md "Tests are offline", archive/v2-docs-20260929/PLAN.md P2.4).
  *
  * Record a site:
  *   npm run record:fixtures -- --site zermatt --lat 45.9833 --lon 7.7847 \

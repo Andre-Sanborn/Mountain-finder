@@ -1,5 +1,5 @@
 /**
- * The transport seam (PLAN.md P2.1).
+ * The transport seam (archive/v2-docs-20260929/PLAN.md P2.1).
  *
  * Providers never call `fetch` directly. They describe a request and hand it to
  * a `Transport`. In production that is `FetchTransport`; in every test it is

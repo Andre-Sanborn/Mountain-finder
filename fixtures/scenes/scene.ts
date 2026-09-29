@@ -87,7 +87,7 @@ export interface SyntheticScene {
   readonly expectedPeakVerdicts: readonly ExpectedPeakVerdict[];
   /**
    * Angular tolerance the pipeline is allowed against `expectedSkyline`.
-   * Set by PLAN.md P1.2 (0.01°) unless a scene documents a reason to differ.
+   * Set by archive/v2-docs-20260929/PLAN.md P1.2 (0.01°) unless a scene documents a reason to differ.
    */
   readonly toleranceDeg: number;
   /**

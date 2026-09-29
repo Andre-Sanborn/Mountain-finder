@@ -1,5 +1,5 @@
 /**
- * A backdrop for the demo image — and an honest one (TODO.md Q3).
+ * A backdrop for the demo image — and an honest one (archive/v2-docs-20260929/TODO.md Q3).
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * WHY THIS EXISTS AND WHAT IT IS ALLOWED TO CLAIM

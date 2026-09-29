@@ -1,5 +1,5 @@
 /**
- * Typed provider failures (PLAN.md P2.1).
+ * Typed provider failures (archive/v2-docs-20260929/PLAN.md P2.1).
  *
  * Every failure that crosses the provider boundary is a `ProviderError` with a
  * discriminating `code`, so callers can branch on the failure class instead of

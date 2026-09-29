@@ -27,7 +27,7 @@
  * ── THE ONE THING THAT CAN DRIFT ───────────────────────────────────────────
  * `peakDataReadByThisBuild` states which of the two summit datasets the
  * app actually reads. It is a claim about `main.tsx`, and switching that file
- * to the HTTP regions (TODO.md Q8) means changing this constant in the same
+ * to the HTTP regions (archive/v2-docs-20260929/TODO.md Q8) means changing this constant in the same
  * commit. It is a constant rather than a derivation because the alternative —
  * the footer quietly claiming whichever dataset is bigger — would be a guess.
  * Everything else here follows the data.
@@ -180,7 +180,7 @@ const READS = peakDataReadByThisBuild();
  * Both summit datasets appear, and each says plainly whether the app reads it.
  * The deployed-but-unread regions are credited because the deployment serves
  * them (`dist/peaks/`, and `dist/ATTRIBUTION.txt` already names them): the
- * moment TODO.md Q8 flips `main.tsx`, the notice is already on the page and
+ * moment archive/v2-docs-20260929/TODO.md Q8 flips `main.tsx`, the notice is already on the page and
  * only the "does the app read it" wording changes.
  */
 export const APP_DATA_USES: readonly DataUse[] = [

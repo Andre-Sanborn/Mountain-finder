@@ -1,5 +1,5 @@
 /**
- * Peaks provider — Overpass API (PLAN.md P2.3).
+ * Peaks provider — Overpass API (archive/v2-docs-20260929/PLAN.md P2.3).
  *
  * https://overpass-api.de/api/interpreter  (POST, form field `data=<query>`)
  *

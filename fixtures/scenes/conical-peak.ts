@@ -1,5 +1,5 @@
 /**
- * SCENE 3 — CONICAL PEAK  (PLAN.md P6.1 "cone", P1.2's named analytic test)
+ * SCENE 3 — CONICAL PEAK  (archive/v2-docs-20260929/PLAN.md P6.1 "cone", P1.2's named analytic test)
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * MISSION.md: "A cone-shaped mathematical mountain has an exactly computable
@@ -43,7 +43,7 @@
  *       = 8.481293°
  *
  * The exact sphere model (atan2 form, no small-angle step anywhere) gives
- * 8.479576°. The two disagree by 0.0017°, six times inside PLAN.md's 0.01°
+ * 8.479576°. The two disagree by 0.0017°, six times inside archive/v2-docs-20260929/PLAN.md's 0.01°
  * tolerance — so this fixture does not force src/core into either convention.
  *
  * ───────────────────────────────────────────────────────────────────────────

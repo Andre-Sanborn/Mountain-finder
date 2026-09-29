@@ -1,6 +1,6 @@
 /**
  * Elevation from LOCAL SRTM tiles — the offline replacement for the HTTP
- * elevation provider (PLAN.md P2.2 said OpenTopoData; this is the same seam).
+ * elevation provider (archive/v2-docs-20260929/PLAN.md P2.2 said OpenTopoData; this is the same seam).
  *
  * WHY LOCAL IS THE DEFAULT NOW.
  *   Mountain photographs are taken where there is no signal, so the product has

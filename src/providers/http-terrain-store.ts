@@ -1,5 +1,5 @@
 /**
- * Terrain over HTTP — the browser's `TileStore` (TODO.md Q1).
+ * Terrain over HTTP — the browser's `TileStore` (archive/v2-docs-20260929/TODO.md Q1).
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * HOW THE APP GETS TERRAIN, AND WHY THIS WAY

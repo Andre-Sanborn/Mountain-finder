@@ -1,5 +1,5 @@
 /**
- * SCENE 2 — TWIN RIDGES  (PLAN.md P6.1 "two ridges", P1.2 / P1.5 occlusion)
+ * SCENE 2 — TWIN RIDGES  (archive/v2-docs-20260929/PLAN.md P6.1 "two ridges", P1.2 / P1.5 occlusion)
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * The single most important thing this project has to get right is that a
@@ -104,7 +104,7 @@
  *     ⇒ THE NEAR RIDGE FORMS THE SKYLINE. A peak on the far crest is HIDDEN,
  *       even though that crest stands 1 100 m HIGHER than the ridge hiding it.
  *
- * Both margins (0.79° and 0.34°) are 30–80× PLAN.md's 0.01° tolerance, so the
+ * Both margins (0.79° and 0.34°) are 30–80× archive/v2-docs-20260929/PLAN.md's 0.01° tolerance, so the
  * verdicts cannot flip on a modelling detail — only on a genuine mistake.
  *
  * The exact sphere model (`apparentAltitudeDeg`) gives 4.553926 / 5.347500 /
@@ -117,7 +117,7 @@
  * This fixture originally refused to state a verdict for the near crest in
  * variant A, and said why: the near crest sits BELOW the skyline (4.554° <
  * 5.349°) and yet is in plain sight, because it stands in FRONT of the far
- * ridge and nothing closer blocks it. PLAN.md P1.5's rule as first written —
+ * ridge and nothing closer blocks it. archive/v2-docs-20260929/PLAN.md P1.5's rule as first written —
  * "visible iff the peak's angle clears the skyline at its bearing" — called it
  * hidden, which is wrong in the world, so ground truth withheld judgement
  * rather than bless the simplification.

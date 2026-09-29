@@ -1,7 +1,7 @@
 # Recorded API responses
 
 Every offline test replays from this directory through `FixtureTransport`
-(CLAUDE.md rule 2). One file = one request/response exchange:
+(AGENTS.md, "Tests are offline"). One file = one request/response exchange:
 
 ```jsonc
 {

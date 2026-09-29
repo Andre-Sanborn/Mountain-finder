@@ -1,5 +1,5 @@
 /**
- * The tiled peak store (PLAN.md P9.5): "peaks within a radius of this point"
+ * The tiled peak store (archive/v2-docs-20260929/PLAN.md P9.5): "peaks within a radius of this point"
  * answered by loading only the 1° cells that radius touches.
  *
  * HOW THE EXPECTATIONS WERE OBTAINED. The bounding-box numbers are computed

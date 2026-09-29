@@ -43,7 +43,7 @@ const HEIGHT_PX = 675;
 const INJECTED_HEADING_DEG = 8.4;
 const INJECTED_PITCH_DEG = -1.75;
 
-/** The accuracy PLAN.md Phase 7 holds this to. */
+/** The accuracy archive/v2-docs-20260929/PLAN.md Phase 7 holds this to. */
 const TOLERANCE_DEG = 0.5;
 
 interface BrowserRun {

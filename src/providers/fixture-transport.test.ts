@@ -1,5 +1,5 @@
 /**
- * Offline replay (PLAN.md P2.1). Fixtures are matched by canonical key, and a
+ * Offline replay (archive/v2-docs-20260929/PLAN.md P2.1). Fixtures are matched by canonical key, and a
  * request nobody recorded must fail loudly rather than resolve to nothing.
  */
 

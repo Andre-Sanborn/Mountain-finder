@@ -10,7 +10,7 @@ import type { OverlayOptions, OverlayScene } from '../../src/render/types';
 /**
  * P4.2 — PNG compositor.
  *
- * Self-check from PLAN.md: render a fixture scene, export it, assert the PNG's
+ * Self-check from archive/v2-docs-20260929/PLAN.md: render a fixture scene, export it, assert the PNG's
  * dimensions and that it is non-empty, and save the image as a reviewable
  * artifact under `out/`.
  *

@@ -1,5 +1,5 @@
 /**
- * The terrain index the BROWSER reads (TODO.md Q1).
+ * The terrain index the BROWSER reads (archive/v2-docs-20260929/TODO.md Q1).
  *
  * Every expectation here is derived by hand from the SRTM format and from the
  * committed sidecar `fixtures/tiles/cases/gornergrat-window.json`, never from

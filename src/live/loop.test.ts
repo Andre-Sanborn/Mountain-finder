@@ -1,5 +1,5 @@
 /**
- * P8.3's bar, from PLAN.md: "N poses through the projection produce the
+ * P8.3's bar, from archive/v2-docs-20260929/PLAN.md: "N poses through the projection produce the
  * labels the still pipeline produces for the same poses." Asserted as a
  * PROPERTY over the ring-ridge scene: the live loop re-projects a stored
  * scene, the still pipeline is re-run at each pose, and the two layouts must

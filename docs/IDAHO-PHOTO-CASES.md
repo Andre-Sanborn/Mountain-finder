@@ -186,7 +186,7 @@ prints them and gates only on the reason existing. This is the treatment
 records a conflict *between* sources and this records the absence of any.
 
 Deriving a must-see list from the geometry would make the pipeline its own
-ground truth, which CLAUDE.md rule 4 forbids. Two independent reasons apply to
+ground truth, which AGENTS.md, "Independent expectations", forbids. Two independent reasons apply to
 the most tempting candidate, Castle Peak: no bearing, **and** it stands 11.1 km
 out, outside a 7.5 km window that can therefore produce a false *visible* and
 never a false *hidden*.

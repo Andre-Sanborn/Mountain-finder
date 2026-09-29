@@ -1,5 +1,5 @@
 /**
- * ACCEPTANCE — PIPELINE HOOKS (PLAN.md P6.3)
+ * ACCEPTANCE — PIPELINE HOOKS (archive/v2-docs-20260929/PLAN.md P6.3)
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * WHAT THIS FILE IS NOW
@@ -403,7 +403,7 @@ describe('P6.3 hooks — synthetic scenes through the real pipeline', () => {
     }
 
   /**
-   * The last hook, switched on now that `src/render` exists (TODO.md Q1).
+   * The last hook, switched on now that `src/render` exists (archive/v2-docs-20260929/TODO.md Q1).
    *
    * The expectation is derived here, from the rectilinear projection written
    * out by hand, and fed with the SCENE FIXTURE's closed-form peak altitude —

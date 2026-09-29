@@ -1,5 +1,5 @@
 /**
- * PLAN.md Phase 7 self-check:
+ * archive/v2-docs-20260929/PLAN.md Phase 7 self-check:
  *
  *   "synthetic rendered silhouettes with known injected offset → recovered
  *    within 0.5°"

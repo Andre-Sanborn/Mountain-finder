@@ -1,5 +1,5 @@
 /**
- * The browser's terrain store (TODO.md Q1), driven against a fake fetch.
+ * The browser's terrain store (archive/v2-docs-20260929/TODO.md Q1), driven against a fake fetch.
  *
  * The grid under test is authored here, so every expectation is arithmetic on
  * numbers written in this file:

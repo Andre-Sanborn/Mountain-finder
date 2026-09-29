@@ -79,7 +79,7 @@
  *   7.5 km window and thirty-two within 25 km; several of them are within a few
  *   degrees of one another from here. Picking the ones the pipeline would
  *   compute and calling them ground truth is precisely the circularity
- *   CLAUDE.md rule 4 forbids.
+ *   AGENTS.md "Independent expectations" forbids.
  *
  * ───────────────────────────────────────────────────────────────────────────
  * ONE MEASURED FACT ABOUT THE COMMITTED WINDOW
@@ -232,7 +232,7 @@ export const railroadRidgeCase: PhotoCase = {
       note:
         'REPORTED, NOT ASSERTED, and it must never become the case\'s bearing: ' +
         'a heading this repository computed cannot also be the ground truth ' +
-        'this repository is graded against (CLAUDE.md rule 4). Terrain and ' +
+        'this repository is graded against (AGENTS.md "Independent expectations"). Terrain and ' +
         'magnetometer are wholly unrelated instruments and they land 0.804 deg ' +
         'apart. The alignment returned low-confidence, not a lock: NCC 0.578, ' +
         'margin 0.031 against a 0.03 floor, residual 1.111 deg against a 1.5 ' +

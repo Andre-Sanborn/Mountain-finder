@@ -268,7 +268,7 @@ export const sunsetMountainLookoutCase: PhotoCase = {
     note:
       'No summit in this case is asserted visible or hidden, in either ' +
       'direction. Deriving such a list from the pipeline\'s own geometry would ' +
-      'make the pipeline its own ground truth (CLAUDE.md rule 4). This mirrors ' +
+      'make the pipeline its own ground truth (AGENTS.md "Independent expectations"). This mirrors ' +
       'the `disputed` category in case-types.ts, which the suite reports and ' +
       'never fails on — the difference being that `disputed` records a ' +
       'conflict between sources, while this records the absence of any.',

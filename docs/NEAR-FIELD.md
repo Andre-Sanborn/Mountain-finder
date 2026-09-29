@@ -124,7 +124,7 @@ Peak's 0.065° against a several-metre disagreement between adjacent cells is ex
 manages.
 
 That is a change to the visibility contract (`PeakVisibility` gains a state) and to every gate
-built on it, so it is filed rather than rushed: TODO.md **P1.6**.
+built on it, so it is filed rather than rushed as **P1.6** in the [archived TODO.md](../archive/v2-docs-20260929/TODO.md); it shipped 2026-08-17 (decision D10).
 
 ## The fix, built (P1.6, 2026-08-17)
 

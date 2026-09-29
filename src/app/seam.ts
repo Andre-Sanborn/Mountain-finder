@@ -11,7 +11,7 @@
  * a test with no pipeline at all, and there is no hidden coupling anywhere
  * behind this line.
  *
- * ## What is on the other side of it (TODO.md Q1, done)
+ * ## What is on the other side of it (archive/v2-docs-20260929/TODO.md Q1, done)
  *
  *   OverlayBuilder   src/app/overlay-builder.ts
  *                      observer + pose + frame

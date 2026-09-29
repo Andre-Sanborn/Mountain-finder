@@ -1,5 +1,5 @@
 /**
- * `FixtureTransport` — offline replay (PLAN.md P2.1, CLAUDE.md rule 2).
+ * `FixtureTransport` — offline replay (archive/v2-docs-20260929/PLAN.md P2.1, AGENTS.md "Tests are offline").
  *
  * Holds recorded exchanges in memory, addressed by the canonical key derived
  * from the request. It is pure (no filesystem, no network) so it works in the

@@ -1,5 +1,5 @@
 /**
- * Peaks over HTTP — the browser's `TiledPeakStore` loader (TODO.md Q8).
+ * Peaks over HTTP — the browser's `TiledPeakStore` loader (archive/v2-docs-20260929/TODO.md Q8).
  *
  * The same shape as `HttpTerrainStore`, for the same reasons (decision D7):
  * the only requests are to the app's OWN origin for static files staged by

@@ -288,7 +288,7 @@ test('a photo with no terrain says which tile is missing instead of drawing noth
 });
 
 /**
- * P5.1 + P5.2, end to end on the REAL pipeline (TODO.md Q1).
+ * P5.1 + P5.2, end to end on the REAL pipeline (archive/v2-docs-20260929/TODO.md Q1).
  *
  * This is the test the `?seam-probe=1` case was a stand-in for, and it is
  * strictly stronger: no probe, no stub, no fabricated overlay. The browser

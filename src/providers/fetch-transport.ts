@@ -1,5 +1,5 @@
 /**
- * `FetchTransport` — the only production path to the network (PLAN.md P2.1).
+ * `FetchTransport` — the only production path to the network (archive/v2-docs-20260929/PLAN.md P2.1).
  *
  * Retries up to 3 attempts with exponential backoff; rate limiting (HTTP 429)
  * backs off on a longer schedule than a generic failure and honours a numeric

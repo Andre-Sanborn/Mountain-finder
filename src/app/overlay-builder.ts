@@ -1,5 +1,5 @@
 /**
- * THE WIRING — app → pipeline → renderer (TODO.md Q1).
+ * THE WIRING — app → pipeline → renderer (archive/v2-docs-20260929/TODO.md Q1).
  *
  * `seam.ts` states what the app will call and what it expects back. This module
  * is the implementation of that contract, and it is the ONLY place where the

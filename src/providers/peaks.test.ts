@@ -1,5 +1,5 @@
 /**
- * Peaks provider (PLAN.md P2.3 self-check) — entirely offline.
+ * Peaks provider (archive/v2-docs-20260929/PLAN.md P2.3 self-check) — entirely offline.
  *
  * The expected peak list was written by reading
  * `fixtures/api/zermatt/overpass-peaks.json` element by element and applying

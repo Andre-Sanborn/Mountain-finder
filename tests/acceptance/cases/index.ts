@@ -1,5 +1,5 @@
 /**
- * The real-world ground-truth cases (PLAN.md P6.2).
+ * The real-world ground-truth cases (archive/v2-docs-20260929/PLAN.md P6.2).
  *
  * Four viewpoints, chosen so that between them they stress different parts of
  * the pipeline rather than four times the same part:

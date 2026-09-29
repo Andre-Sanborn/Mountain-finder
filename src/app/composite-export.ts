@@ -1,5 +1,5 @@
 /**
- * The `PngExporter` half of the seam (P4.2 / TODO.md Q1).
+ * The `PngExporter` half of the seam (P4.2 / archive/v2-docs-20260929/TODO.md Q1).
  *
  * All the work is in `src/render/composite.ts`, which draws the photograph and
  * then the overlay onto a canvas in the browser's own rasteriser. This file is

@@ -1,5 +1,5 @@
 /**
- * Public surface of the computer-vision skyline aligner (PLAN.md Phase 7).
+ * Public surface of the computer-vision skyline aligner (archive/v2-docs-20260929/PLAN.md Phase 7).
  *
  * Everything exported here is a deterministic function of its arguments —
  * pixels in, numbers out. No network, no DOM, no filesystem, no clock, no

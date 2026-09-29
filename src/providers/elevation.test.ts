@@ -1,5 +1,5 @@
 /**
- * Elevation provider (PLAN.md P2.2 self-check) — entirely offline.
+ * Elevation provider (archive/v2-docs-20260929/PLAN.md P2.2 self-check) — entirely offline.
  *
  * Expectations are read off the fixture files and the OpenTopoData docs, not
  * produced by running the parser:

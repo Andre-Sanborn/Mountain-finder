@@ -1,5 +1,5 @@
 /**
- * The demo's stand-in for a photograph (TODO.md Q3).
+ * The demo's stand-in for a photograph (archive/v2-docs-20260929/TODO.md Q3).
  *
  * Expectations are structural and hand-written: a 400 × 300 frame with one
  * two-point ridge at y = 120 must close its silhouette down the frame, i.e.

@@ -1,5 +1,5 @@
 /**
- * Browser entry point — and the wiring point TODO.md Q1 called for.
+ * Browser entry point — and the wiring point archive/v2-docs-20260929/TODO.md Q1 called for.
  *
  * The app itself imports nothing from the pipeline or the renderer; it takes
  * both as props typed in `seam.ts`. This file is where the real ones are built

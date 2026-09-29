@@ -133,7 +133,7 @@ recovers heading well, and the extractor's residual bias lands almost entirely i
 
 1. **The heading in the case file stays EXIF's**, not the aligner's and not the apex reading —
    a case may only assert what committed bytes carry, and the aligner's output can never become
-   the ground truth it is graded against (CLAUDE.md rule 4). The apex measurement is recorded as
+   the ground truth it is graded against (AGENTS.md, "Independent expectations"). The apex measurement is recorded as
    an independent cross-check.
 2. **Pitch is now a first-class unknown.** Nothing in EXIF supplies it, `--pitch` defaults to
    zero, and zero was the largest single error in the first render — 3.5° of it.

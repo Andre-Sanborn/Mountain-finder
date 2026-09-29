@@ -1,9 +1,9 @@
 /**
- * Schema for the real-world ground-truth acceptance cases (PLAN.md P6.2).
+ * Schema for the real-world ground-truth acceptance cases (archive/v2-docs-20260929/PLAN.md P6.2).
  *
  * These files live under tests/acceptance/ rather than fixtures/ because they
  * are pure text — coordinates, citations and expected peak names. No binaries
- * are committed: PLAN.md and the task brief both forbid dragging large photos
+ * are committed: archive/v2-docs-20260929/PLAN.md and the task brief both forbid dragging large photos
  * into the repository, so where an openly licensed photograph exists we record
  * its URL and licence and leave the bytes on the internet.
  *

@@ -1,5 +1,5 @@
 /**
- * The on-disk half of the fixture loop (PLAN.md P2.4).
+ * The on-disk half of the fixture loop (archive/v2-docs-20260929/PLAN.md P2.4).
  *
  * The recorder writes exchanges with `writeFixture`; every test reads them back
  * with `loadFixtureTransport`. If that round-trip does not preserve the

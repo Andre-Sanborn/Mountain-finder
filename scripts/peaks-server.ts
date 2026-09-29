@@ -1,6 +1,6 @@
 /**
  * Serve `/peaks/` during dev and preview — the peak side of
- * `scripts/terrain-server.ts` (TODO.md Q8).
+ * `scripts/terrain-server.ts` (archive/v2-docs-20260929/TODO.md Q8).
  *
  * A production deployment gets `/peaks/<region>/…` staged by
  * `npm run package:deploy` (see docs/DEPLOY.md and `test:deploy`, which proves

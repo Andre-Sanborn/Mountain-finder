@@ -187,4 +187,4 @@ label them auto-detected on `'aligned'`; offer them on `'low-confidence'`; leave
 the sliders exactly as they are today and show the reason on `'failed'`.
 
 Before switching it on, the thing to get is real photographs with known
-viewpoints — which is the same gap PLAN.md's P6.2 already names.
+viewpoints — which is the same gap the archived [PLAN.md](../../archive/v2-docs-20260929/PLAN.md) P6.2 already names.

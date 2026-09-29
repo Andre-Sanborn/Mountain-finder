@@ -1,5 +1,5 @@
 /**
- * Serving terrain to the browser (TODO.md Q1) — a dev/preview-server plugin.
+ * Serving terrain to the browser (archive/v2-docs-20260929/TODO.md Q1) — a dev/preview-server plugin.
  *
  * The app reads elevation from static files on its own origin: an index at
  * `/terrain/manifest.json` and the raw sample files it names (see

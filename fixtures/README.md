@@ -16,10 +16,10 @@ If that rule is ever broken, the tests still pass and stop meaning anything.
 
 | Path | Owner | Contents |
 |---|---|---|
-| `scenes/` | group F | Synthetic analytic terrains with closed-form expected skylines (PLAN.md P6.1) |
+| `scenes/` | group F | Synthetic analytic terrains with closed-form expected skylines ([archive PLAN.md](../archive/v2-docs-20260929/PLAN.md) P6.1) |
 | `api/` | group B | Recorded OpenTopoData / Overpass responses, replayed by `FixtureTransport` |
 | `photos/` | groups C / F | Small EXIF fixture images. Large binaries are **not** committed |
-| `../tests/acceptance/cases/` | group F | Real-world ground-truth viewpoints (PLAN.md P6.2) — text only |
+| `../tests/acceptance/cases/` | group F | Real-world ground-truth viewpoints ([archive PLAN.md](../archive/v2-docs-20260929/PLAN.md) P6.2) — text only |
 
 The real-world cases live under `tests/acceptance/cases/` rather than here
 because they are consumed exclusively by the acceptance suite and are pure
@@ -50,7 +50,7 @@ Every scene states this explicitly in its own header, and the constant is
 
 ```
 R      = 6 371 008.8 m      IUGG mean radius R₁
-k      = 0.13               refraction coefficient, fixed by PLAN.md P1.2
+k      = 0.13               refraction coefficient, fixed by the archived PLAN.md P1.2
 R_eff  = R / (1 − k)  =  6 371 008.8 / 0.87  =  7 322 998.6207 m
 ```
 
@@ -66,7 +66,7 @@ algebra:
 * **curvature drop** — `atan((E − H_o − d²/2R_eff)/d)`, the surveying form.
 
 Across all four scenes they agree to better than **0.002°**, five times inside
-PLAN.md's 0.01° tolerance. So no expectation here is an artefact of one
+the archived PLAN.md's 0.01° tolerance. So no expectation here is an artefact of one
 modelling choice, and `src/core` is free to pick either convention.
 
 Separately, the acceptance suite checks the module's closed forms against
@@ -77,7 +77,7 @@ generated terrain. Three routes, one answer.
 ### A limitation this directory refuses to paper over
 
 In twin-ridges variant A the near crest sits *below* the skyline but is still
-physically in plain sight — it is in front of the far ridge. PLAN.md P1.5's
+physically in plain sight — it is in front of the far ridge. The archived PLAN.md P1.5's
 simplified rule ("visible iff it clears the skyline at its bearing") would call
 it hidden. That case is therefore recorded as an acknowledged limitation and
 **no verdict is asserted for it**. Ground truth must not quietly bless a known

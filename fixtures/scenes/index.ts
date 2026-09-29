@@ -1,5 +1,5 @@
 /**
- * Registry of the synthetic analytic scenes (PLAN.md P6.1).
+ * Registry of the synthetic analytic scenes (archive/v2-docs-20260929/PLAN.md P6.1).
  *
  * Every scene here has a closed-form answer derived by hand in its own module.
  * Nothing in this directory imports src/core except the frozen type contract,

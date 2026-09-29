@@ -1,5 +1,5 @@
 /**
- * Elevation provider — OpenTopoData SRTM 90 m (PLAN.md P2.2).
+ * Elevation provider — OpenTopoData SRTM 90 m (archive/v2-docs-20260929/PLAN.md P2.2).
  *
  * https://api.opentopodata.org/v1/srtm90m?locations=lat,lng|lat,lng
  *

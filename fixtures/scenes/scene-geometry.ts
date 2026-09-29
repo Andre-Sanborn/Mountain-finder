@@ -23,7 +23,7 @@
  * A sphere of radius R, plus standard atmospheric refraction folded in by the
  * effective-radius substitution. Light bends toward the Earth by a fraction k
  * of the Earth's own curvature (k ≈ 0.13 for standard air near the surface, the
- * value PLAN.md P1.2 fixes). Replacing curved rays over a sphere of radius R by
+ * value archive/v2-docs-20260929/PLAN.md P1.2 fixes). Replacing curved rays over a sphere of radius R by
  * straight rays over a sphere of radius
  *
  *     R_eff = R / (1 − k)
@@ -41,7 +41,7 @@
  *
  * A pipeline that picks R = 6 371 000 m instead differs by 1.4 ppm, which moves
  * every angle below by < 1e-6°. That is 4 orders of magnitude inside the 0.01°
- * tolerance PLAN.md asks for, so the choice of mean radius cannot decide a test.
+ * tolerance archive/v2-docs-20260929/PLAN.md asks for, so the choice of mean radius cannot decide a test.
  */
 
 import type { LatLng } from '../../src/core/types';
@@ -49,7 +49,7 @@ import type { LatLng } from '../../src/core/types';
 /** IUGG mean Earth radius R₁ = (2a + b)/3 for WGS-84. */
 export const EARTH_MEAN_RADIUS_M = 6_371_008.8;
 
-/** Standard refraction coefficient. PLAN.md P1.2 fixes k = 0.13. */
+/** Standard refraction coefficient. archive/v2-docs-20260929/PLAN.md P1.2 fixes k = 0.13. */
 export const REFRACTION_COEFFICIENT_K = 0.13;
 
 /** R_eff = R / (1 − k) = 7 322 998.6207 m. See header derivation. */
@@ -207,7 +207,7 @@ export function apparentAltitudeDeg(
  * Kept as a SECOND, INDEPENDENT derivation. The two functions come from
  * different starting points, so agreement between them is a genuine check
  * rather than a tautology. Across every scene in this directory they agree to
- * better than 0.002°, which is 5× inside PLAN.md's 0.01° tolerance — i.e.
+ * better than 0.002°, which is 5× inside archive/v2-docs-20260929/PLAN.md's 0.01° tolerance — i.e.
  * whichever form src/core chooses, these fixtures do not care.
  */
 export function apparentAltitudeDegPlaneDrop(

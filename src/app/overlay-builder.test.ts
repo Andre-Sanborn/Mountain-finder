@@ -1,5 +1,5 @@
 /**
- * The wiring between the app, the pipeline and the renderer (TODO.md Q1).
+ * The wiring between the app, the pipeline and the renderer (archive/v2-docs-20260929/TODO.md Q1).
  *
  * Everything here is offline and analytic: terrain is a function (a flat plane
  * at 0 m), peaks are a fixed list, and the expectations are derived from the

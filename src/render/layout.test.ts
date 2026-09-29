@@ -148,7 +148,7 @@ describe('layoutOverlay — flag geometry', () => {
     expect(marker.summitPx.xPx).toBeCloseTo(expected.xPx, 9);
     expect(marker.summitPx.yPx).toBeCloseTo(expected.yPx, 9);
 
-    // The ±0.5 % gate from PLAN.md, stated explicitly.
+    // The ±0.5 % gate from archive/v2-docs-20260929/PLAN.md, stated explicitly.
     expect(Math.abs(marker.summitPx.xPx - 1171.28129)).toBeLessThan(0.005 * 1171.28129);
     expect(Math.abs(marker.summitPx.yPx - 524.81995)).toBeLessThan(0.005 * 524.81995);
   });

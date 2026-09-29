@@ -38,7 +38,7 @@
  * It runs no pipeline and asserts no visibility. Neither photograph has a
  * confirmed list of summits in frame, and a must-see list derived from the same
  * geometry the pipeline uses would be the pipeline grading its own homework
- * (CLAUDE.md rule 4). The recorded summits are printed at the end of the run,
+ * (AGENTS.md "Independent expectations"). The recorded summits are printed at the end of the run,
  * with the reason each is unresolved, and asserted in neither direction — the
  * treatment `disputed` gets in ground-truth-cases.test.ts.
  *
@@ -151,7 +151,7 @@ describe('the supplied photo cases as a set', () => {
 
   it('leaves the four ground-truth cases exactly as they were', () => {
     // The photo cases must not be able to satisfy — or dilute — any gate the
-    // ground-truth set carries. PLAN.md P6.2 asks for 3 to 5 of those; adding
+    // ground-truth set carries. archive/v2-docs-20260929/PLAN.md P6.2 asks for 3 to 5 of those; adding
     // photographs does not change that count.
     expect(groundTruthCases.length).toBe(4);
   });
@@ -192,7 +192,7 @@ describe('the supplied photo cases as a set', () => {
   });
 
   it('never lets a bearing this repository COMPUTED become a case\'s ground truth', () => {
-    // CLAUDE.md rule 4, made executable. `corroborationDeg` is where an
+    // AGENTS.md "Independent expectations", made executable. `corroborationDeg` is where an
     // independently obtained heading is reported; the danger it carries is that
     // a later edit quietly promotes it into `bearingDeg`, at which point the
     // pipeline is grading its own homework and every gate built on this case

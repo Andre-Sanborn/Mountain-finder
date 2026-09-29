@@ -1,5 +1,5 @@
 /**
- * Public surface of the overlay renderer (PLAN.md P4.1).
+ * Public surface of the overlay renderer (archive/v2-docs-20260929/PLAN.md P4.1).
  *
  * Everything exported here is pure: a scene of plain data goes in, pixel
  * geometry or an SVG string comes out. No DOM, no canvas, no filesystem, no

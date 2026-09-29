@@ -1,7 +1,7 @@
 /**
  * The seam's small pure parts. The seam's *behaviour* is proved in the browser
  * by `tests/e2e/app.spec.ts` ("a photo with terrain gets a real overlay…"),
- * which drives the REAL pipeline, renderer and compositor — as of TODO.md Q1
+ * which drives the REAL pipeline, renderer and compositor — as of archive/v2-docs-20260929/TODO.md Q1
  * there are no probe implementations left to drive.
  */
 

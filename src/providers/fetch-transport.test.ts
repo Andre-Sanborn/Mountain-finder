@@ -1,5 +1,5 @@
 /**
- * FetchTransport retry / backoff / abort behaviour (PLAN.md P2.1 self-check).
+ * FetchTransport retry / backoff / abort behaviour (archive/v2-docs-20260929/PLAN.md P2.1 self-check).
  *
  * No test here waits for a real backoff: `sleep` is injected and records the
  * delays it was *asked* for, which is the thing worth asserting anyway.

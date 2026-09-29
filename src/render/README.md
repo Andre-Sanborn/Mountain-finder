@@ -1,6 +1,6 @@
 # `src/render` — overlay builder and PNG compositor
 
-Phase 4 of [PLAN.md](../../PLAN.md).
+Phase 4 of the archived [PLAN.md](../../archive/v2-docs-20260929/PLAN.md).
 
 ## P4.1 — pure overlay builder
 

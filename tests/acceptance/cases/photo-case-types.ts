@@ -25,7 +25,7 @@
  *      which one a case is remains a change to this file to make.
  *   2. `mustBeVisible` with at least one peak. Nobody has established which
  *      summits are in either frame. Deriving a must-see list from the geometry
- *      would make the pipeline its own ground truth — CLAUDE.md rule 4 — and a
+ *      would make the pipeline its own ground truth — AGENTS.md "Independent expectations" — and a
  *      case that asserts what the code computes tests nothing.
  *
  * So a photo case asserts only what is independently checkable today:
@@ -146,7 +146,7 @@ export interface UnmeasuredView {
  * the suite. It may not be typed in from a map, recalled by the photographer,
  * or — above all — produced by this repository's own aligner: a case that
  * carried a computed heading would be the pipeline grading its own homework,
- * which CLAUDE.md rule 4 forbids.
+ * which AGENTS.md "Independent expectations" forbids.
  *
  * `corroborationDeg` exists to keep that separation legible. It records what
  * an independent method got, purely as a reported number; nothing derives from

@@ -1,5 +1,5 @@
 /**
- * ACCEPTANCE — REAL-WORLD GROUND-TRUTH CASES (PLAN.md P6.2)
+ * ACCEPTANCE — REAL-WORLD GROUND-TRUTH CASES (archive/v2-docs-20260929/PLAN.md P6.2)
  *
  * WHAT THIS FILE GENUINELY PROVES, TODAY, WITHOUT ANY PIPELINE:
  *
@@ -54,7 +54,7 @@ function geometryFor(
 }
 
 describe('the ground-truth case set as a whole', () => {
-  it('has between 3 and 5 cases, as PLAN.md P6.2 requires', () => {
+  it('has between 3 and 5 cases, as archive/v2-docs-20260929/PLAN.md P6.2 requires', () => {
     expect(groundTruthCases.length).toBeGreaterThanOrEqual(3);
     expect(groundTruthCases.length).toBeLessThanOrEqual(5);
   });

@@ -350,7 +350,7 @@ describe('exportDisabledReason — the button tells the truth', () => {
   });
 
   it('states the missing piece without blaming an unfinished build', () => {
-    // Both implementations are wired in as of TODO.md Q1, so these two reasons
+    // Both implementations are wired in as of archive/v2-docs-20260929/TODO.md Q1, so these two reasons
     // are now about THIS photo — there is no overlay for it yet — rather than
     // about the app being half-built. The old copy pointed at a TODO item that
     // no longer exists, which would read as an excuse for a real failure.

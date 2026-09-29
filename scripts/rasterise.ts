@@ -1,7 +1,7 @@
 /**
- * Turning an overlay into a PNG from Node — for `npm run demo` (TODO.md Q3).
+ * Turning an overlay into a PNG from Node — for `npm run demo` (archive/v2-docs-20260929/TODO.md Q3).
  *
- * PLAN.md P4.2 puts compositing in a browser on purpose: the only alternative
+ * archive/v2-docs-20260929/PLAN.md P4.2 puts compositing in a browser on purpose: the only alternative
  * is `node-canvas`, a native build of Cairo and Pango that would be a SECOND
  * text-and-SVG engine, disagreeing in small ways with the one the app actually
  * renders in. Chromium is already installed here and already driven by

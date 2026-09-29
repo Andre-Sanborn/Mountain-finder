@@ -1,5 +1,5 @@
 /**
- * The data contract for computer-vision skyline alignment (PLAN.md Phase 7).
+ * The data contract for computer-vision skyline alignment (archive/v2-docs-20260929/PLAN.md Phase 7).
  *
  * Naming follows `src/core/types.ts`, which is frozen: angles end in `Deg`,
  * heights in `M`, pixel quantities in `Px`. Two additions specific to this

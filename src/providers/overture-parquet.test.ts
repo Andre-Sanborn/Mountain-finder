@@ -1,6 +1,6 @@
 /**
  * Parquet range reading, spatial pruning and summit extraction — against REAL
- * Overture bytes, offline (PLAN.md P9.1–P9.4).
+ * Overture bytes, offline (archive/v2-docs-20260929/PLAN.md P9.1–P9.4).
  *
  * WHAT THIS TEST READS. `fixtures/parquet/overture-zermatt-rowgroup/` holds the
  * exact byte ranges one pruned read touches: the Parquet footer of part-00011

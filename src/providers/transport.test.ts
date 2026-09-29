@@ -1,5 +1,5 @@
 /**
- * Canonical request keying (PLAN.md P2.1).
+ * Canonical request keying (archive/v2-docs-20260929/PLAN.md P2.1).
  *
  * Expectations here are written from the rule stated in transport.ts — query
  * parameters sorted, form fields sorted, whitespace in form values collapsed —

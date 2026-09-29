@@ -1,5 +1,5 @@
 /**
- * Data providers (PLAN.md Phase 2).
+ * Data providers (archive/v2-docs-20260929/PLAN.md Phase 2).
  *
  * Everything the pipeline needs from the outside world. Elevation comes from
  * LOCAL SRTM tiles (`tile-elevation.js`); the HTTP clients behind the injectable

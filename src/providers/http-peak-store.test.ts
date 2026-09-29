@@ -1,5 +1,5 @@
 /**
- * The browser's peak loader (TODO.md Q8): region indexes compiled into the
+ * The browser's peak loader (archive/v2-docs-20260929/TODO.md Q8): region indexes compiled into the
  * bundle, summit cells fetched from the app's own origin on demand.
  *
  * Distances here reuse the figure derived in peak-tile-store.test.ts:

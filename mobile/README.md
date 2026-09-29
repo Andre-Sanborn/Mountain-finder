@@ -38,8 +38,8 @@ Chromium, the parquet reader) are irrelevant here.
 Any OS, Node 20+:
 
 ```sh
-git clone -b claude/topographic-peak-identifier-EV4ZN \
-  https://github.com/jane-smith-spec/Mountain-finder.git
+git clone -b claude/gifted-lamport-3tyh5g \
+  https://github.com/Andre-Sanborn/Mountain-finder.git
 cd Mountain-finder/mobile
 npm install
 npx expo start
