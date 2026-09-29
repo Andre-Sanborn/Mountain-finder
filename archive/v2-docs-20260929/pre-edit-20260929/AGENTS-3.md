@@ -214,43 +214,6 @@ All four specialists live in the repository's own `.claude/agents/`, and
 `~/.claude/agents/`; here the team is in the repository**, so it is versioned with
 the code and a fresh clone gets it.
 
-## Usage budget
-
-**Always leave 10 % of the current session limit and 10 % of the weekly limit unused.** This is
-the human's standing instruction, set 2026-09-29. The reserve is there so the human can still
-work with an agent when they need one, for instance during a field session.
-
-**What the session can see.** `get_session` (claude-code-remote) returns `rate_limit_info` and
-`usage`:
-
-- `rateLimitType` names the limit nearest to binding, such as `seven_day`; `status` reads
-  `allowed`, `allowed_warning`, or a refusal; `resetsAt` is when that limit resets, in Unix
-  seconds; `isUsingOverage` says whether usage beyond the plan is being charged.
-- `usage.cost_usd` is the session's usage priced at API rates. It is an estimate, not a bill.
-- It does **not** report a percentage used. So the 10 % reserve cannot be read directly.
-
-**The procedure.**
-
-1. Read `rate_limit_info` before launching any agent, any batch of agents, or any heavy job, and
-   at the start of every session.
-2. While `status` is `allowed`, work normally.
-3. While `status` is `allowed_warning`, treat the reserve as reached. Start no new agent and no
-   heavy job. Finish and commit what is already running, then stop and tell the human, with the
-   limit name and its reset time in Denver time. Single orchestrator turns that answer the
-   human, and the nightly review, still run.
-4. If `isUsingOverage` is ever `true`, stop all agent work and tell the human at once.
-5. The warning threshold is not published. Until the human reads the actual percentage off the
-   Claude usage page at a moment the warning shows, it is assumed to fire at or before 90 %.
-   Record that reading here when it is made.
-
-**Cost awareness.** Most usage is agents re-reading context. Brief agents narrowly, prefer one
-agent doing sequential passes over several agents re-reading the same files, and do small
-mechanical changes in the orchestrator.
-
-**Planned heavy spending.** Until 2026-10-22 the human has a free reset of the weekly limit.
-Heavy work (verifier sweeps, fixture generation from the home session, CV work) is scheduled to
-use about two weeks' allotment before that date, still keeping each window's 10 % reserve.
-
 ## Project context
 
 Start at [MISSION.md](MISSION.md). It carries what the system is, the prime
