@@ -1851,3 +1851,28 @@ the rebuild keys off. Export is disabled, and refused at the click, while the di
 stamp differs from the current request. Stamping was preferred to waiting, since waiting needs
 the same comparison.
 
+## The synthetic protocol aims at a 30° Sun
+
+The four steps that keep the Sun in the middle were synthesised aimed at the horizon, 30° to 35°
+from a 30° Sun, twice the 15° `estimatePitchBias` calls credible. `PROTOCOL_SUN_ALTITUDE_DEG` is
+30, inside the guides' 15° to 50°, and the attitudes derive from it. Portrait at γ = 0 has
+altitude β − 90; landscape at β = 180 has 90 − |γ|. The β = 0 landscape branch cannot reach a
+positive altitude inside the ±90° gamma a browser reports; the fixtures that used γ = ±120 now use
+the β = 180 branch. Each landscape hold sweeps one degree either side of the aim in gamma, so its
+median is the aim and the quarter turn between the two holds survives.
+
+Aiming a portrait phone at a Sun 30° up tips it past vertical, so its two reference hypotheses
+separate by 180° rather than agreeing. Tests that need the blind spot build a horizon-aimed
+portrait. `sun-capture` keeps its horizon attitude: it puts the Sun near an edge on purpose and no
+verdict reads its altitude.
+
+**`aimOffsetDeg` cannot come from the drawn Sun.** The app draws the Sun through the pose the
+sensors give, so its offset from the frame centre is the sensed tilt error reversed. With true
+axis altitude A = S + ε and sensed Ŝ = A + b, the drawn offset is −ε − b, and `estimatePitchBias`
+would compute (ε + b) − ε − b = 0 on every recording and call it credible.
+`HomeSessionRecorder.setAimOffsetDeg` exists and the schema round-trips it, but nothing calls it
+until the offset comes from the picture.
+
+The field session reads its minimum stored-frame width from `REGISTERED_STORED_FRAME.minWidthPx`,
+the grader's registration, so the two cannot diverge.
+

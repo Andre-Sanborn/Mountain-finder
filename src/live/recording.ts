@@ -3186,6 +3186,61 @@ function motionEventAt(
 }
 
 /**
+ * The Sun's altitude the synthetic protocol is aimed at, degrees.
+ *
+ * `sunIsUsable` accepts 5° to 60°, and the field and home guides ask for 15° to
+ * 50°. Thirty sits inside both, and it is far enough off the horizon that the
+ * attitudes below are the ones a person actually holds rather than a limiting
+ * case.
+ */
+export const PROTOCOL_SUN_ALTITUDE_DEG = 30;
+
+/**
+ * The portrait attitude whose rear camera looks at {@link PROTOCOL_SUN_ALTITUDE_DEG}.
+ *
+ * The camera's altitude is `asin(−cosβ·cosγ)`. At γ = 0 that is `asin(−cosβ)`,
+ * so an altitude `a` needs β = 90 + a: the phone is tipped BACK past vertical,
+ * which is what a person does to put the Sun in the middle of a portrait frame.
+ * Past vertical the top edge leans away from the camera's bearing rather than
+ * along it, so this pose separates the two reference hypotheses by 180° instead
+ * of being the blind spot an aim at the horizon would be.
+ */
+const AIM_PORTRAIT: SynthAttitude = { betaDeg: 90 + PROTOCOL_SUN_ALTITUDE_DEG, gammaDeg: 0 };
+
+/**
+ * The two landscape aims, top edge to the left and to the right.
+ *
+ * A landscape hold has its top edge horizontal, which is sinβ = 0, so β is 0 or
+ * 180. At β = 0 the camera's altitude is `asin(−cosγ)`, which reaches `a` only
+ * at γ = ±(90 + a) — outside the ±90° a browser reports. The branch that raises
+ * the camera is β = 180, where the altitude is `asin(cosγ)` and γ = ±(90 − a).
+ * The sign of γ picks the handedness, the same one each hold had when it was
+ * aimed at the horizon: the top edge lies to the RIGHT at γ = a − 90 and to the
+ * LEFT at γ = 90 − a.
+ */
+const AIM_LANDSCAPE_TOP_RIGHT: SynthAttitude = { betaDeg: 180, gammaDeg: PROTOCOL_SUN_ALTITUDE_DEG - 90 };
+const AIM_LANDSCAPE_TOP_LEFT: SynthAttitude = { betaDeg: 180, gammaDeg: 90 - PROTOCOL_SUN_ALTITUDE_DEG };
+
+/**
+ * A landscape aim raised by `byDeg`, for the hand's slow drift over a hold.
+ *
+ * The drift is in GAMMA, which is the axis the aim moves along: at β = 180 the
+ * camera's altitude is `asin(cosγ)`, which is `90 − |γ|`, so raising the aim
+ * shrinks |γ| degree for degree. The top edge's azimuth is
+ * `atan2(−sinγ, cosγ·sinβ)`, which at sinβ = 0 is ±90° whatever gamma does, so
+ * the quarter turn the two landscape holds exist to measure survives the drift.
+ * Moving beta instead would swing it.
+ *
+ * Each hold sweeps from one degree below the aim to one degree above it, so the
+ * MEDIAN of the hold is the aim itself. A hold that drifted one way only would
+ * put half its sweep into `estimatePitchBias` as a tilt-sensor fault.
+ */
+function aimRaisedBy(attitude: SynthAttitude, byDeg: number): SynthAttitude {
+  const towards = attitude.gammaDeg > 0 ? -byDeg : byDeg;
+  return { betaDeg: attitude.betaDeg, gammaDeg: attitude.gammaDeg + towards };
+}
+
+/**
  * The protocol the home session runs, as a synthetic specification.
  *
  * Every pose the analyzer looks for is here, so a synthesised recording from
@@ -3194,6 +3249,11 @@ function motionEventAt(
  * `web-sensors.ts` name: portrait upright is beta 85° rather than 90° because a
  * top edge at exactly vertical has no azimuth at all, and a person holding a
  * phone at a horizon does not hit 90° either.
+ *
+ * The four steps that aim at the Sun are different: they are held at the
+ * attitudes above, which put the camera on a Sun at
+ * {@link PROTOCOL_SUN_ALTITUDE_DEG}. Aiming them at the horizon instead would
+ * leave `estimatePitchBias` reading the 30° of aim as a tilt-sensor fault.
  */
 export function protocolSegments(): readonly SynthSegmentSpec[] {
   return [
@@ -3205,15 +3265,15 @@ export function protocolSegments(): readonly SynthSegmentSpec[] {
       pose: 'portrait-upright-known-bearing',
       durationMs: 5000,
       orientationHz: 10,
-      from: { betaDeg: 85, gammaDeg: 0 },
-      note: 'portrait, camera on the known bearing; the blind spot where the hypotheses agree',
+      from: AIM_PORTRAIT,
+      note: 'portrait, tipped back until the camera is on the known bearing',
     },
     {
       pose: 'landscape-upright-known-bearing-top-right',
       durationMs: 5000,
       orientationHz: 10,
-      from: { betaDeg: 0, gammaDeg: 90 },
-      to: { betaDeg: 5, gammaDeg: 90 },
+      from: aimRaisedBy(AIM_LANDSCAPE_TOP_RIGHT, -1),
+      to: aimRaisedBy(AIM_LANDSCAPE_TOP_RIGHT, 1),
       screenAngleDeg: 90,
       note: 'top edge to the right of the target; the hypotheses differ by +90 degrees',
     },
@@ -3221,8 +3281,8 @@ export function protocolSegments(): readonly SynthSegmentSpec[] {
       pose: 'landscape-upright-known-bearing-top-left',
       durationMs: 5000,
       orientationHz: 10,
-      from: { betaDeg: 0, gammaDeg: -90 },
-      to: { betaDeg: 5, gammaDeg: -90 },
+      from: aimRaisedBy(AIM_LANDSCAPE_TOP_LEFT, -1),
+      to: aimRaisedBy(AIM_LANDSCAPE_TOP_LEFT, 1),
       screenAngleDeg: 270,
       note: 'top edge to the left of the target; the hypotheses differ by -90 degrees',
     },
@@ -3231,8 +3291,8 @@ export function protocolSegments(): readonly SynthSegmentSpec[] {
       durationMs: 20_000,
       orientationHz: 10,
       motionHz: 10,
-      from: { betaDeg: 0, gammaDeg: -90 },
-      to: { betaDeg: 6, gammaDeg: -90 },
+      from: aimRaisedBy(AIM_LANDSCAPE_TOP_LEFT, -1.5),
+      to: aimRaisedBy(AIM_LANDSCAPE_TOP_LEFT, 1.5),
       screenAngleDeg: 270,
       note: 'the same landscape hold, carried twenty steps and then stood still',
     },

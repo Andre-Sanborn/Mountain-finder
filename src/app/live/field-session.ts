@@ -45,6 +45,7 @@ import {
   frameAngleDeg,
   MAX_REGISTERED_PAN_DEG,
   PAN_ANCHOR_EDGE_OFFSET,
+  REGISTERED_STORED_FRAME,
   TILT_ENVELOPE_DEG,
   BUNDLE_FORMAT,
   TIMESTAMP_BASIS,
@@ -114,8 +115,14 @@ export const BRACE_HOLD_MS = 2000;
 /** How many times the drag onto the same summit is repeated (§ 2.7 step 10). */
 export const REPEATED_DRAG_COUNT = 3;
 
-/** Smallest stored frame width the pre-registration accepts, pixels (§ 2.0). */
-export const MIN_STORED_FRAME_WIDTH_PX = 1920;
+/**
+ * Smallest stored frame width the pre-registration accepts, pixels (§ 2.0).
+ *
+ * Read from `field-analysis.ts`'s registration rather than written again here.
+ * The parser refuses a narrower frame on the same figure, so a second copy
+ * would let the screen accept a capture the bundle then rejects.
+ */
+export const MIN_STORED_FRAME_WIDTH_PX = REGISTERED_STORED_FRAME.minWidthPx;
 
 /** The tilt the person is asked for. The graded envelope is 5–15°. */
 export const TILT_TARGET_DEG = 10;

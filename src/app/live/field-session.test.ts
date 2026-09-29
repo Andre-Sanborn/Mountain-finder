@@ -30,7 +30,7 @@ import {
   parseFieldBundle,
   type Capture,
 } from '../../live/field-analysis';
-import { MAX_REGISTERED_CAPTURES_PER_UNIT } from '../../live/field-analysis';
+import { MAX_REGISTERED_CAPTURES_PER_UNIT, REGISTERED_STORED_FRAME } from '../../live/field-analysis';
 import type { OverlayLayout, OverlayPeak, PeakMarker, UnlabelledSummit } from '../../render/types';
 import type { PoseUncertainty } from '../uncertainty';
 import {
@@ -624,6 +624,20 @@ describe('the shortfalls a capture is reported with', () => {
     const codes = captureShortfalls(capture).map((shortfall) => shortfall.code);
     expect(codes).toEqual(['frame-too-small']);
     expect(MIN_STORED_FRAME_WIDTH_PX).toBe(1920);
+  });
+
+  // The screen and the bundle parser refuse a narrow frame on the same figure.
+  // A second copy of it here would let the screen accept a capture the parser
+  // then rejects, after the drive.
+  it('refuses the frame widths the analysis registers, at the same boundary', () => {
+    expect(MIN_STORED_FRAME_WIDTH_PX).toBe(REGISTERED_STORED_FRAME.minWidthPx);
+    const width = REGISTERED_STORED_FRAME.minWidthPx;
+    const below = captureOf({ framePx: { widthPx: width - 1, heightPx: Math.round((width - 1) / (16 / 9)) } });
+    const at = captureOf({ framePx: { widthPx: width, heightPx: Math.round(width / (16 / 9)) } });
+    expect(captureShortfalls(below).map((shortfall) => shortfall.code)).toContain('frame-too-small');
+    expect(captureShortfalls(at, { anchorU: 0.84 }).map((shortfall) => shortfall.code)).not.toContain(
+      'frame-too-small',
+    );
   });
 
   it('names a hold shorter than the two seconds term 8 needs', () => {

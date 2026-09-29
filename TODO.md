@@ -40,7 +40,7 @@ after its self-check has run and passed here. The checks are in
 - [x] Build the capture bundle schema and `analyze:field`; bundles never enter the repository
 - [x] Have the live screen emit a field bundle in the field-bundle@1 shape (no bearings, no wall clock)
 - [x] Register the stored frame's geometry: the grader compares 16:9 frames against the 956x440 viewport
-- [ ] Have field-session.ts import the stored-frame width from field-analysis.ts's registration
+- [x] Have field-session.ts import the stored-frame width from field-analysis.ts's registration
 - [ ] Decide from the home session's drag scatter whether the field session drags in fine mode
 - [ ] Check the field bundle size before trimming: 2.4 MB in the Gornergrat e2e, 1.27 MB in the rehearsal
 - [x] Write the error budget and pre-register the field pass criteria
@@ -72,8 +72,9 @@ after its self-check has run and passed here. The checks are in
 - [x] Update the e2e specs to write @2 truth documents
 - [x] Move the field fixture generator into scripts/ with an npm script
 - [x] Add a measured pitch-bias term to the live vertical band; until measured, F2 vertical is not gated
-- [ ] Write the sun's frame offset into RecordedSegment.aimOffsetDeg at each aiming step
-- [ ] Give protocolSegments() aiming attitudes that point at a plausible sun altitude
+- [ ] Write the sun's frame offset into RecordedSegment.aimOffsetDeg at each aiming step, from a tap on the real Sun
+- [ ] Find why live.spec's "a tap on the real sun says how far off the compass is" failed once under a parallel run
+- [x] Give protocolSegments() aiming attitudes that point at a plausible sun altitude
 - [x] Make docs/REAL-PHOTO-POSE.md and FINDINGS X-7's photo counts agree with the nine-photo count
 - [ ] Re-run the rehearsal at a 956x440 viewport over a 1920x1080 camera, without cropToAspect
 - [x] Separate refusals from notes in the field report

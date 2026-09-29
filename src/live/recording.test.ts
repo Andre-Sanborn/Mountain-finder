@@ -43,6 +43,7 @@ import {
   MOTION_HEADING_FAULT_DEG,
   parseRecording,
   protocolSegments,
+  PROTOCOL_SUN_ALTITUDE_DEG,
   signedDeltaDeg,
   synthesiseRecording,
   topEdgeMinusCameraDeg,
@@ -78,10 +79,33 @@ function spec(overrides: Partial<SynthSpec> = {}): SynthSpec {
   };
 }
 
-/** A recording carrying only the poses named, so a blind spot can be built. */
+/** A recording carrying only the poses named. */
 function onlyPoses(poses: readonly PoseLabel[], overrides: Partial<SynthSpec> = {}): HomeSessionRecording {
   const wanted = new Set(poses);
   const segments: readonly SynthSegmentSpec[] = protocolSegments().filter((s) => wanted.has(s.pose));
+  return synthesiseRecording(spec({ segments, ...overrides }));
+}
+
+/**
+ * The same, with the portrait aim put back on the horizon — the blind spot.
+ *
+ * The protocol aims every step at a Sun {@link PROTOCOL_SUN_ALTITUDE_DEG} up,
+ * which tips the portrait hold past vertical and separates the hypotheses by
+ * 180°. A phone aimed at something on the horizon instead sits short of
+ * vertical, where the top edge and the camera share an azimuth and neither
+ * hypothesis can be told from the other. That is the case these tests are
+ * about, so they build it rather than inherit it.
+ */
+function horizonAimedPortrait(
+  poses: readonly PoseLabel[],
+  overrides: Partial<SynthSpec> = {},
+): HomeSessionRecording {
+  const wanted = new Set(poses);
+  const segments = protocolSegments()
+    .filter((s) => wanted.has(s.pose))
+    .map((s) =>
+      s.pose === 'portrait-upright-known-bearing' ? { ...s, from: { betaDeg: 85, gammaDeg: 0 } } : s,
+    );
   return synthesiseRecording(spec({ segments, ...overrides }));
 }
 
@@ -173,6 +197,85 @@ describe('the forward model and the adapter derive the same geometry', () => {
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
+ * The protocol's aim at the Sun
+ * ══════════════════════════════════════════════════════════════════════════
+ * Four steps of the script say "keep the sun in the middle", and the Sun is
+ * 15° to 50° up when the session can be run at all. The attitudes they are
+ * synthesised at have to put the camera there, because `estimatePitchBias`
+ * reads the gap between a sensed camera altitude and the Sun's as a tilt-sensor
+ * fault: a step aimed at the horizon while the Sun is 30° up reports 30° of
+ * bias, which is twice the largest figure the estimator will call credible.
+ *
+ * Two closed forms, both from `asin(−cos β · cos γ)`:
+ *   portrait,  γ = 0:    altitude = β − 90
+ *   landscape, β = 180:  altitude = 90 − |γ|
+ */
+
+describe("the protocol's aim at the Sun", () => {
+  /** The steps whose instruction is to keep the Sun in the middle. */
+  const SUN_AIMED: readonly PoseLabel[] = [
+    'portrait-upright-known-bearing',
+    'landscape-upright-known-bearing-top-right',
+    'landscape-upright-known-bearing-top-left',
+    'landscape-walking-known-bearing',
+  ];
+
+  it('aims at an altitude the field and home guides ask the session to be run at', () => {
+    expect(PROTOCOL_SUN_ALTITUDE_DEG).toBeGreaterThanOrEqual(15);
+    expect(PROTOCOL_SUN_ALTITUDE_DEG).toBeLessThanOrEqual(50);
+  });
+
+  it('centres every sun-aimed hold on that altitude', () => {
+    const aimed = protocolSegments().filter((segment) => SUN_AIMED.includes(segment.pose));
+    expect(aimed.map((segment) => segment.pose)).toEqual(SUN_AIMED);
+    for (const segment of aimed) {
+      const to = segment.to ?? segment.from;
+      const start = cameraAltitudeDeg(segment.from.betaDeg, segment.from.gammaDeg);
+      const end = cameraAltitudeDeg(to.betaDeg, to.gammaDeg);
+      // The hold sweeps evenly, so its midpoint is the aim and its median is
+      // the same number.
+      expect((start + end) / 2).toBeCloseTo(PROTOCOL_SUN_ALTITUDE_DEG, 9);
+      expect(Math.abs(end - start)).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it('states every attitude in angles a browser can report', () => {
+    for (const segment of protocolSegments()) {
+      for (const attitude of [segment.from, segment.to ?? segment.from]) {
+        expect(Math.abs(attitude.gammaDeg)).toBeLessThanOrEqual(90);
+        expect(Math.abs(attitude.betaDeg)).toBeLessThanOrEqual(180);
+      }
+    }
+  });
+
+  it('keeps the quarter turn in landscape and tips the portrait aim past vertical', () => {
+    // β = 180, γ = a − 90: the top edge is horizontal and points backwards, so
+    // its azimuth is 180°, while the camera's is atan2(sin(90 − a), 0) = 90°.
+    expect(expectedTopEdgeMinusCameraDeg(180, PROTOCOL_SUN_ALTITUDE_DEG - 90)).toBeCloseTo(90, 9);
+    expect(expectedTopEdgeMinusCameraDeg(180, 90 - PROTOCOL_SUN_ALTITUDE_DEG)).toBeCloseTo(-90, 9);
+    // Portrait at β = 90 + a is past vertical, so the two axes are opposed
+    // rather than aligned: this hold is no longer the blind spot.
+    expect(Math.abs(expectedTopEdgeMinusCameraDeg(90 + PROTOCOL_SUN_ALTITUDE_DEG, 0))).toBeCloseTo(180, 9);
+  });
+
+  it('leaves an honest phone with no tilt bias to report', () => {
+    const recording = withSunBearing(
+      synthesiseRecording(spec({ attitudeNoiseDeg: 0, compassNoiseDeg: 0 })),
+    );
+    const estimate = estimatePitchBias(recording);
+    expect(estimate?.perSegment.map((segment) => segment.pose)).toEqual([
+      'portrait-upright-known-bearing',
+      'landscape-upright-known-bearing-top-right',
+      'landscape-upright-known-bearing-top-left',
+    ]);
+    // Every sensed altitude is the aim, and every aim is the Sun's altitude.
+    expect(estimate?.biasDeg).toBeCloseTo(0, 9);
+    expect(estimate?.spreadDeg).toBeCloseTo(0, 9);
+    expect(estimate?.credible).toBe(true);
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
  * The compass reference verdict
  * ══════════════════════════════════════════════════════════════════════════ */
 
@@ -211,7 +314,7 @@ describe('the compass reference hypothesis', () => {
   }
 
   it('is inconclusive on a portrait recording with no roll — the blind spot', () => {
-    const recording = onlyPoses(
+    const recording = horizonAimedPortrait(
       ['flat-face-up', 'upright-portrait', 'flat-face-down', 'right-edge-down', 'portrait-upright-known-bearing', 'still-drift'],
       injected,
     );
@@ -352,7 +455,9 @@ describe('alpha drift', () => {
   });
 
   it('will not measure handling drift while the compass reference is unsettled', () => {
-    const recording = onlyPoses(['portrait-upright-known-bearing', 'handling'], { alphaDriftDegPerMinute: 3 });
+    const recording = horizonAimedPortrait(['portrait-upright-known-bearing', 'handling'], {
+      alphaDriftDegPerMinute: 3,
+    });
     expect(analyseRecording(recording).compassReference.verdict).toBe('inconclusive');
     expect(verdictFor(recording, 'alpha-drift-handling').inconclusive).toBe(true);
   });
@@ -913,15 +1018,19 @@ describe('the committed fixtures', () => {
  *
  *   γ = 0, β = 90 + a    the camera's earth vector has z = −cos β cos γ
  *                        = −cos(90 + a) = sin a, so its altitude is a
- *   β = 0, γ = ±(90 + a) the same product with the roles swapped: −cos(90 + a)
+ *   β = 180, γ = ±(90 − a)  the same product with cos β = −1: cos(90 − a)
  *                        = sin a again, so its altitude is a
  *
  * The second family is a phone held sideways rather than upright, so the two
- * are different poses with the same answer. Both are stated in § A.2's row 3:
- * the earth's up in device coordinates is (−cos β sin γ, sin β, cos β cos γ).
+ * are different poses with the same answer. It is stated at β = 180 rather than
+ * at β = 0 because a browser reports gamma within ±90°, and a sideways phone
+ * looking ABOVE the horizon is outside that range on the β = 0 branch. Both are
+ * stated in § A.2's row 3: the earth's up in device coordinates is
+ * (−cos β sin γ, sin β, cos β cos γ).
  */
 
-const SUN_ALTITUDE_DEG = 30;
+/** The altitude the estimator is scored against: the protocol's own aim. */
+const SUN_ALTITUDE_DEG = PROTOCOL_SUN_ALTITUDE_DEG;
 
 /** The synthetic bearing, restated as the Sun so an altitude is on file. */
 function withSunBearing(recording: HomeSessionRecording): HomeSessionRecording {
@@ -958,8 +1067,8 @@ function aimedRecording(
       index === 0
         ? { betaDeg: 90 + aimDeg, gammaDeg: 0 }
         : index === 1
-          ? { betaDeg: 0, gammaDeg: 90 + aimDeg }
-          : { betaDeg: 0, gammaDeg: -(90 + aimDeg) };
+          ? { betaDeg: 180, gammaDeg: 90 - aimDeg }
+          : { betaDeg: 180, gammaDeg: -(90 - aimDeg) };
     segments.push({ pose, durationMs: 4000, orientationHz: 10, from });
   });
   return withSunBearing(
@@ -1220,7 +1329,7 @@ describe('the compass heading bias', () => {
   });
 
   it('withholds a bias while the compass reference is undecided', () => {
-    const portraitOnly = onlyPoses(['portrait-upright-known-bearing']);
+    const portraitOnly = horizonAimedPortrait(['portrait-upright-known-bearing']);
     const answer = verdictFor(withSunBearing(portraitOnly), 'heading-bias');
     expect(answer.inconclusive).toBe(true);
     expect(answer.evidence.join(' ')).toContain('undecided');

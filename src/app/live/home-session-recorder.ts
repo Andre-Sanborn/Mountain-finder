@@ -50,6 +50,9 @@ import {
   type RecordedTrackSettings,
 } from '../../live/recording';
 
+/** The angular offset of a reference from the frame centre, as the schema holds it. */
+type AimOffsetDeg = NonNullable<RecordedSegment['aimOffsetDeg']>;
+
 /** The two DOM event types the schema accepts for an orientation record. */
 const ORIENTATION_TYPES = ['deviceorientation', 'deviceorientationabsolute'] as const;
 type OrientationType = (typeof ORIENTATION_TYPES)[number];
@@ -91,6 +94,8 @@ interface OpenSegment {
   readonly note?: string;
   readonly events: RecordedSensorEvent[];
   readonly trackSettings: RecordedTrackSettings[];
+  /** Where the reference sat in the frame, once something has measured it. */
+  aimOffsetDeg?: AimOffsetDeg;
 }
 
 export interface BuildRecordingInput {
@@ -153,6 +158,28 @@ export class HomeSessionRecorder implements RawEventSink {
     return this.lastTMs;
   }
 
+  /**
+   * Record where the reference actually sat in the frame during the open step.
+   *
+   * The schema calls this the tap offset, and that is what it has to be: a
+   * figure read off the PICTURE, such as a tap on the real Sun. A figure taken
+   * from the app's own drawn mark would say nothing. The mark is projected
+   * through the pose the sensors give, so its offset from the frame centre is
+   * the app's own tilt error with the sign reversed, and `estimatePitchBias`
+   * adds it straight back: every recording would report a bias of exactly zero,
+   * and report it as credible.
+   *
+   * Nothing calls this yet. Until an aiming step measures the Sun in the
+   * picture, a segment carries no offset and the estimator says out loud that
+   * it charged the aim as perfect.
+   */
+  setAimOffsetDeg(offset: AimOffsetDeg): void {
+    const open = this.open;
+    if (open === undefined) return;
+    if (!Number.isFinite(offset.headingDeg) || !Number.isFinite(offset.pitchDeg)) return;
+    open.aimOffsetDeg = { headingDeg: offset.headingDeg, pitchDeg: offset.pitchDeg };
+  }
+
   /** Open a step. Closes any step still open, so the segments never overlap. */
   beginSegment(pose: PoseLabel, note?: string): void {
     if (this.startMs === undefined) this.begin();
@@ -178,6 +205,7 @@ export class HomeSessionRecorder implements RawEventSink {
       ...(open.note === undefined ? {} : { note: open.note }),
       events: open.events,
       ...(open.trackSettings.length === 0 ? {} : { trackSettings: open.trackSettings }),
+      ...(open.aimOffsetDeg === undefined ? {} : { aimOffsetDeg: open.aimOffsetDeg }),
     });
   }
 

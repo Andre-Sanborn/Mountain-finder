@@ -303,6 +303,41 @@ describe('HomeSessionRecorder', () => {
     const without = recorder.build({ device: 'test-agent', knownBearing: BEARING, dragTrials: [] });
     expect('dragTrials' in without).toBe(false);
   });
+
+  it('keeps a measured aim offset on the step it was measured during', () => {
+    const clock = fakeClock();
+    const recorder = new HomeSessionRecorder(clock.now);
+    recorder.beginSegment('portrait-upright-known-bearing');
+    recorder.setAimOffsetDeg({ headingDeg: -0.75, pitchDeg: 1.25 });
+    clock.advance(40);
+    recorder.onRawEvent(orientationEvent(15));
+    recorder.beginSegment('landscape-upright-known-bearing-top-left');
+    clock.advance(40);
+    recorder.onRawEvent(orientationEvent(16));
+    const recording = recorder.build({ device: 'test-agent', knownBearing: BEARING });
+
+    expect(recording.segments[0]?.aimOffsetDeg).toEqual({ headingDeg: -0.75, pitchDeg: 1.25 });
+    // A step nobody measured carries no offset at all. An offset of zero would
+    // claim a perfect aim was observed.
+    expect(recording.segments[1]?.aimOffsetDeg).toBeUndefined();
+    const parsed = parseRecording(JSON.parse(JSON.stringify(recording)) as unknown);
+    expect(parsed.ok ? [] : parsed.problems).toEqual([]);
+  });
+
+  it('ignores an aim offset with no step open, or one that is not a number', () => {
+    const clock = fakeClock();
+    const recorder = new HomeSessionRecorder(clock.now);
+    recorder.begin();
+    recorder.setAimOffsetDeg({ headingDeg: 1, pitchDeg: 1 });
+    recorder.beginSegment('portrait-upright-known-bearing');
+    recorder.setAimOffsetDeg({ headingDeg: Number.NaN, pitchDeg: 1 });
+    clock.advance(40);
+    recorder.onRawEvent(orientationEvent(15));
+    const recording = recorder.build({ device: 'test-agent', knownBearing: BEARING });
+
+    expect(recording.segments).toHaveLength(1);
+    expect(recording.segments[0]?.aimOffsetDeg).toBeUndefined();
+  });
 });
 
 /**
