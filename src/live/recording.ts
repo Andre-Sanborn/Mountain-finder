@@ -138,6 +138,21 @@ export const KNOWN_BEARING_POSES: readonly PoseLabel[] = [
 ];
 
 /**
+ * The aiming poses, where the person was asked to keep the reference in the
+ * MIDDLE of the frame.
+ *
+ * `sun-capture` is a known-bearing pose but not one of these: its instruction
+ * puts the Sun near the left edge and then near the right edge, so its camera
+ * axis is deliberately off the reference and its pitch says nothing about the
+ * tilt zero point.
+ */
+export const AIMING_POSES: readonly PoseLabel[] = [
+  'portrait-upright-known-bearing',
+  'landscape-upright-known-bearing-top-left',
+  'landscape-upright-known-bearing-top-right',
+];
+
+/**
  * Poses that hold no known bearing but move the top edge relative to the
  * camera, so the hypotheses separate without one.
  */
@@ -216,6 +231,15 @@ export interface RecordedSegment {
   readonly note?: string;
   readonly events: readonly RecordedSensorEvent[];
   readonly trackSettings?: readonly RecordedTrackSettings[];
+  /**
+   * Where the reference actually sat in the frame during an aiming step, in
+   * degrees from the centre of the picture: `pitchDeg` positive when it sat
+   * ABOVE centre, `headingDeg` positive when it sat to the RIGHT.
+   *
+   * This is the tap offset. Absent when nobody measured it, and the pitch-bias
+   * estimate then charges the aim as perfect and says so in its evidence.
+   */
+  readonly aimOffsetDeg?: { readonly headingDeg: number; readonly pitchDeg: number };
 }
 
 /**
@@ -580,7 +604,7 @@ const TRACK_SETTINGS_KEYS = [
   'zoom',
   'focusDistance',
 ] as const;
-const SEGMENT_KEYS = ['pose', 'startMs', 'endMs', 'note', 'events', 'trackSettings'] as const;
+const SEGMENT_KEYS = ['pose', 'startMs', 'endMs', 'note', 'events', 'trackSettings', 'aimOffsetDeg'] as const;
 const RECORDING_KEYS = [
   'format',
   'timestampBasis',
@@ -777,6 +801,20 @@ function parseSegment(p: Problems, path: string, value: unknown): RecordedSegmen
     });
   }
 
+  let aimOffsetDeg: { readonly headingDeg: number; readonly pitchDeg: number } | undefined;
+  if ('aimOffsetDeg' in obj) {
+    const offset = asRecord(p, `${path}.aimOffsetDeg`, obj.aimOffsetDeg);
+    if (offset === undefined) return undefined;
+    checkKeys(p, `${path}.aimOffsetDeg`, offset, OFFSET_DEG_KEYS);
+    const headingDeg = asNumber(p, `${path}.aimOffsetDeg.headingDeg`, offset.headingDeg, {
+      min: -90,
+      max: 90,
+    });
+    const pitchDeg = asNumber(p, `${path}.aimOffsetDeg.pitchDeg`, offset.pitchDeg, { min: -90, max: 90 });
+    if (headingDeg === undefined || pitchDeg === undefined) return undefined;
+    aimOffsetDeg = { headingDeg, pitchDeg };
+  }
+
   return {
     pose,
     startMs,
@@ -784,6 +822,7 @@ function parseSegment(p: Problems, path: string, value: unknown): RecordedSegmen
     ...(note !== undefined ? { note } : {}),
     events,
     ...(trackSettings !== undefined ? { trackSettings } : {}),
+    ...(aimOffsetDeg !== undefined ? { aimOffsetDeg } : {}),
   };
 }
 
@@ -2366,6 +2405,271 @@ function dragScatterVerdict(recording: HomeSessionRecording): Verdict {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
+ * SECTION 7c — The tilt zero point, and whether the compass's own figure is honest
+ * ══════════════════════════════════════════════════════════════════════════
+ * Two biases, both read off the aiming steps, both absent from the error
+ * budget until this session measures them.
+ *
+ * The pitch bias is the one the live band could not state. `live-uncertainty.ts`
+ * carries a tilt SCATTER term and nothing else on the vertical axis, so a band
+ * with a calibrated field of view claims the pitch is known to the width of a
+ * second's worth of hand shake. Scatter is not bias: a phone whose gravity zero
+ * sits 2° low reports the same tiny scatter while every label sits 2° wrong.
+ *
+ * The Sun supplies the missing reference. During an aiming step the person is
+ * asked to keep it in the MIDDLE of the frame, so the camera axis points at the
+ * Sun and the axis's true altitude is the Sun's altitude — a number the device
+ * already computed and stored in `knownBearing.altitudeDeg`. The sensed
+ * altitude comes from beta and gamma alone. The difference is the bias.
+ *
+ * The heading bias falls out of the same steps for free. The compass reading is
+ * compared against the Sun's magnetic azimuth with no free parameter, and the
+ * result is checked against the accuracy the phone itself reported at the time.
+ * `webkitCompassAccuracy` is published by nobody, and this is the one place in
+ * the project where it can be held against a bearing it did not supply.
+ */
+
+/**
+ * Altitude of the rear camera's axis above the horizon, degrees.
+ *
+ * The camera looks along −z in device coordinates, and `gravityFromOrientation`
+ * gives DOWN in those same coordinates as `(cos β sin γ, −sin β, −cos β cos γ)`.
+ * The component of the camera axis along down is therefore `cos β cos γ`, and
+ * the altitude is the arcsine of its negative. alpha cancels, so a phone with a
+ * relative or drifting alpha costs this nothing.
+ */
+export function cameraAltitudeDeg(betaDeg: number, gammaDeg: number): number {
+  const sinAltitude = -Math.cos(betaDeg * DEG) * Math.cos(gammaDeg * DEG);
+  return Math.asin(Math.max(-1, Math.min(1, sinAltitude))) / DEG;
+}
+
+/** One aiming step, reduced to what the pitch bias is pooled from. */
+export interface PitchBiasSegment {
+  readonly pose: PoseLabel;
+  readonly samples: number;
+  /** Median of sensed camera altitude minus the Sun's altitude, degrees. */
+  readonly medianDeg: number;
+  /** RMS about that median: the hand during the hold, not the zero point. */
+  readonly scatterDeg: number;
+  /** Tap offset applied, degrees. Zero when the step carries none. */
+  readonly aimOffsetPitchDeg: number;
+  readonly aimOffsetMeasured: boolean;
+}
+
+export interface PitchBiasEstimate {
+  /** Mean of the per-step medians: how far the sensed tilt sits from truth. */
+  readonly biasDeg: number;
+  /** How far two re-aims disagree, degrees. Sample sd (n − 1) of those medians. */
+  readonly spreadDeg: number;
+  readonly perSegment: readonly PitchBiasSegment[];
+  /** True only when every aiming step carried a measured tap offset. */
+  readonly aimOffsetsMeasured: boolean;
+  readonly sunAltitudeDeg: number;
+  /**
+   * False when the bias is too large to be a sensor's zero point.
+   *
+   * A phone's gravity vector is good to a degree or two; a figure of thirty
+   * says the camera was not pointing at the Sun, which is a failed aim rather
+   * than a measurement. Storing one would put that error straight into the live
+   * band, so the screen keeps only a credible estimate.
+   */
+  readonly credible: boolean;
+}
+
+/** Fewest usable samples an aiming step needs before its median is pooled. */
+export const MIN_PITCH_BIAS_SAMPLES = MIN_SCORED_SAMPLES;
+
+/** Largest bias that can be a tilt sensor rather than a missed aim, degrees. */
+export const MAX_CREDIBLE_PITCH_BIAS_DEG = 15;
+
+/**
+ * The tilt zero point, measured against the Sun.
+ *
+ * `undefined` when the reference is not the Sun, or when no aiming step carries
+ * enough samples. Both are silence rather than a zero bias, and the live band
+ * reports silence as an unquantified term.
+ *
+ * The per-step figure is a MEDIAN, because a hold includes the moment the
+ * person was still settling and a mean would follow it. The pooled figure is
+ * the MEAN of those medians, because each step is one independent re-aim and
+ * the spread that matters is how far two re-aims land apart.
+ */
+export function estimatePitchBias(recording: HomeSessionRecording): PitchBiasEstimate | undefined {
+  const bearing = recording.knownBearing;
+  if (bearing.kind !== 'sun-azimuth') return undefined;
+
+  const perSegment: PitchBiasSegment[] = [];
+  for (const segment of recording.segments) {
+    if (!AIMING_POSES.includes(segment.pose)) continue;
+    // A reference sitting ABOVE centre means the camera axis pointed that far
+    // BELOW it, so the offset is added back to the sensed altitude.
+    const aimOffsetPitchDeg = segment.aimOffsetDeg?.pitchDeg ?? 0;
+    const residuals = reduceSegment(segment).map(
+      (s) => cameraAltitudeDeg(s.betaDeg, s.gammaDeg) - bearing.altitudeDeg + aimOffsetPitchDeg,
+    );
+    if (residuals.length < MIN_PITCH_BIAS_SAMPLES) continue;
+    const medianDeg = median(residuals);
+    if (medianDeg === undefined) continue;
+    perSegment.push({
+      pose: segment.pose,
+      samples: residuals.length,
+      medianDeg,
+      scatterDeg: rms(residuals.map((value) => value - medianDeg)),
+      aimOffsetPitchDeg,
+      aimOffsetMeasured: segment.aimOffsetDeg !== undefined,
+    });
+  }
+  if (perSegment.length === 0) return undefined;
+
+  const { mean, sd } = meanAndSampleSd(perSegment.map((s) => s.medianDeg));
+  const first = perSegment[0];
+  return {
+    biasDeg: mean,
+    // One aiming step cannot show how far two re-aims disagree, so its own
+    // within-hold scatter stands in and the verdict drops to low confidence.
+    spreadDeg: perSegment.length >= 2 ? sd : (first?.scatterDeg ?? 0),
+    perSegment,
+    aimOffsetsMeasured: perSegment.every((s) => s.aimOffsetMeasured),
+    sunAltitudeDeg: bearing.altitudeDeg,
+    credible: Math.abs(mean) <= MAX_CREDIBLE_PITCH_BIAS_DEG,
+  };
+}
+
+/**
+ * A tilt figure, signed, at three decimals.
+ *
+ * `fmtSigned` rounds to a tenth of a degree, which is the right scale for a
+ * compass bias and too coarse for a tilt one: a band term of 0.04° would print
+ * as +0.0°.
+ */
+function fmtTilt(value: number): string {
+  return `${value >= 0 ? '+' : '−'}${Math.abs(value).toFixed(3)}°`;
+}
+
+function pitchBiasVerdict(
+  recording: HomeSessionRecording,
+  estimate: PitchBiasEstimate | undefined,
+): Verdict {
+  const question = 'How far is the sensed tilt from the truth, and how far apart do two re-aims land?';
+  if (estimate === undefined) {
+    return inconclusive('pitch-bias', question, [
+      recording.knownBearing.kind === 'sun-azimuth'
+        ? `no aiming step carries ${MIN_PITCH_BIAS_SAMPLES} usable orientation samples`
+        : 'the known bearing is not the Sun, so no independent altitude is on file',
+      `aiming poses: ${AIMING_POSES.join(', ')}`,
+    ]);
+  }
+
+  const evidence = estimate.perSegment.map(
+    (s) =>
+      `${s.pose}: ${s.samples} samples, sensed tilt ${fmtTilt(s.medianDeg)} from the Sun's ` +
+      `${estimate.sunAltitudeDeg.toFixed(2)}° altitude, ${s.scatterDeg.toFixed(3)}° RMS about that` +
+      (s.aimOffsetMeasured
+        ? `, tap offset ${fmtTilt(s.aimOffsetPitchDeg)} applied`
+        : ', no tap offset recorded, so the aim is charged as perfect'),
+  );
+  if (!estimate.aimOffsetsMeasured) {
+    evidence.push(
+      'an unmeasured tap offset is the dominant unmodelled error here: it is how far the ' +
+        'Sun really sat from the centre of the picture while the person held the step',
+    );
+  }
+
+  if (!estimate.credible) {
+    return inconclusive('pitch-bias', question, [
+      `the sensed tilt sits ${fmtTilt(estimate.biasDeg)} from the Sun, past the ` +
+        `${MAX_CREDIBLE_PITCH_BIAS_DEG}° a tilt sensor can be out by — the camera was not ` +
+        'pointing at the Sun during the aiming steps, so nothing here measures the zero point',
+      ...evidence,
+    ]);
+  }
+
+  return verdict(
+    'pitch-bias',
+    question,
+    `the sensed tilt sits ${fmtTilt(estimate.biasDeg)} from truth, and two re-aims land ` +
+      `${estimate.spreadDeg.toFixed(3)}° apart at 1σ`,
+    estimate.perSegment.length >= 2 ? 'moderate' : 'low',
+    evidence,
+  );
+}
+
+function headingBiasVerdict(
+  recording: HomeSessionRecording,
+  analysis: CompassReferenceAnalysis,
+): Verdict {
+  const question =
+    'How far is webkitCompassHeading from the Sun’s magnetic azimuth, and does its reported accuracy cover that?';
+
+  const accuracies: number[] = [];
+  for (const segment of recording.segments) {
+    if (!KNOWN_BEARING_POSES.includes(segment.pose)) continue;
+    for (const s of reduceSegment(segment)) {
+      if (s.compassDeg === undefined || s.compassAccuracyDeg === undefined) continue;
+      if (s.compassAccuracyDeg >= 0) accuracies.push(s.compassAccuracyDeg);
+    }
+  }
+  const reportedDeg = median(accuracies);
+
+  // The bias is only defined once the reference axis is settled: the two
+  // hypotheses differ by up to 90° in landscape, which would swamp it.
+  const scored = analysis.perSegment.filter(
+    (s) => s.mode === 'absolute' && s.topEdgeBiasDeg !== undefined && s.cameraAxisBiasDeg !== undefined,
+  );
+  const evidence = scored.map(
+    (s) =>
+      `${s.pose}: device-top-edge ${fmtSigned(s.topEdgeBiasDeg)}, ` +
+      `rear-camera-axis ${fmtSigned(s.cameraAxisBiasDeg)} from the known bearing`,
+  );
+  evidence.push(
+    reportedDeg === undefined
+      ? 'the phone reported no compass accuracy during the aiming steps'
+      : `the phone reported ${reportedDeg.toFixed(1)}° of accuracy, median over ${accuracies.length} aiming samples`,
+  );
+
+  if (scored.length === 0) {
+    return inconclusive('heading-bias', question, [
+      'no aiming step scored against the known bearing',
+      ...evidence,
+    ]);
+  }
+  if (analysis.verdict === INCONCLUSIVE) {
+    return inconclusive('heading-bias', question, [
+      'the compass reference is undecided, so the two hypotheses give two different biases',
+      ...evidence,
+    ]);
+  }
+
+  const biases = scored.map((s) =>
+    analysis.verdict === 'device-top-edge' ? (s.topEdgeBiasDeg ?? 0) : (s.cameraAxisBiasDeg ?? 0),
+  );
+  const { mean, sd } = meanAndSampleSd(biases);
+  evidence.push(
+    `pooled under ${analysis.verdict}: ${fmtSigned(mean)} across ${biases.length} step(s), ` +
+      `spread ${sd.toFixed(2)}°`,
+  );
+
+  if (reportedDeg === undefined) {
+    return verdict(
+      'heading-bias',
+      question,
+      `the reading sits ${fmtSigned(mean)} from the Sun’s magnetic azimuth; the phone claimed nothing, so nothing is checked`,
+      'low',
+      evidence,
+    );
+  }
+  const covered = Math.abs(mean) <= reportedDeg;
+  return verdict(
+    'heading-bias',
+    question,
+    `the reading sits ${fmtSigned(mean)} from the Sun’s magnetic azimuth against the ` +
+      `${reportedDeg.toFixed(1)}° the phone claimed, so the claim ${covered ? 'covers the bias' : 'understates it'}`,
+    scored.length >= 2 ? 'moderate' : 'low',
+    evidence,
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
  * SECTION 8 — The whole analysis
  * ══════════════════════════════════════════════════════════════════════════ */
 
@@ -2374,6 +2678,8 @@ export interface RecordingAnalysis {
   readonly device: string;
   readonly compassReference: CompassReferenceAnalysis;
   readonly verdicts: readonly Verdict[];
+  /** The tilt zero point against the Sun, when the aiming steps support one. */
+  readonly pitchBias?: PitchBiasEstimate;
   /** Poses the protocol asks for that the recording does not contain. */
   readonly missingPoses: readonly PoseLabel[];
 }
@@ -2447,8 +2753,17 @@ export function analyseRecording(recording: HomeSessionRecording): RecordingAnal
   verdicts.push(driftVerdict(recording, 'still-drift', compassReference.verdict));
   verdicts.push(driftVerdict(recording, 'handling', compassReference.verdict));
   verdicts.push(dragScatterVerdict(recording));
+  const pitchBias = estimatePitchBias(recording);
+  verdicts.push(pitchBiasVerdict(recording, pitchBias));
+  verdicts.push(headingBiasVerdict(recording, compassReference));
 
-  return { device: recording.device, compassReference, verdicts, missingPoses };
+  return {
+    device: recording.device,
+    compassReference,
+    verdicts,
+    ...(pitchBias === undefined ? {} : { pitchBias }),
+    missingPoses,
+  };
 }
 
 /* ══════════════════════════════════════════════════════════════════════════

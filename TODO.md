@@ -69,7 +69,10 @@ after its self-check has run and passed here. The checks are in
 - [x] Replace the field guide's provisional steps with the real screen wording once field mode lands
 
 - [ ] Redesign field truth: agent annotators named 0 of 17 summits on the rehearsal frame (n = 1)
-- [ ] Add a measured pitch-bias term to the live vertical band; until measured, F2 vertical is not gated
+- [x] Add a measured pitch-bias term to the live vertical band; until measured, F2 vertical is not gated
+- [ ] Write the sun's frame offset into RecordedSegment.aimOffsetDeg at each aiming step
+- [ ] Give protocolSegments() aiming attitudes that point at a plausible sun altitude
+- [ ] Make docs/REAL-PHOTO-POSE.md and FINDINGS X-7's photo counts agree with the nine-photo count
 - [ ] Re-run the rehearsal at a 956x440 viewport over a 1920x1080 camera, without cropToAspect
 - [x] Separate refusals from notes in the field report
 

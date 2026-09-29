@@ -2,7 +2,7 @@
 
 This is the first time a person holds the phone up to the app. It takes about fifteen
 minutes and it happens at home, outdoors, in the sun. Nothing is uploaded. At the end you
-email one small file to yourself.
+email one small file to yourself, and tell Claude in the chat that you sent it.
 
 What the session is for, in one sentence: the phone's compass and tilt sensors have never
 been checked against a known direction, and the sun is the only known direction you have at
@@ -218,6 +218,26 @@ issue, and do not put it in the project folder. The file records how you moved; 
 If the share sheet does not appear, the app saves the file to the phone's **Files** app
 instead and says so on screen. That is fine — you can email it from Files later.
 
+## Step 9 — Tell Claude you emailed it
+
+Claude can read that one email for you, so you do not have to copy the file anywhere.
+
+Type this in the chat, in your own words:
+
+> I emailed the recording to myself.
+
+That is all Claude needs. It finds the message you just described — the recent one from you
+to yourself with the recording attached — opens that one, and reads the file out of it.
+
+**Nothing else in your mailbox is read.** Claude opens the single message you pointed it at
+and no other. It does not read other threads, and it does not go looking for anything you have
+not just told it about. If you would rather it did not touch your email at all, say so — you
+can paste the file's text into the chat instead, or just send the lines the next section asks
+for.
+
+If Claude cannot find the message, it will ask you for the subject line or the time you sent
+it. Reply with either and it will try again.
+
 ---
 
 ## What to tell Claude afterwards
@@ -233,8 +253,8 @@ Reply with these, in any order. Copy the sentences off the screen where you can.
 - The two **Lining-up practice** lines at the end, one for normal and one for fine.
 - Any **orange warning text** you saw at any point, word for word.
 - Anything that did not happen the way this guide said it would.
-- Say that you emailed the file to yourself. Keep the email; Claude will say if it needs the
-  file itself.
+- Say that you emailed the file to yourself, in those words. Keep the email: that sentence is
+  what lets Claude open that one message and read the file.
 
 ---
 

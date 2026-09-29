@@ -1356,3 +1356,33 @@ re-anchor would snap back on the first drag. The strategy review's recommendatio
 
 **For the human:** the field visit needs the sun up, 15–50° high, because the sun is now the
 re-anchor as well as the FOV reference.
+
+## The vertical band's tilt-bias term, measured against the Sun
+
+Once the FOV is calibrated, the vertical band used to carry only the tilt scatter, about
+0.003°. The band now always carries a tilt-bias term:
+- **Unmeasured:** an unquantified term, "Tilt zero point never checked", so F2's vertical axis
+  is `recorded-not-gated`. The live screen lists each unquantified term by name.
+- **Measured:** the home session's three sun-aiming steps compare the sensed camera altitude,
+  `asin(−cos β · cos γ)` (alpha cancels), with the Sun's true altitude.
+  - Each step uses its median.
+  - The pooled figure is the mean of the step medians.
+  - The spread is the sample sd of those medians, or one step's own RMS if only one step was
+    aimed.
+  - The band charges `|bias| + spread`, because the pose is not corrected by the bias.
+
+A bias over 15° is refused as a missed aim. The measurement is stored on the phone
+(`pitch-bias.ts`), keyed by the user agent rather than the camera track, since it describes the
+accelerometer. The session's own on-device analysis supplies it.
+
+The analyzer also reports the compass heading's bias against the Sun's magnetic azimuth, beside
+the accuracy the phone claimed. It withholds that figure while the reference hypothesis is
+undecided. Nine mutations are caught.
+
+**Limits.** Nothing writes `aimOffsetDeg`, the Sun's actual offset from frame centre, yet; the
+estimator assumes a perfect aim and says so. The synthetic protocol's aiming attitudes do not
+point at a sun.
+
+The same change set corrected the photo count to nine `.heic` originals. The two JPEG exports
+carry no GPS. It also set MISSION.md, README.md and HANDOFF.md to name `live.html` as the live
+vehicle, with Expo as the fallback that has never been run.

@@ -93,6 +93,8 @@ import {
   type UnmeasuredSummit,
 } from './field-session';
 import { browserBundleShareTarget } from './field-share';
+import type { PitchBiasEstimate } from '../../live/recording';
+
 import { isHomeSessionRequested, sunKnownBearing } from './home-session';
 import { HomeSessionRecorder } from './home-session-recorder';
 import { browserShareTarget } from './home-session-share';
@@ -107,6 +109,12 @@ import {
   writeStoredFovCalibration,
   type FovCalibration,
 } from './fov-choice';
+import {
+  pitchBiasKey,
+  readStoredPitchBias,
+  writeStoredPitchBias,
+  type PitchBiasCalibration,
+} from './pitch-bias';
 import {
   DEFAULT_SCREEN_ROLL_HYPOTHESIS,
   isLandscapeViewport,
@@ -483,6 +491,41 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
     );
   }, [calibrationStoreKey]);
 
+  const [pitchBias, setPitchBias] = useState<PitchBiasCalibration | undefined>(undefined);
+  const pitchBiasStoreKey = pitchBiasKey(
+    typeof navigator === 'undefined' ? '' : navigator.userAgent,
+  );
+
+  useEffect(() => {
+    setPitchBias(
+      readStoredPitchBias(
+        typeof localStorage === 'undefined' ? undefined : localStorage,
+        pitchBiasStoreKey,
+      ),
+    );
+  }, [pitchBiasStoreKey]);
+
+  /** Take the home session's tilt measurement, store it, and band with it. */
+  const applyPitchBias = useCallback(
+    (estimate: PitchBiasEstimate) => {
+      const calibration: PitchBiasCalibration = {
+        biasDeg: estimate.biasDeg,
+        spreadDeg: estimate.spreadDeg,
+        segmentCount: estimate.perSegment.length,
+        method:
+          `Measured against the sun over ${estimate.perSegment.length} aiming step(s) in the ` +
+          'home session.',
+      };
+      writeStoredPitchBias(
+        typeof localStorage === 'undefined' ? undefined : localStorage,
+        pitchBiasStoreKey,
+        calibration,
+      );
+      setPitchBias(calibration);
+    },
+    [pitchBiasStoreKey],
+  );
+
   const fov = useMemo(
     () =>
       resolveFov({
@@ -574,10 +617,11 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
       compassAccuracyDeg: sensorStatus?.compassAccuracyDeg,
       pitchSpreadDeg: poseResult.value.pitchSpreadDeg,
       fovSource: fov?.source ?? 'spec-sheet-guess',
+      pitchBias,
       pose,
       framePx,
     });
-  }, [poseResult, pose, fov?.source, sensorStatus?.compassAccuracyDeg, framePx.widthPx]);
+  }, [poseResult, pose, fov?.source, pitchBias, sensorStatus?.compassAccuracyDeg, framePx.widthPx]);
 
   /* ── the drag (D9), at normal or fine gain ──────────────────────────────── */
   const onPointerDown = useCallback(
@@ -1052,6 +1096,7 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
             calibrationReferences={calibrationReferences}
             calibrationFrame={calibrationFrame}
             onCalibrated={applyFovFit}
+            onPitchMeasured={applyPitchBias}
             shareTarget={shareTarget}
             completedDrag={completedDrag}
             dragMode={dragMode}
@@ -1184,6 +1229,21 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
                 <p data-testid="live-fov-label" data-fov-source={fov.source}>
                   {fov.label}
                 </p>
+              )}
+              {/* Named one by one rather than left to the band's own "treat this
+                  as a minimum" sentence. That sentence says some error has no
+                  figure; it does not say which, and an unchecked tilt sensor is
+                  a different problem from an unmeasured lens. */}
+              {band?.terms.map((term, index) =>
+                term.basis.kind === 'unquantified' ? (
+                  <p
+                    key={`${term.axis}-${index}`}
+                    data-testid="live-unquantified-term"
+                    data-axis={term.axis}
+                  >
+                    {term.label}. {term.basis.note}
+                  </p>
+                ) : null,
               )}
               {marks.map((mark) =>
                 mark.inFrame && !mark.belowHorizon ? null : (

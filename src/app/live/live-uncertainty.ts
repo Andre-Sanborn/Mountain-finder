@@ -33,6 +33,12 @@
  *   field of view                 unquantified while uncalibrated, because a
  *                                 browser stream's field is not the published
  *                                 one and the size of the gap is unmeasured
+ *   pitch bias, measured          the home session's tilt zero point against
+ *                                 the Sun, plus how far two re-aims landed
+ *                                 apart
+ *   pitch bias, unmeasured        unquantified: nothing on this phone has ever
+ *                                 checked the sensed tilt against a known
+ *                                 direction
  *
  * The scatter terms are the only ones with a sample count above 1, and they are
  * measurements of the noise rather than of the bias. Saying so matters: a still
@@ -51,6 +57,7 @@ import {
   type UncertaintyTerm,
 } from '../uncertainty';
 import type { FovSource } from './fov-choice';
+import type { PitchBiasCalibration } from './pitch-bias';
 
 export interface LiveUncertaintyInput {
   readonly heading: DrawableHeading;
@@ -58,6 +65,8 @@ export interface LiveUncertaintyInput {
   readonly compassAccuracyDeg?: number | undefined;
   readonly pitchSpreadDeg?: number | undefined;
   readonly fovSource: FovSource;
+  /** The home session's tilt measurement for this phone, when one is stored. */
+  readonly pitchBias?: PitchBiasCalibration | undefined;
   readonly pose: CameraPose;
   readonly framePx: { readonly widthPx: number; readonly heightPx: number };
 }
@@ -141,6 +150,50 @@ function headingTerms(input: LiveUncertaintyInput): readonly UncertaintyTerm[] {
   return terms;
 }
 
+/**
+ * The tilt zero point: how far the sensed tilt sits from the truth.
+ *
+ * Separate from the wobble term above, because a still phone has almost no
+ * wobble and can still read two degrees low all day. Without this term a
+ * calibrated band would claim the pitch is known to the width of a second's
+ * hand shake, which on a braced phone is a few thousandths of a degree.
+ *
+ * The measured figure charges the bias and its spread together. The app does
+ * not subtract the bias from the pose — it reports it — so the band has to
+ * carry the whole of it, and the re-aim spread is how well the bias itself is
+ * known.
+ */
+function pitchBiasTerm(bias: PitchBiasCalibration | undefined): UncertaintyTerm {
+  if (bias === undefined) {
+    return {
+      axis: 'vertical',
+      label: 'Tilt zero point never checked',
+      basis: {
+        kind: 'unquantified',
+        note:
+          'Nothing on this phone has ever checked its tilt sensor against a direction ' +
+          'it knows, so the app cannot say how far the tilt reading sits from the truth. ' +
+          'It could be a fraction of a degree or it could be several. Run the home ' +
+          'session in sunshine to measure it.',
+      },
+    };
+  }
+  return {
+    axis: 'vertical',
+    label: 'Tilt zero point, measured against the sun',
+    basis: {
+      kind: 'measured',
+      deg: Math.abs(bias.biasDeg) + bias.spreadDeg,
+      sampleCount: bias.segmentCount,
+      note:
+        `The home session pointed this phone at the sun and found its tilt reading ` +
+        `${Math.abs(bias.biasDeg).toFixed(2)}° too ${bias.biasDeg >= 0 ? 'high' : 'low'}, with two ` +
+        `aims landing ${bias.spreadDeg.toFixed(2)}° apart. Both are charged here, because the app ` +
+        `reports the error rather than quietly correcting for it. ${bias.method}`,
+    },
+  };
+}
+
 function verticalTerms(input: LiveUncertaintyInput): readonly UncertaintyTerm[] {
   const terms: UncertaintyTerm[] = [];
   if (input.pitchSpreadDeg !== undefined && input.pitchSpreadDeg > 0) {
@@ -158,6 +211,8 @@ function verticalTerms(input: LiveUncertaintyInput): readonly UncertaintyTerm[] 
       },
     });
   }
+
+  terms.push(pitchBiasTerm(input.pitchBias));
   if (input.fovSource === 'spec-sheet-guess') {
     terms.push({
       axis: 'vertical',

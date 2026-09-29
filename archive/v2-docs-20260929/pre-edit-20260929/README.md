@@ -5,10 +5,8 @@ labelled flags on their summits. It runs offline: terrain comes from local SRTM 
 summits from a local peak database, and nothing talks to an API at runtime.
 
 The web app is the base product. A computer-vision pass aligns the computed skyline to the
-photograph, and `live.html` carries the same pure code onto a phone in its own browser: a
-Safari tab against the live camera, served from GitHub Pages. The Expo shell in
-[`mobile/`](mobile/README.md) is the fallback for that route and has never been run on a
-phone.
+photograph, and an Expo shell in [`mobile/`](mobile/README.md) carries the same pure code onto
+a phone.
 
 ## Running the gates
 
@@ -22,7 +20,7 @@ Nothing here is done until its check has been run and watched to pass. These are
 | `npm run build` | typecheck + production bundle |
 | `npm run package:deploy` | assembles `dist/terrain/` + `dist/peaks/` into a deployable static directory |
 | `npm run test:deploy` | the packaged `dist/` behind a plain static server, no Vite |
-| `npm run check:mobile` | the fallback shell's gate: typecheck + lint + a real Metro/Hermes build of the Expo shell |
+| `npm run check:mobile` | typecheck + lint + a real Metro/Hermes build of the Expo shell |
 | `npm run demo -- <case>` | runs a real case end to end and writes `out/annotated.png` |
 | `npm run annotate` | annotates a real photograph, with `--auto-trim` for the CV suggestion |
 | `npm run fetch:tiles` | acquisition only: pulls SRTM tiles from AWS Open Data |
@@ -39,5 +37,5 @@ Nothing here is done until its check has been run and watched to pass. These are
 | [docs/FINDINGS.md](docs/FINDINGS.md) | Index of every confirmed finding, with stable ids, severity and fix status |
 | [docs/REVIEW-LOG.md](docs/REVIEW-LOG.md) | The append-only log of nightly strategy reviews |
 | [docs/](docs/) | Deployment, near-field terrain, real-photo pose, the CV findings, the Idaho photo cases |
-| [mobile/README.md](mobile/README.md) | The fallback shell: running it on a phone with Expo Go — no Mac, no Xcode, no Apple Developer account |
+| [mobile/README.md](mobile/README.md) | Running the Expo shell on a phone with Expo Go — no Mac, no Xcode, no Apple Developer account |
 | [archive/](archive/) | History, intact and read-only: the v2 governance documents and the retired v1 Expo attempt |

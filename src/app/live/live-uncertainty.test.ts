@@ -25,6 +25,7 @@ import {
 } from '../../live/heading-policy';
 import { MEASURED_ASSUMED_PITCH_ERROR_DEG } from '../uncertainty';
 import { horizontalBandHalfWidthPx, liveUncertainty } from './live-uncertainty';
+import type { PitchBiasCalibration } from './pitch-bias';
 
 const DEG = Math.PI / 180;
 const FRAME = { widthPx: 800, heightPx: 450 };
@@ -48,6 +49,14 @@ const MODEL_HEADING: DrawableHeading = {
     decimalYear: 2026.7,
     withinModelValidity: true,
   },
+};
+
+/** A home session that found the tilt reading 0.4° high, two aims 0.1° apart. */
+const PITCH_BIAS: PitchBiasCalibration = {
+  biasDeg: 0.4,
+  spreadDeg: 0.1,
+  segmentCount: 3,
+  method: 'Measured against the sun over 3 aiming step(s) in the home session.',
 };
 
 const MAGNETIC_HEADING: DrawableHeading = {
@@ -197,11 +206,81 @@ describe('the vertical terms', () => {
       heading: MODEL_HEADING,
       pitchSpreadDeg: 0.8,
       fovSource: 'calibrated',
+      pitchBias: PITCH_BIAS,
       pose: POSE,
       framePx: FRAME,
     });
     expect(band.terms.some((term) => term.label.includes('Field of view'))).toBe(false);
     expect(band.hasUnquantified).toBe(false);
+  });
+});
+
+describe('the tilt zero point', () => {
+  it('is unquantified until a home session has measured it', () => {
+    // Without this term a calibrated band claims the pitch is known to the
+    // width of a second's hand shake, which on a braced phone is thousandths
+    // of a degree. The phone's tilt sensor has never been checked against a
+    // known direction, and the band has to say so.
+    const band = liveUncertainty({
+      heading: MODEL_HEADING,
+      pitchSpreadDeg: 0.003,
+      fovSource: 'calibrated',
+      pose: POSE,
+      framePx: FRAME,
+    });
+    const term = band.terms.find((entry) => entry.label.includes('Tilt zero point'));
+    expect(term?.axis).toBe('vertical');
+    expect(term?.basis.kind).toBe('unquantified');
+    expect(term?.basis.note).toContain('has ever checked its tilt sensor');
+    expect(band.hasUnquantified).toBe(true);
+    expect(band.summary).toContain('minimum');
+  });
+
+  it('charges the measured bias and its spread together', () => {
+    const band = liveUncertainty({
+      heading: MODEL_HEADING,
+      pitchSpreadDeg: 0.8,
+      fovSource: 'calibrated',
+      pitchBias: PITCH_BIAS,
+      pose: POSE,
+      framePx: FRAME,
+    });
+    // 0.8 of wobble, plus 0.4 of bias and 0.1 of re-aim spread.
+    expect(band.measuredDeg.vertical).toBeCloseTo(1.3, 12);
+    expect(band.hasUnquantified).toBe(false);
+    expect(band.frameFraction.vertical).toBeCloseTo(
+      Math.tan(1.3 * DEG) / Math.tan(17.5 * DEG),
+      12,
+    );
+  });
+
+  it('charges a bias the other way round by the same amount', () => {
+    // The band is a width, so a phone reading 0.4° low costs exactly what one
+    // reading 0.4° high costs.
+    const band = liveUncertainty({
+      heading: MODEL_HEADING,
+      fovSource: 'calibrated',
+      pitchBias: { ...PITCH_BIAS, biasDeg: -0.4 },
+      pose: POSE,
+      framePx: FRAME,
+    });
+    expect(band.measuredDeg.vertical).toBeCloseTo(0.5, 12);
+    const term = band.terms.find((entry) => entry.label.includes('Tilt zero point'));
+    expect(term?.basis.note).toContain('too low');
+  });
+
+  it('names the sun on screen, so the figure is traceable', () => {
+    const band = liveUncertainty({
+      heading: MODEL_HEADING,
+      fovSource: 'calibrated',
+      pitchBias: PITCH_BIAS,
+      pose: POSE,
+      framePx: FRAME,
+    });
+    const term = band.terms.find((entry) => entry.label.includes('Tilt zero point'));
+    expect(term?.label).toContain('sun');
+    expect(term?.basis.kind === 'measured' ? term.basis.sampleCount : 0).toBe(3);
+    expect(term?.basis.note).toContain('0.40° too high');
   });
 });
 

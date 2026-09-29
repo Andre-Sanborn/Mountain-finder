@@ -33,7 +33,9 @@ import { CALIBRATION_HOLDS } from './calibration.js';
 import {
   alphaForCameraAzimuth,
   analyseRecording,
+  cameraAltitudeDeg,
   dragModeScatter,
+  estimatePitchBias,
   expectedGravity,
   expectedTopEdgeMinusCameraDeg,
   fold360,
@@ -883,15 +885,270 @@ describe('the committed fixtures', () => {
       const analysis = analyseRecording(result.value);
       expect(analysis.compassReference.verdict).toBe(expected);
       // Neither fixture carries drag trials — they are recordings of the sensor
-      // protocol alone — so `drag-scatter` is inconclusive on both, and it is
-      // named here rather than counted so a new inconclusive verdict shows up.
+      // protocol alone — so `drag-scatter` is inconclusive on both. Neither
+      // carries a Sun bearing either, so `pitch-bias` has no altitude to score
+      // against. Both are named here rather than counted, so a new inconclusive
+      // verdict shows up.
       const unresolved = analysis.verdicts.filter((v) => v.inconclusive).map((v) => v.id);
       expect(unresolved).toEqual(
         expected === 'device-top-edge'
-          ? ['drag-scatter']
-          : ['landscape-sign', 'drag-scatter'],
+          ? ['drag-scatter', 'pitch-bias']
+          : ['landscape-sign', 'drag-scatter', 'pitch-bias'],
       );
       expect(result.value.dragTrials).toBeUndefined();
     });
   }
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * The tilt zero point, and the compass's own honesty
+ * ══════════════════════════════════════════════════════════════════════════
+ * Every expectation here comes from two attitudes whose camera altitude is an
+ * elementary consequence of the specification's matrix, not from running the
+ * estimator:
+ *
+ *   γ = 0, β = 90 + a    the camera's earth vector has z = −cos β cos γ
+ *                        = −cos(90 + a) = sin a, so its altitude is a
+ *   β = 0, γ = ±(90 + a) the same product with the roles swapped: −cos(90 + a)
+ *                        = sin a again, so its altitude is a
+ *
+ * The second family is a phone held sideways rather than upright, so the two
+ * are different poses with the same answer. Both are stated in § A.2's row 3:
+ * the earth's up in device coordinates is (−cos β sin γ, sin β, cos β cos γ).
+ */
+
+const SUN_ALTITUDE_DEG = 30;
+
+/** The synthetic bearing, restated as the Sun so an altitude is on file. */
+function withSunBearing(recording: HomeSessionRecording): HomeSessionRecording {
+  return {
+    ...recording,
+    knownBearing: {
+      kind: 'sun-azimuth',
+      magneticAzimuthDeg: recording.knownBearing.magneticAzimuthDeg,
+      altitudeDeg: SUN_ALTITUDE_DEG,
+      ephemeris: 'synthetic: the altitude this recording was built around',
+    },
+  };
+}
+
+/**
+ * Three aiming steps whose sensed camera altitudes miss the Sun by the biases
+ * given, with no attitude noise so each median is exactly its bias.
+ */
+function aimedRecording(
+  biasesDeg: readonly number[],
+  attitudeNoiseDeg = 0,
+): HomeSessionRecording {
+  const poses: readonly PoseLabel[] = [
+    'portrait-upright-known-bearing',
+    'landscape-upright-known-bearing-top-left',
+    'landscape-upright-known-bearing-top-right',
+  ];
+  const segments: SynthSegmentSpec[] = [];
+  biasesDeg.forEach((bias, index) => {
+    const pose = poses[index];
+    if (pose === undefined) return;
+    const aimDeg = SUN_ALTITUDE_DEG + bias;
+    const from =
+      index === 0
+        ? { betaDeg: 90 + aimDeg, gammaDeg: 0 }
+        : index === 1
+          ? { betaDeg: 0, gammaDeg: 90 + aimDeg }
+          : { betaDeg: 0, gammaDeg: -(90 + aimDeg) };
+    segments.push({ pose, durationMs: 4000, orientationHz: 10, from });
+  });
+  return withSunBearing(
+    synthesiseRecording(spec({ segments, attitudeNoiseDeg, compassNoiseDeg: 0 })),
+  );
+}
+
+describe('the camera altitude', () => {
+  it('reads an upright phone’s tilt straight off beta', () => {
+    // γ = 0 leaves altitude = asin(−cos β). β = 90 is level, β = 115 is 25° up.
+    expect(cameraAltitudeDeg(90, 0)).toBeCloseTo(0, 12);
+    expect(cameraAltitudeDeg(115, 0)).toBeCloseTo(25, 12);
+    expect(cameraAltitudeDeg(78, 0)).toBeCloseTo(-12, 12);
+  });
+
+  it('reads a sideways phone’s tilt off gamma, either way round', () => {
+    expect(cameraAltitudeDeg(0, 90)).toBeCloseTo(0, 12);
+    expect(cameraAltitudeDeg(0, 115)).toBeCloseTo(25, 12);
+    expect(cameraAltitudeDeg(0, -115)).toBeCloseTo(25, 12);
+  });
+
+  it('points straight down when the phone lies face up, and up when face down', () => {
+    expect(cameraAltitudeDeg(0, 0)).toBeCloseTo(-90, 12);
+    expect(cameraAltitudeDeg(180, 0)).toBeCloseTo(90, 12);
+  });
+});
+
+describe('the pitch bias', () => {
+  it('recovers the bias as the mean of the per-step medians', () => {
+    // Biases 1, 2 and 3 have mean 2 and sample sd sqrt(((1)²+0+(1)²)/2) = 1.
+    const estimate = estimatePitchBias(aimedRecording([1, 2, 3]));
+    expect(estimate?.biasDeg).toBeCloseTo(2, 6);
+    expect(estimate?.spreadDeg).toBeCloseTo(1, 6);
+    expect(estimate?.perSegment.map((s) => s.medianDeg)).toHaveLength(3);
+    expect(estimate?.perSegment[0]?.medianDeg).toBeCloseTo(1, 6);
+    expect(estimate?.perSegment[2]?.medianDeg).toBeCloseTo(3, 6);
+  });
+
+  it('keeps the sign: a phone reading high reports a positive bias', () => {
+    expect(estimatePitchBias(aimedRecording([-2, -2, -2]))?.biasDeg).toBeCloseTo(-2, 6);
+    expect(estimatePitchBias(aimedRecording([2, 2, 2]))?.biasDeg).toBeCloseTo(2, 6);
+  });
+
+  it('applies a recorded tap offset, because the Sun was not where the aim assumed', () => {
+    const base = aimedRecording([1, 2, 3]);
+    // The Sun sat 0.5° ABOVE centre on every step, so the camera axis was 0.5°
+    // below it and every sensed altitude is 0.5° low.
+    const shifted: HomeSessionRecording = {
+      ...base,
+      segments: base.segments.map((segment) => ({
+        ...segment,
+        aimOffsetDeg: { headingDeg: 0, pitchDeg: 0.5 },
+      })),
+    };
+    expect(estimatePitchBias(shifted)?.biasDeg).toBeCloseTo(2.5, 6);
+    expect(estimatePitchBias(shifted)?.aimOffsetsMeasured).toBe(true);
+    expect(estimatePitchBias(base)?.aimOffsetsMeasured).toBe(false);
+  });
+
+  it('falls back to one step’s own scatter when only one step was aimed', () => {
+    // A portrait hold at γ = 0 has altitude β − 90, so the residual scatter is
+    // exactly the injected beta noise: strictly positive, and bounded by the
+    // 1.0° peak the generator is given. The sample sd of ONE median is zero, so
+    // a spread that is not zero can only have come from the fallback.
+    const estimate = estimatePitchBias(aimedRecording([1.5], 1));
+    expect(estimate?.perSegment).toHaveLength(1);
+    expect(Math.abs((estimate?.biasDeg ?? 0) - 1.5)).toBeLessThanOrEqual(1);
+    expect(estimate?.spreadDeg).toBeGreaterThan(0);
+    expect(estimate?.spreadDeg).toBeLessThanOrEqual(1);
+    expect(estimate?.spreadDeg).toBe(estimate?.perSegment[0]?.scatterDeg);
+    expect(verdictFor(aimedRecording([1.5], 1), 'pitch-bias').confidence).toBe('low');
+  });
+
+  it('takes the median of a hold, so the seconds spent settling do not drag it', () => {
+    // The portrait step is 4 s at 10 Hz, so 41 samples. The first 10 are moved
+    // 20° off, as a phone still being lined up is. With 10 of 41 displaced, the
+    // middle value is untouched and the median still reads the 2° bias, while
+    // the mean would read 2 + 20 × 10/41 = 6.878°.
+    const base = aimedRecording([2]);
+    const settling: HomeSessionRecording = {
+      ...base,
+      segments: base.segments.map((segment) => ({
+        ...segment,
+        events: segment.events.map((event, index) =>
+          event.kind === 'orientation' && index < 10
+            ? { ...event, event: { ...event.event, beta: (event.event.beta ?? 0) + 20 } }
+            : event,
+        ),
+      })),
+    };
+    expect(settling.segments[0]?.events).toHaveLength(41);
+    expect(estimatePitchBias(settling)?.biasDeg).toBeCloseTo(2, 6);
+  });
+
+  it('prints the bias at three decimals, so a tenth-degree term is not rounded away', () => {
+    const answer = verdictFor(aimedRecording([0.04, 0.04, 0.04]), 'pitch-bias');
+    expect(answer.answer).toContain('+0.040°');
+  });
+
+  it('refuses a bias no tilt sensor could have, because the aim missed', () => {
+    // 40° past the Sun is a camera pointing somewhere else, not a gravity zero.
+    const estimate = estimatePitchBias(aimedRecording([40, 40, 40]));
+    expect(estimate?.biasDeg).toBeCloseTo(40, 6);
+    expect(estimate?.credible).toBe(false);
+    expect(estimatePitchBias(aimedRecording([1, 2, 3]))?.credible).toBe(true);
+    const answer = verdictFor(aimedRecording([40, 40, 40]), 'pitch-bias');
+    expect(answer.inconclusive).toBe(true);
+    expect(answer.evidence.join(' ')).toContain('not pointing at the Sun');
+  });
+
+  it('says nothing when the reference is not the Sun', () => {
+    const surveyed = synthesiseRecording(spec({ attitudeNoiseDeg: 0 }));
+    expect(estimatePitchBias(surveyed)).toBeUndefined();
+    const answer = verdictFor(surveyed, 'pitch-bias');
+    expect(answer.inconclusive).toBe(true);
+    expect(answer.evidence.join(' ')).toContain('not the Sun');
+  });
+
+  it('ignores the sun-capture step, where the Sun is deliberately off centre', () => {
+    const base = aimedRecording([1, 2, 3]);
+    const offCentre: HomeSessionRecording = {
+      ...base,
+      segments: base.segments.map((segment, index) =>
+        index === 0 ? { ...segment, pose: 'sun-capture' as PoseLabel } : segment,
+      ),
+    };
+    // Dropping the 1° step leaves 2 and 3: mean 2.5, sample sd sqrt(0.5) ≈ 0.7071.
+    expect(estimatePitchBias(offCentre)?.biasDeg).toBeCloseTo(2.5, 6);
+    expect(estimatePitchBias(offCentre)?.spreadDeg).toBeCloseTo(Math.SQRT1_2, 6);
+  });
+
+  it('carries the estimate on the analysis, so the screen can store it', () => {
+    expect(analyseRecording(aimedRecording([1, 2, 3])).pitchBias?.biasDeg).toBeCloseTo(2, 6);
+    expect(analyseRecording(synthesiseRecording(spec())).pitchBias).toBeUndefined();
+  });
+});
+
+/** Every compass reading shifted by a constant, as a biased magnetometer is. */
+function withCompassOffset(recording: HomeSessionRecording, offsetDeg: number): HomeSessionRecording {
+  return {
+    ...recording,
+    segments: recording.segments.map((segment) => ({
+      ...segment,
+      events: segment.events.map((event) =>
+        event.kind === 'orientation' && typeof event.event.webkitCompassHeading === 'number'
+          ? {
+              ...event,
+              event: {
+                ...event.event,
+                webkitCompassHeading: fold360(event.event.webkitCompassHeading + offsetDeg),
+              },
+            }
+          : event,
+      ),
+    })),
+  };
+}
+
+describe('the compass heading bias', () => {
+  it('reports the bias against the Sun and the accuracy the phone claimed', () => {
+    const answer = verdictFor(
+      withSunBearing(
+        synthesiseRecording(
+          spec({ hypothesis: 'device-top-edge', attitudeNoiseDeg: 0, compassNoiseDeg: 0, compassAccuracyDeg: 8 }),
+        ),
+      ),
+      'heading-bias',
+    );
+    // A noise-free synthetic phone obeys its hypothesis exactly, so the bias is
+    // zero and the 8° it claims covers it.
+    expect(answer.inconclusive).toBe(false);
+    expect(answer.answer).toContain('covers the bias');
+    expect(answer.evidence.join(' ')).toContain('8.0°');
+  });
+
+  it('calls the claim out when the reading is further off than the phone admits', () => {
+    // A constant offset on the reading itself, which is what an uncorrected
+    // magnetometer bias looks like. 8° leaves the winning hypothesis inside the
+    // 12° a segment may leave and still win, so the reference stays decided and
+    // the bias is what changes.
+    const built = synthesiseRecording(
+      spec({ attitudeNoiseDeg: 0, compassNoiseDeg: 0, compassAccuracyDeg: 5 }),
+    );
+    const answer = verdictFor(withSunBearing(withCompassOffset(built, 8)), 'heading-bias');
+    expect(answer.answer).toContain('8.0°');
+    expect(answer.answer).toContain('understates it');
+    expect(answer.evidence.join(' ')).toContain('5.0°');
+  });
+
+  it('withholds a bias while the compass reference is undecided', () => {
+    const portraitOnly = onlyPoses(['portrait-upright-known-bearing']);
+    const answer = verdictFor(withSunBearing(portraitOnly), 'heading-bias');
+    expect(answer.inconclusive).toBe(true);
+    expect(answer.evidence.join(' ')).toContain('undecided');
+  });
 });

@@ -5,13 +5,11 @@ and self-checks in [IMPLEMENTATION.md](IMPLEMENTATION.md), open work in [TODO.md
 
 ## Needed from the human
 
-- **A decision only they can make: do the nine photographs stay public?** The repository is
-  public (GitHub API, `private: false`). `fixtures/photos/real/` holds nine of the human's own
+- **A decision only they can make: do the seven photographs stay public?** The repository is
+  public (GitHub API, `private: false`). `fixtures/photos/real/` holds seven of the human's own
   iPhone originals with GPS in their EXIF, public since 2026-08-17, and docs print those
-  coordinates. The nine are the `.heic` files in that directory, each cleared by path and
-  sha256 in `scripts/privacy-allowlist.json`; the two `.jpeg` exports beside them carry no
-  GPS. They are mountain viewpoints, not a residence. Asked 2026-09-29. Nothing is blocked;
-  the default until answered is that they stay. Options given: keep; make the repo
+  coordinates. They are mountain viewpoints, not a residence. Asked 2026-09-29. Nothing is
+  blocked; the default until answered is that they stay. Options given: keep; make the repo
   private (Pages would then need another host); or rewrite history (overrides "nothing is
   deleted", needs their explicit word). Repeat this ask in every reply until answered.
 - **An action only they can take: turn on GitHub Pages (about 2 minutes, not urgent).** The
@@ -49,7 +47,7 @@ Run these from the repository root.
 | End-to-end in real Chromium | `npm run test:e2e` |
 | Ground-truth acceptance cases | `npm run test:acceptance` |
 | Packaged deployment behind a plain static server | `npm run build && npm run fetch:tiles -- N45E007 && npm run package:deploy -- --gzip && npm run test:deploy` |
-| The fallback shell: typecheck, lint and a real Metro/Hermes build | `npm run check:mobile` |
+| Mobile typecheck, lint and a real Metro/Hermes build | `npm run check:mobile` |
 | A human-viewable annotated PNG | `npm run demo -- gornergrat` (needs `data/tiles/N45E007.hgt`) |
 
 ### Last recorded counts
@@ -92,21 +90,18 @@ Each line says when it was last verified. The goal each level is aiming at is in
    originals, whose EXIF the transcode had stripped. Every earlier run had assumed a
    26 mm-equivalent lens against a 48 mm frame, a 1.69× scale error no search can absorb, and
    the reason the aligner had refused everything.
-3. **Live view (v3) — pure layers proven, no phone has run either vehicle; last verified
-   2026-08-18.** `src/live/sensors.ts` (pose from gravity and compass, with the EXIF path's
-   refusals), `src/live/device-samples.ts` (device payloads into those traces, four sign, unit
-   and sentinel traps recorded as X-7) and `src/live/loop.ts` (one scene re-projected per tick,
-   proven identical to re-running the still pipeline, refusing when the camera turns past swept
-   terrain) all exist and are tested. **`live.html` in the phone's own browser is the vehicle**
-   (IMPLEMENTATION.md, "The route to the field test"): it is served from GitHub Pages and its
-   AR loop is driven headlessly in Chromium. `mobile/` is the fallback: an Expo Go app needing
-   no Mac, no Xcode and no Apple Developer account, typechecked against the real SDK together
-   with the 39 shared files it imports unchanged, which is P8.1's no-fork bar. No further effort
-   goes into it until the browser route fails on the phone. Either vehicle's first job on the
-   phone is the four-hold frame-convention check rather than the AR view, deliberately:
-   `sensors.ts`'s conventions are proven as mathematics and not against hardware, and building
-   peak labelling on an unverified sign is the ordering mistake this project keeps declining to
-   make. **Nobody has run either on a phone**, so it is `[~]`, not ticked.
+3. **Live view (v3) — pure layers proven, shell built but unrun; last verified 2026-08-18.**
+   `src/live/sensors.ts` (pose from gravity and compass, with the EXIF path's refusals),
+   `src/live/device-samples.ts` (Expo's payloads into those traces, four sign, unit and sentinel
+   traps recorded as X-7) and `src/live/loop.ts` (one scene re-projected per tick, proven
+   identical to re-running the still pipeline, refusing when the camera turns past swept
+   terrain) all exist and are tested. `mobile/` is the shell: an Expo Go app needing no Mac, no
+   Xcode and no Apple Developer account, typechecked against the real SDK together with the 39
+   shared files it imports unchanged, which is P8.1's no-fork bar. It carries the four-hold
+   frame-convention check rather than the AR view, deliberately: `sensors.ts`'s conventions are
+   proven as mathematics and not against hardware, and building peak labelling on an unverified
+   sign is the ordering mistake this project keeps declining to make. **Nobody has run it**, so
+   it is `[~]`, not ticked.
 
 **The honest gaps.** Live API egress is 403 at the proxy, so `fixtures/api/**` was never
 recorded from OpenTopoData or Overpass (P2.4 unmet, marked `[~]`). The sensor module's frame

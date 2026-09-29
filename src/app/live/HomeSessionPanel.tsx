@@ -61,6 +61,7 @@ import {
   parseRecording,
   type HomeSessionRecording,
   type KnownBearing,
+  type PitchBiasEstimate,
   type RecordedDragTrial,
   type RecordingAnalysis,
   type RecordingProblem,
@@ -115,6 +116,8 @@ export interface HomeSessionPanelProps {
   readonly calibrationFrame: () => CalibrationFrame | undefined;
   /** Hand a finished measurement to the screen, which stores and applies it. */
   readonly onCalibrated: (fit: FovFit, references: readonly CalibrationReference[]) => void;
+  /** Hand the tilt zero point to the screen, which stores it and bands with it. */
+  readonly onPitchMeasured: (estimate: PitchBiasEstimate) => void;
   readonly shareTarget: ShareTarget;
   /** The last drag the screen finished, or undefined before the first one. */
   readonly completedDrag: CompletedDrag | undefined;
@@ -162,6 +165,7 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
   // props object would be a new function every 50 ms — and the countdown's own
   // 250 ms interval would be torn down before it ever fired.
   const { recorder, computeKnownBearing, device, shareTarget, setDragMode, readRollDeg } = props;
+  const { onPitchMeasured } = props;
   const completedDrag = props.completedDrag;
 
   /** Open a step, taking the Sun's bearing the first time one needs it. */
@@ -202,13 +206,12 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
     // Parsed from the TEXT, not from the object, because the text is what gets
     // shared and what the analyzer on the other end will read.
     const parsed = parseRecording(JSON.parse(json) as unknown);
-    setFinished({
-      recording,
-      json,
-      problems: parsed.ok ? [] : parsed.problems,
-      analysis: parsed.ok ? analyseRecording(parsed.value) : undefined,
-    });
-  }, [recorder, computeKnownBearing, device, trials]);
+    const analysis = parsed.ok ? analyseRecording(parsed.value) : undefined;
+    setFinished({ recording, json, problems: parsed.ok ? [] : parsed.problems, analysis });
+    // The live band's vertical axis is unquantified until this lands, so it is
+    // stored here rather than waiting for the file to be analysed off the phone.
+    if (analysis?.pitchBias?.credible === true) onPitchMeasured(analysis.pitchBias);
+  }, [recorder, computeKnownBearing, device, trials, onPitchMeasured]);
 
   /**
    * Leave the recorded poses and start the drag trials.

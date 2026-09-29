@@ -291,14 +291,16 @@ Treat the human's photographs and everything derived from them as private.
   it through WebFetch or report the refusal.
 
 **One standing exception is already in the tree.** `fixtures/photos/real/` holds
-seven iPhone originals the human photographed, and their EXIF carries the GPS
-position of each viewpoint. Documents under `docs/` print those coordinates. The
-photographer supplied the frames for this project before the rule above was
-written, and that consent is recorded here so nobody has to re-litigate it. **Any
-further personal photograph needs the human's explicit yes before it is
-committed.**
+nine iPhone originals the human photographed, and their EXIF carries the GPS
+position of each viewpoint. The nine are the `.heic` files in that directory, and
+`scripts/privacy-allowlist.json` clears each one by path and sha256; the two
+`.jpeg` files beside them are exports that carry no GPS EXIF and are not on the
+list. Documents under `docs/` print those coordinates. The photographer supplied
+the frames for this project before the rule above was written, and that consent
+is recorded here so nobody has to re-litigate it. **Any further personal
+photograph needs the human's explicit yes before it is committed.**
 
-The repository is public: the GitHub API reports `private: false`. Those seven
+The repository is public: the GitHub API reports `private: false`. Those nine
 photographs and their coordinates are therefore readable by anyone. The human has
 been asked whether they should stay public. **Until they answer, the photographs
 stay**, and this paragraph records the question as open rather than settled.
