@@ -224,28 +224,40 @@ first run.
 ### IMG_7270 — a compass reading 92° out
 
 **The frame looks south from Shafer Butte towards Deer Point.** Deer Point's committed summit
-sits under its masts at x ≈ 1335 of the 1920 × 1080 working frame, read off the picture by two
-annotators independently. That summit bears 204.32° at 2.024 km, apparent altitude −4.53°, so
-the optical axis points at **188° ± 1°**. Matching the masts at y ≈ 535 needs a pitch near
-**−4.9°**. The sun is the second instrument and it agrees: at the recorded time (2026-05-31
-15:41:43 −06:00) the sun stands at azimuth 238.3°, elevation 57.1°, and it flares from the
-top-right corner — 50.3° right of a 188° axis. A camera facing 280.336° would have the sun 42.0°
-to its left, outside a 73.74° frame altogether, and no flare could enter from the right.
+sits under its masts at x ≈ 1335, y ≈ 535 of the 1920 × 1080 working frame, read off the picture
+by two annotators independently. That summit bears 204.32° at 2.025 km, apparent altitude
+−4.524°, so the optical axis points at **187.9° ± 0.9°** and the pitch is **−4.94° ± 0.26°**. The
+sun is the second instrument and it agrees: at the recorded time (2026-05-31 15:41:43 −06:00) the
+sun stands at azimuth 238.3°, elevation 57.1°, and it flares from the top-right corner — 50.4°
+right of the solved axis. A camera facing 280.336° would have the sun 42.0° to its left, and no
+flare could enter from the right. The full derivation, its error budget and the scripts that
+print every number are in [IMG-7270-HEADING.md](IMG-7270-HEADING.md).
 
-**`GPSImgDirection` reads 280.336° T, +92.3° from the heading the picture shows.** The tag is
+**`GPSImgDirection` reads 280.336° T, +92.398° from the heading the picture shows.** The tag is
 recorded against true north (`GPSImgDirectionRef T`) and the frame is upright (`Orientation 1`),
 so neither a magnetic-to-true conversion nor a rotated frame explains the gap. Idaho's
-declination is about +11.7°, an eighth of it. The phone was moving: `GPSSpeed` 1.59 m/s, on an
-iPhone 17 Pro Max running iOS 26.5. **The cause is unresolved.** A Mapillary iOS release note
-reports compass angles a quarter-turn out on iOS 26.x while the device is moving, which matches
-the size and the conditions; a steel railing at the viewpoint is the other candidate. The two
-have not been separated, and nothing here distinguishes them.
+declination is about +11.7°, an eighth of it.
 
-Every summit the 280° heading put in frame lies in the 251–325° sector — Prospect Peak at
-295.95°, Crown Point at 301.84°, and the rest — and that whole sector is outside a 74° frame
-centred on 188°. **Decision D8's self-occlusion rule has never fired on a real photograph.** Its
-evidence is the Fort William acceptance case (finding X-3), where a greyed `summit obscured`
-label is checked against terrain rather than against a picture.
+**Two explanations are live, and this photograph does not separate them.** The first is a heading
+referenced to the phone's top edge: held in landscape with its top edge to the right, the top
+edge points 90° clockwise of the lens axis, and 187.938 + 90 = 277.938° against a recorded
+280.336°, a residual of 2.398°. A Mapillary iOS 6.11.1 release note reports this as missing
+landscape compensation on iOS 26 — the note is known here only from a search-result summary,
+because the forum page that carries it refuses anonymous scripted access and has not been read.
+The second is a compass that is wrong while the device moves. `GPSSpeed` is 1.5907 with
+`GPSSpeedRef` `K`, so the phone was moving at 1.59 km/h, about 0.44 m/s, a slow walk; every other
+real photograph here sits between a standstill and 0.143 km/h. The two are confounded at n = 1:
+IMG_7270 is the only frame taken while moving and also the only frame on iOS 26.5, the other
+iPhone 17 Pro Max frames being on iOS 26.0. A steel railing at the viewpoint is the third and
+weakest candidate, since a magnetic disturbance has no reason to land within 2.4° of a right
+angle.
+
+Eleven committed summits fall inside a 73.74° frame centred on 280.336° — Shafer Butte at
+295.06°, Prospect Peak at 295.95°, Crown Point at 301.84°, and eight more, all between 250° and
+316°. That whole sector is outside a frame centred on 188°. **Decision D8's self-occlusion rule
+has never fired on a real photograph.** Its evidence is the Fort William acceptance case
+(finding X-3), where a greyed `summit obscured` label is checked against terrain rather than
+against a picture.
 
 The position is sound: SRTM reads 2308.3 m against the phone's 2313.1 m, and the committed
 Shafer Butte node sits 30 m from the fix.
@@ -253,7 +265,8 @@ Shafer Butte node sits 30 m from the fix.
 **n = 1.** One frame, one phone, one moment. Six other real photographs were checked the same
 way, and each agrees with its own sun or its solved pose — Railroad Ridge's 48 mm frame records
 174.089° against a solved 174.686°. So nothing yet says how often an iPhone heading is wrong,
-only that this one is.
+only that this one is. Separating motion from OS build needs two more frames from the same
+phone: one standing still on iOS 26.5, one walking on the earlier build.
 
 ### IMG_6594
 

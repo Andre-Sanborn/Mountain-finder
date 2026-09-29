@@ -76,14 +76,15 @@ after its self-check has run and passed here. The checks are in
 - [ ] Re-run the rehearsal at a 956x440 viewport over a 1920x1080 camera, without cropToAspect
 - [x] Separate refusals from notes in the field report
 
-- [ ] Re-run the Bogus Basin rehearsal at the solved pose (188°, ≈ −4.9°), Deer Point as anchor, grade other features
+- [ ] Re-run the Bogus Basin rehearsal at the solved pose (187.9°, −4.94°), Deer Point as anchor, grade other features
 - [ ] Make `npm run annotate` warn when GPSImgDirection is the only heading source (X-10)
 - [ ] Renumber the duplicate X-7 and X-8 ids in docs/FINDINGS.md
 
 - [ ] Split the gross heading offset from the fine trim; sun one-tap and named-summit re-anchor, stillness-gated
 - [ ] Add the walking-aim-at-the-sun segment to the home session and its analyzer verdict
 - [ ] Add the pose-level raw-heading check to F2 in the prereg and the grader, before field data
-- [ ] Write the IMG_7270 188° derivation as a cited doc with runnable probes
+- [x] Write the IMG_7270 188° derivation as a cited doc with runnable probes (187.9° ± 0.9°, −4.94° ± 0.26°)
+- [ ] Record both annotator pixels, not one agreed pixel, on the next apex read
 
 ## Other open work
 

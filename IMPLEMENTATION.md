@@ -1386,3 +1386,27 @@ point at a sun.
 The same change set corrected the photo count to nine `.heic` originals. The two JPEG exports
 carry no GPS. It also set MISSION.md, README.md and HANDOFF.md to name `live.html` as the live
 vehicle, with Expo as the fallback that has never been run.
+
+## IMG_7270's heading derivation is in the repository
+
+`docs/IMG-7270-HEADING.md` derives the heading, 187.9° ± 0.9°, and the pitch,
+−4.94° ± 0.26°. `scripts/probes/img-7270-heading/` prints every number it cites. The probes read
+the HEIC and the committed peak cells, plus the SRTM tile, and reuse `src/core` for geodesy,
+projection and the Sun. No coordinate is written in their source.
+
+**The solve.**
+- Deer Point: bearing 204.32°, 2.025 km, apparent altitude −4.524°.
+- It is solved on two axes to (1335, 535) px in the 1920 × 1080 working frame, hFOV 73.740°.
+- Error budget: ±5 px read precision gives 0.207°. The summit node's ±30 m gives 0.849°, which
+  dominates.
+- GPSImgDirection 280.336° is 92.398° off.
+- Top-edge reference with the top edge to the right predicts 277.938°, a residual of 2.398°.
+- The Sun, az 238.3° and el 57.1°, is outside the frame under both headings. The side it falls
+  on (right at 188°, left at 280°) is the discriminator.
+- Cross-checks: Doe Point and Little Deer Point fall in frame at the solved pose.
+- Eleven named summits, 250–316°, were in frame only at the EXIF heading.
+
+**GPSSpeed is km/h (ref K)** on all eight frames that record a speed. IMG_7270 is 0.44 m/s; the
+others are 0–0.143 km/h. Motion and iOS 26.5 are confounded at n = 1. The live screen's own
+heading path is tested by the home session's walking-at-the-sun step, so photo controls are not
+needed for the field test.
