@@ -274,8 +274,8 @@ passed whatever structural checks surrounded it.
   and the extractor was blamed. The retraction stays at the head of
   [docs/CV-REAL-PHOTO-FINDING.md](docs/CV-REAL-PHOTO-FINDING.md) rather than being edited away.
 - Two more results in the same family are recorded as findings rather than retractions: X-7
-  (three of seven HEICs reported as carrying no metadata carried all of it, because `exifr`
-  refuses any file whose `ftyp` box exceeds 50 bytes) and X-8 (the mobile app typechecked,
+  (six of the nine committed HEIC originals are refused as carrying no metadata though they carry all of it, because `exifr`
+  refuses any file whose `ftyp` box exceeds 50 bytes) and X-12 (the mobile app typechecked,
   linted, passed 1 218 tests and could not be built).
 
 Two other beliefs were overturned by running things, and are worth the same weight. The plan's

@@ -95,7 +95,7 @@ Each line says when it was last verified. The goal each level is aiming at is in
 3. **Live view (v3) — pure layers proven, no phone has run either vehicle; last verified
    2026-08-18.** `src/live/sensors.ts` (pose from gravity and compass, with the EXIF path's
    refusals), `src/live/device-samples.ts` (device payloads into those traces, four sign, unit
-   and sentinel traps recorded as X-7) and `src/live/loop.ts` (one scene re-projected per tick,
+   and sentinel traps recorded as X-11) and `src/live/loop.ts` (one scene re-projected per tick,
    proven identical to re-running the still pipeline, refusing when the camera turns past swept
    terrain) all exist and are tested. **`live.html` in the phone's own browser is the vehicle**
    (IMPLEMENTATION.md, "The route to the field test"): it is served from GitHub Pages and its

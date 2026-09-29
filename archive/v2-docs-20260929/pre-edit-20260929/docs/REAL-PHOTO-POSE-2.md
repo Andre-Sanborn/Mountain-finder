@@ -171,20 +171,15 @@ if (size > 50) return false;
 ```
 
 Every iPhone photograph carrying an HDR **gain map** — compatible brands `mif1 MiHB MiHA heix …`
-— has a 52-byte `ftyp` box. `fixtures/photos/real/` holds nine HEIC camera originals, and the
-box sizes read off the committed files split them six to three:
+— has a 52-byte `ftyp` box. Across the seven HEICs supplied to this project:
 
 ```
-ftyp 44 bytes    railroad-ridge-14mm / -24mm / -48mm    read correctly
-ftyp 52 bytes    hdr-gainmap-6594 / hdr-gainmap-7270    REFUSED — "Unknown file format"
-                 idaho-6750-480mm / idaho-6812-14mm
-                 idaho-6815-24mm / lookout-snow-haze
+ftyp 44 bytes    IMG_3761 / 3762 / 3763     read correctly
+ftyp 32 bytes    IMG_5603                   read correctly
+ftyp 52 bytes    IMG_7270 / 6559 / 6594     REFUSED — "Unknown file format"
 ```
 
-Two `.jpeg` exports sit beside them, `lookout-snow-haze.jpeg` and `tundra-blue-sky.jpeg`. They
-are not camera originals and carry no GPS EXIF.
-
-Nothing about the refused six is unusual. They are ordinary photographs from a recent iPhone
+Nothing about the refused three is unusual. They are ordinary photographs from a recent iPhone
 with HDR on, which is the default setting.
 
 **This is the worst shape of bug this project recognises**, and it is worth being precise about

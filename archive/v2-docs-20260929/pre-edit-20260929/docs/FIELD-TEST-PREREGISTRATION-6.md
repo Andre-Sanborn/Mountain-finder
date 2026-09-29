@@ -506,18 +506,6 @@ The protocol:
    stored height rounded to whole pixels, which at 1920 px wide is under 0.05 %, and refuses
    any real crop: 4:3 against 16:9 is 25 %. A capture that reports no track size is reported
    as unchecked rather than passed.
-
-   **A drawn marker is placed on the stored frame through the crop the screen made.** The AR
-   screen draws the camera at `object-fit: cover`: the frame is scaled by
-   `max(viewW/trackW, viewH/trackH)` and the overflow is cut evenly off both ends of whichever
-   axis overflows, so the viewport holds a centred crop of the frame. The grader maps an
-   overlay pixel into that window, and takes its angle with the **whole** frame's field of view
-   rather than the visible box's, which is what the pose carries. A 16:9 stream in the § 1.2
-   956 × 440 viewport puts 81.8 % of the frame's height on screen, and a 4:3 stream puts 75 %
-   of it there. Where the viewport and the frame share an aspect, `cover` crops nothing and the
-   mapping reduces to the plain ratio of widths and of heights. **A capture that records no
-   camera track size is refused rather than graded**, because the crop is recoverable from
-   nothing else the bundle carries.
 2. **Neither annotator ever sees the app's projection, the overlay as drawn, the pose, or
    the other's picks.** What they are given beyond that is one of two registered methods,
    and each reading records which:
@@ -1351,15 +1339,6 @@ summits — and each unit's line is followed by one line per capture whose resid
 its median. `F3.slipped-drag` names the after-drag captures whose anchor residual passed
 three drag terms, and `F4.unpaired` the moved captures there was no reference to difference
 against.
-
-**A residual is measured through the cover-crop of § 2.0**, in `src/live/field-analysis.ts`.
-`coverVisibleFraction` reads the visible fraction of each axis off the viewport's and the
-camera track's aspect ratios, so the axis `cover` does not crop comes back as exactly 1.
-`overlayToFramePx` then places a drawn overlay pixel inside that centred window of the stored
-frame, and `uncroppedFovDeg` recovers the whole frame's field of view from the visible box's
-by `tan(full/2) = tan(visible/2) / fraction`. `residualOf` composes the three and returns
-nothing for a capture whose crop cannot be recovered, which is how such a capture is refused
-rather than graded through a guess.
 
 **The anchor of each after-drag and moved capture is printed apart from the graded table**,
 with its residual and its band, under `F3.anchor` and `F4.anchor`. A capture's anchor is its

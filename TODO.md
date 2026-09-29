@@ -47,7 +47,7 @@ after its self-check has run and passed here. The checks are in
 - [x] Run the headless dress rehearsal at Bogus Basin on IMG_7270 with injected compass and pitch error
 - [x] Grade the rehearsal against apex truth from two independent annotators
 - [x] Map overlay to stored frame through the cover crop in the grader; a 4:3 camera in a 16:9 view mis-scales residuals
-- [ ] State the overlay-to-frame mapping in the prereg's § 2.0 and Part 3 bodies, not only its revision history
+- [x] State the overlay-to-frame mapping in the prereg's § 2.0 and Part 3 bodies, not only its revision history
 - [ ] Run the home session with the human (steps: docs/HOME-SESSION-GUIDE.md)
 - [ ] Turn the home-session recording into fixtures; fix any sign or FOV error it shows
 - [x] Lock the railroad-ridge CV result as a regression test, labelled n = 1
@@ -74,7 +74,7 @@ after its self-check has run and passed here. The checks are in
 - [x] Add a measured pitch-bias term to the live vertical band; until measured, F2 vertical is not gated
 - [ ] Write the sun's frame offset into RecordedSegment.aimOffsetDeg at each aiming step
 - [ ] Give protocolSegments() aiming attitudes that point at a plausible sun altitude
-- [ ] Make docs/REAL-PHOTO-POSE.md and FINDINGS X-7's photo counts agree with the nine-photo count
+- [x] Make docs/REAL-PHOTO-POSE.md and FINDINGS X-7's photo counts agree with the nine-photo count
 - [ ] Re-run the rehearsal at a 956x440 viewport over a 1920x1080 camera, without cropToAspect
 - [x] Separate refusals from notes in the field report
 
@@ -84,7 +84,9 @@ after its self-check has run and passed here. The checks are in
 - [x] Make the anchor-drift warning compare the compass change with the phone's own turn
 - [x] Refresh the rehearsal spec's drift-line notes; they still describe the compass-only check
 - [ ] Make `npm run annotate` warn when GPSImgDirection is the only heading source (X-10)
-- [ ] Renumber the duplicate X-7 and X-8 ids in docs/FINDINGS.md
+- [x] Renumber the duplicate X-7 and X-8 ids in docs/FINDINGS.md (now X-11, X-12)
+- [ ] Replace FINDINGS X-8's IMG_1371.HEIC citation; the file is not committed, heif.test.ts covers it
+- [ ] Add lookout-snow-haze.heic to heif.test.ts's committed-originals cases and fix its 52-byte comment
 
 - [x] Split the gross heading offset from the fine trim; sun one-tap and named-summit re-anchor, stillness-gated
 - [x] Widen field-analysis POSE_KEYS for grossHeadingOffsetDeg and its source, then flip POSE_CARRIES_GROSS_OFFSET
@@ -125,7 +127,7 @@ after its self-check has run and passed here. The checks are in
 - [ ] P7.7: capture pitch at photograph time on iOS, so the pose does not depend on recovering it from the picture.
 - [ ] R-2: reconcile `src/cv/rays.ts:profileCoverage` onto the exact coverage notion in `src/core/horizon.ts`.
 - [ ] R-3: decide whether `'nearest-valid'` stays discontinuous at a grid line, and record the decision either way.
-- [ ] X-4: reconcile FINDINGS.md's X-4 row with the height-sensitivity note now in the Kerry Park case file.
+- [x] X-4: reconcile FINDINGS.md's X-4 row with the height-sensitivity note now in the Kerry Park case file.
 - [ ] Check Wave 2's suspicion that a non-finite `groundElevationM` yields an empty overlay rather than a refusal.
 - [ ] Fix `buildNotes` counting foreground-occluded peaks that are behind the camera.
 - [ ] Close the export/pose race: clicking Export mid-rebuild can write a PNG whose labels belong to the old pose.

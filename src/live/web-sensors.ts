@@ -39,7 +39,7 @@
  *   expression Expo's iOS module uses, so iOS Safari's vector points DOWN.
  *
  * So the same field means opposite things on the two browsers this app must
- * run on. `X-7` in `docs/FINDINGS.md` recorded the Expo half of this; the
+ * run on. `X-11` in `docs/FINDINGS.md` recorded the Expo half of this; the
  * browser half is worse, because one API name now carries both conventions.
  * `WebGravityConvention` is therefore a REQUIRED argument of every function
  * that reads a motion event, and `detectMotionGravityConvention` settles it

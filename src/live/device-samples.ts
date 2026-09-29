@@ -44,7 +44,7 @@
  * to bend the platform into iOS's convention. Anyone reasoning from the W3C
  * definition (as I was about to) gets a pitch that is correct in magnitude and
  * inverted in sign — which passes a smoke test, looks like a plausible
- * mountain overlay, and is wrong. `docs/FINDINGS.md` carries this as X-7.
+ * mountain overlay, and is wrong. `docs/FINDINGS.md` carries this as X-11.
  *
  * ── THE TWO CLOCKS ─────────────────────────────────────────────────────────
  * DeviceMotion timestamps are **seconds since device boot** (iOS:

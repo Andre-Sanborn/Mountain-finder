@@ -116,7 +116,7 @@ not.
 
 **It does now prove the app still builds.** `.github/workflows/check.yml` runs
 the core suite and a real Metro + Hermes bundle on every push — the exact check
-whose absence let X-8 ship.
+whose absence let X-12 ship.
 
 ## Screen 1 — Calibrate
 
@@ -209,7 +209,7 @@ npm run bundle:mobile      # a REAL Metro + Hermes build — the one that matter
 ```
 
 `bundle:mobile` exists because the first version of this app **typechecked,
-linted, passed 1 218 unit tests, and could not be built** (X-8). `src/app/trim.ts`
+linted, passed 1 218 unit tests, and could not be built** (X-12). `src/app/trim.ts`
 imported two pure helpers from the `../exif` barrel, which drags in `exifr`,
 which ships a dynamic `import()` that Hermes rejects outright. Metro resolved
 all 756 modules; the failure came afterwards, in bytecode compilation. An app
@@ -245,7 +245,7 @@ tree, tested here rather than on a phone:
 | Module | What it decides |
 |---|---|
 | `src/live/calibration.ts` | whether the holds confirm the frame convention, and which axis map is wrong if not |
-| `src/live/device-samples.ts` | Expo's payloads → the documented sample types (X-7) |
+| `src/live/device-samples.ts` | Expo's payloads → the documented sample types (X-11) |
 | `src/live/heading-policy.ts` | whether a heading may be drawn, and whether it may be called true |
 | `src/live/drag-trim.ts` | how far a finger moves the overlay |
 

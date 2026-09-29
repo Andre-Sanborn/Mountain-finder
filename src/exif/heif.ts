@@ -16,13 +16,12 @@
  * `Unknown file format`, and the caller's natural handling of that is to report
  * a photograph with no metadata.
  *
- * Measured on the seven HEICs supplied to this project:
+ * Measured on the nine HEIC originals in `fixtures/photos/real/`:
  *
- *     ftyp 44 bytes   IMG_3761 / 3762 / 3763   read correctly
- *     ftyp 32 bytes   IMG_5603                 read correctly
- *     ftyp 52 bytes   IMG_7270 / 6559 / 6594   REFUSED — "no EXIF"
+ *     ftyp 44 bytes   the three railroad-ridge frames   read correctly
+ *     ftyp 52 bytes   the other six                     REFUSED — "no EXIF"
  *
- * Three of seven, and nothing about the refused ones is unusual: they are
+ * Six of nine, and nothing about the refused ones is unusual: they are
  * ordinary photographs from a recent iPhone with HDR on, which is the default.
  *
  * That failure is the worst shape this project recognises. A photograph whose
