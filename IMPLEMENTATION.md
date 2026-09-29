@@ -1410,3 +1410,38 @@ projection and the Sun. No coordinate is written in their source.
 others are 0–0.143 km/h. Motion and iOS 26.5 are confounded at n = 1. The live screen's own
 heading path is tested by the home session's walking-at-the-sun step, so photo controls are not
 needed for the field test.
+
+## Truth gets three answers, a stop rule, and a near-band capture
+
+The rehearsal was the truth instrument's first run, and it worked: the annotators correctly
+found none of the 17 summits, and both found Deer Point. The schema did not work. `apexPx: null`
+meant both "not there" and "cannot identify", and F5a read the second as the first.
+
+**Truth format `mountain-finder/field-apex-truth@2`.** Each annotator gives each summit one of
+three answers:
+- `{ apexPx, landmark? }`
+- `{ absent: true, reason }`, where the reason is `clear-sky` or `foreground-blocked`
+- `{ cannotIdentify: true }`
+
+The rules:
+- Only an agreed `absent` counts for F5a.
+- Any `cannotIdentify` excludes the summit from F3, F4 and F5a, and the exclusions are counted.
+- `absent` against an apex is disputed.
+- Two apexes go to the 0.30° rule.
+- `@1` and `null` are refused by name.
+
+Each reading records its annotator's method, `bare-frame` or `frame-and-map`, and neither
+includes the app's projection or the pose. Landmark truth, such as "the crest under the tallest
+mast, not its tip" at Deer Point, is graded as an apex and reported apart. It counts as a
+landmark only when both annotators named one.
+
+**The stop rule:** a band with fewer than 3 graded summits reports `no-sample`, and says that
+the truth instrument limited it. A band that fails the gate still fails at any n, because the
+session can refute the budget but not confirm it. So the rule withholds the confirmation, never
+the refutation.
+
+**The near band is testable.** A level phone facing south from Shafer Butte holds Deer Point, at
+2 km and −4.5°, together with the sky. Prereg §2.7 registers a south-facing capture.
+
+The F2 grader was already per-axis. A test now pins it, and the aligned fixture carries the
+phone's vertical unquantified term. Eight mutations are caught.

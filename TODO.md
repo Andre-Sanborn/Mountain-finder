@@ -68,7 +68,9 @@ after its self-check has run and passed here. The checks are in
 - [ ] Confirm the iOS 26 motion-permission remedy on the phone at the home session
 - [x] Replace the field guide's provisional steps with the real screen wording once field mode lands
 
-- [ ] Redesign field truth: agent annotators named 0 of 17 summits on the rehearsal frame (n = 1)
+- [x] Redesign field truth: three answers, landmark truth, annotator method, stop rule, south-facing capture
+- [ ] Update the e2e specs to write @2 truth documents
+- [ ] Move the field fixture generator into scripts/ with an npm script
 - [x] Add a measured pitch-bias term to the live vertical band; until measured, F2 vertical is not gated
 - [ ] Write the sun's frame offset into RecordedSegment.aimOffsetDeg at each aiming step
 - [ ] Give protocolSegments() aiming attitudes that point at a plausible sun altitude
@@ -82,7 +84,7 @@ after its self-check has run and passed here. The checks are in
 
 - [ ] Split the gross heading offset from the fine trim; sun one-tap and named-summit re-anchor, stillness-gated
 - [ ] Add the walking-aim-at-the-sun segment to the home session and its analyzer verdict
-- [ ] Add the pose-level raw-heading check to F2 in the prereg and the grader, before field data
+- [ ] Add the pose-level raw-heading check to F2 in the prereg and the grader, before field data (after the re-anchor schema lands)
 - [x] Write the IMG_7270 188° derivation as a cited doc with runnable probes (187.9° ± 0.9°, −4.94° ± 0.26°)
 - [ ] Record both annotator pixels, not one agreed pixel, on the next apex read
 

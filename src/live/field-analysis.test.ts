@@ -30,6 +30,7 @@ import {
   MAX_OBSERVER_ACCURACY_M,
   MAX_TRUTH_DISAGREEMENT_DEG,
   MAX_TWO_SIGMA_EXCEEDANCES,
+  MIN_GRADED_PER_BAND,
   observerSigmaFromAccuracyM,
   overlayToFramePx,
   PAN_ANCHOR_EDGE_OFFSET,
@@ -39,9 +40,13 @@ import {
   reduceTruth,
   renderFieldReport,
   residualOf,
+  SUPERSEDED_TRUTH_FORMAT,
   synthesiseFieldBundle,
+  TRUTH_FORMAT,
   uncroppedFovDeg,
   withinThreshold,
+  type AbsentReason,
+  type ApexAnnotation,
   type BandId,
   type Capture,
   type Criterion,
@@ -177,6 +182,27 @@ function bandOf(band: BandId): (typeof PREREGISTERED_THRESHOLDS)[number] {
   const threshold = PREREGISTERED_THRESHOLDS.find((entry) => entry.band === band);
   if (threshold === undefined) throw new Error(`no ${band} band`);
   return threshold;
+}
+
+/**
+ * Filler summits in the band `distanceKm` falls in, each drawn exactly on its
+ * own apex.
+ *
+ * § 2.0's stop rule reports a band holding fewer than {@link MIN_GRADED_PER_BAND}
+ * graded summits as `no-sample`, so a test whose subject is one summit's
+ * residual pads that summit's band up to the floor. A filler adds no error and
+ * no exceedance, so the band's verdict is still the subject summit's.
+ */
+function padBand(distanceKm: number, used: readonly string[]): readonly SynthSummit[] {
+  const spare = [NEAR, MID, FAR, DISTANT, HORIZON].filter((id) => !used.includes(id));
+  return spare.slice(0, MIN_GRADED_PER_BAND - 1).map((id, index) =>
+    summit({
+      summitId: id,
+      distanceKm,
+      truthPx: { xPx: 300 + index * 220, yPx: 300 + index * 60 },
+      errorPx: { xPx: 0, yPx: 0 },
+    }),
+  );
 }
 
 describe('pixels to frame angles', () => {
@@ -619,11 +645,14 @@ describe('F3 against the registered thresholds', () => {
       {
         captureId: 'c1',
         role: 'after-drag',
-        summits: [summit({ summitId: FAR, distanceKm: 12, errorPx: { xPx: 29, yPx: 0 } })],
+        summits: [
+          summit({ summitId: FAR, distanceKm: 12, errorPx: { xPx: 29, yPx: 0 } }),
+          ...padBand(12, [FAR]),
+        ],
       },
     ]);
     expect(criterion(analysis, 'F3.far')?.outcome).toBe('pass');
-    expect(criterion(analysis, 'F3.far')?.n).toBe(1);
+    expect(criterion(analysis, 'F3.far')?.n).toBe(MIN_GRADED_PER_BAND);
   });
 
   it('reports the same summit 30 px out as one 2σ exceedance, and tolerates it', () => {
@@ -631,7 +660,10 @@ describe('F3 against the registered thresholds', () => {
       {
         captureId: 'c1',
         role: 'after-drag',
-        summits: [summit({ summitId: FAR, distanceKm: 12, errorPx: { xPx: 30, yPx: 0 } })],
+        summits: [
+          summit({ summitId: FAR, distanceKm: 12, errorPx: { xPx: 30, yPx: 0 } }),
+          ...padBand(12, [FAR]),
+        ],
       },
     ]);
     expect(gradedIn(analysis, 'far')[0]?.axesOverTwoSigma).toBe(1);
@@ -671,6 +703,7 @@ describe('F3 against the registered thresholds', () => {
               truthPx: { xPx: FRAME_WIDTH_PX / 2, yPx: FRAME_HEIGHT_PX / 2 },
               errorPx: { xPx: exactPx, yPx: 0 },
             }),
+            ...padBand(12, [FAR]),
           ],
         },
       ],
@@ -810,10 +843,11 @@ describe('the band gate at 2σ and 3σ', () => {
             errorPx: { xPx: pxAtSigma(2.5), yPx: 0 },
           }),
           summit({ summitId: DISTANT, distanceKm: 15, truthPx: CENTRE, errorPx: { xPx: 0, yPx: 0 } }),
+          ...padBand(12, [FAR, DISTANT]),
         ],
       },
     ]);
-    expect(criterion(analysis, 'F3.far')?.n).toBe(2);
+    expect(criterion(analysis, 'F3.far')?.n).toBe(MIN_GRADED_PER_BAND + 1);
     expect(criterion(analysis, 'F3.far')?.outcome).toBe('pass');
   });
 
@@ -909,7 +943,10 @@ describe('F4', () => {
       {
         captureId: 'c2',
         role: 'after-drag',
-        summits: [summit({ summitId: FAR, errorPx: { xPx: 5, yPx: 0 } })],
+        summits: [
+          summit({ summitId: FAR, errorPx: { xPx: 5, yPx: 0 } }),
+          ...padBand(12, [FAR]),
+        ],
       },
       {
         captureId: 'c3',
@@ -1106,7 +1143,7 @@ describe('the observer fix accuracy', () => {
         captureId: 'c1',
         role: 'after-drag',
         horizontalAccuracyM: 30,
-        summits: [summit({ summitId: FAR })],
+        summits: [summit({ summitId: FAR }), ...padBand(12, [FAR])],
       },
     ]);
     expect(analysis.refusals).toEqual([]);
@@ -1223,6 +1260,27 @@ describe('F2', () => {
     ]);
     expect(criterion(analysis, 'F2')?.outcome).toBe('no-sample');
   });
+
+  it('gates each axis on its own term, so an unquantified vertical leaves the horizontal gated', () => {
+    // The live band carries "Tilt zero point never checked" on the vertical axis
+    // until the home session measures the tilt bias, and it will do so on every
+    // capture. A whole-band flag would take the horizontal gate down with it and
+    // F2 would pass whatever the heading did.
+    // 250 px across is 11.05150°, outside the 8.7° horizontal band; 20 px down
+    // is atan(20/1280.0) = 0.89522°, inside the 1.5° vertical band either way.
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'before-drag',
+        band: { ...wideBand, hasUnquantifiedVertical: true },
+        summits: [summit({ summitId: FAR, errorPx: { xPx: 250, yPx: 20 } })],
+      },
+    ]);
+    expect(criterion(analysis, 'F2')?.outcome).toBe('fail');
+    const evidence = criterion(analysis, 'F2')?.evidence.join('\n') ?? '';
+    expect(evidence).toContain('across: raw 11.051° against a band of 8.700° — OUTSIDE');
+    expect(evidence).toContain('up/down: raw 0.895° against a band of 1.500° that carries an unquantified term — recorded, not gated');
+  });
 });
 
 describe('F5', () => {
@@ -1232,7 +1290,7 @@ describe('F5', () => {
         captureId: 'c1',
         role: 'after-drag',
         summits: [
-          summit({ summitId: FAR, truthAbsent: true }),
+          summit({ summitId: FAR, truthAbsent: 'clear-sky' }),
           summit({ summitId: MID, distanceKm: 5 }),
           summit({ summitId: NEAR, distanceKm: 2 }),
         ],
@@ -1240,6 +1298,7 @@ describe('F5', () => {
     ]);
     expect(criterion(analysis, 'F5a')?.outcome).toBe('fail');
     expect(criterion(analysis, 'F5a')?.evidence.join('\n')).toContain('FALSE VISIBLE');
+    expect(criterion(analysis, 'F5a')?.evidence.join('\n')).toContain('clear-sky');
   });
 
   it('does not count a marginal summit against F5a', () => {
@@ -1248,7 +1307,7 @@ describe('F5', () => {
         captureId: 'c1',
         role: 'after-drag',
         summits: [
-          summit({ summitId: FAR, truthAbsent: true, visibility: 'marginal' }),
+          summit({ summitId: FAR, truthAbsent: 'clear-sky', visibility: 'marginal' }),
           summit({ summitId: MID, distanceKm: 5 }),
           summit({ summitId: NEAR, distanceKm: 2 }),
         ],
@@ -1263,7 +1322,7 @@ describe('F5', () => {
         captureId: 'c1',
         role: 'after-drag',
         summits: [
-          summit({ summitId: FAR, truthOnlyFirst: true }),
+          summit({ summitId: FAR, truthSecondAbsent: 'foreground-blocked' }),
           summit({ summitId: MID, distanceKm: 5 }),
           summit({ summitId: NEAR, distanceKm: 2 }),
         ],
@@ -1366,13 +1425,22 @@ describe('truth from two annotators', () => {
     captures: [{ captureId: 'c1', role: 'after-drag', summits: [summit({ summitId: FAR })] }],
   }).bundle.captures[0];
 
+  const apex = (xPx: number, yPx: number, landmark?: string): ApexAnnotation => ({
+    summitId: FAR,
+    apexPx: { xPx, yPx },
+    ...(landmark !== undefined ? { landmark } : {}),
+  });
+  const absent = (reason: AbsentReason): ApexAnnotation => ({
+    summitId: FAR,
+    absent: true,
+    reason,
+  });
+  const cannot: ApexAnnotation = { summitId: FAR, cannotIdentify: true };
+
   it('takes the midpoint and records the disagreement', () => {
     expect(capture).toBeDefined();
     if (capture === undefined) return;
-    const reduced = reduceTruth(capture, [
-      { xPx: 900, yPx: 400 },
-      { xPx: 905, yPx: 400 },
-    ]);
+    const reduced = reduceTruth(capture, [apex(900, 400), apex(905, 400)]);
     expect(reduced?.kind).toBe('located');
     if (reduced?.kind !== 'located') return;
     expect(reduced.apexPx).toEqual({ xPx: 902.5, yPx: 400 });
@@ -1391,26 +1459,289 @@ describe('truth from two annotators', () => {
     // 0.30° at the frame centre is 1279.9952 x tan(0.30°) = 6.702 px, so a 7 px
     // split straddling the centre is 0.3132° and must be refused.
     expect(FOCAL_PX * Math.tan((MAX_TRUTH_DISAGREEMENT_DEG * Math.PI) / 180)).toBeCloseTo(6.7, 1);
-    const reduced = reduceTruth(capture, [
-      { xPx: 956.5, yPx: 442 },
-      { xPx: 963.5, yPx: 442 },
-    ]);
+    const reduced = reduceTruth(capture, [apex(956.5, 442), apex(963.5, 442)]);
     expect(reduced?.kind).toBe('disputed');
   });
 
-  it('never averages a presence disagreement', () => {
+  it('never averages an apex against an absent', () => {
     expect(capture).toBeDefined();
     if (capture === undefined) return;
-    const reduced = reduceTruth(capture, [{ xPx: 900, yPx: 400 }, null]);
+    const reduced = reduceTruth(capture, [apex(900, 400), absent('clear-sky')]);
     expect(reduced?.kind).toBe('disputed');
     if (reduced?.kind !== 'disputed') return;
-    expect(reduced.why).toContain('could not identify');
+    expect(reduced.why).toContain('not in the frame');
   });
 
-  it('calls a summit absent only when both annotators say so', () => {
+  it('calls a summit absent only when both annotators say so, and keeps both reasons', () => {
     expect(capture).toBeDefined();
     if (capture === undefined) return;
-    expect(reduceTruth(capture, [null, null])?.kind).toBe('absent');
+    const reduced = reduceTruth(capture, [absent('clear-sky'), absent('foreground-blocked')]);
+    expect(reduced?.kind).toBe('absent');
+    if (reduced?.kind !== 'absent') return;
+    expect(reduced.reasons).toEqual(['clear-sky', 'foreground-blocked']);
+  });
+
+  it('excludes a summit either annotator could not identify, whatever the other said', () => {
+    expect(capture).toBeDefined();
+    if (capture === undefined) return;
+    for (const other of [apex(900, 400), absent('clear-sky'), cannot]) {
+      expect(reduceTruth(capture, [cannot, other])?.kind).toBe('excluded');
+      expect(reduceTruth(capture, [other, cannot])?.kind).toBe('excluded');
+    }
+  });
+
+  it('separates "not there" from "cannot tell", which the old null form could not', () => {
+    // The distinction the redesign exists for, checked on the reduction itself:
+    // two annotators saying the region holds no summit is `absent`, and two
+    // saying they cannot tell is `excluded`. Collapsing the two — the mutation
+    // that returns `absent` for a pair of cannot-identify answers — would make
+    // an unidentifiable foothill a false `visible`.
+    expect(capture).toBeDefined();
+    if (capture === undefined) return;
+    expect(reduceTruth(capture, [absent('clear-sky'), absent('clear-sky')])?.kind).toBe('absent');
+    expect(reduceTruth(capture, [cannot, cannot])?.kind).toBe('excluded');
+  });
+
+  it('carries a landmark only when both annotators named one', () => {
+    expect(capture).toBeDefined();
+    if (capture === undefined) return;
+    const both = reduceTruth(capture, [
+      apex(900, 400, 'the crest under the tallest mast'),
+      apex(904, 400, 'the crest under the tallest mast'),
+    ]);
+    expect(both?.kind === 'located' ? both.landmark : undefined).toBe(
+      'the crest under the tallest mast',
+    );
+    const one = reduceTruth(capture, [apex(900, 400, 'the crest under the tallest mast'), apex(904, 400)]);
+    expect(one?.kind === 'located' ? one.landmark : undefined).toBeUndefined();
+  });
+});
+
+describe('the truth instrument stop rule', () => {
+  it('registers the floor at three graded summits per band', () => {
+    expect(MIN_GRADED_PER_BAND).toBe(3);
+  });
+
+  it('reports a band with two graded summits as no-sample and names the truth instrument', () => {
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [
+          summit({ summitId: FAR, distanceKm: 12 }),
+          summit({ summitId: DISTANT, distanceKm: 15, truthPx: { xPx: 600, yPx: 400 } }),
+        ],
+      },
+    ]);
+    const far = criterion(analysis, 'F3.far');
+    expect(far?.n).toBe(2);
+    expect(far?.outcome).toBe('no-sample');
+    expect(far?.evidence.join('\n')).toContain('the truth instrument limited this row, not the app');
+  });
+
+  it('passes the same band once a third summit is graded', () => {
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [
+          summit({ summitId: FAR, distanceKm: 12 }),
+          summit({ summitId: DISTANT, distanceKm: 15, truthPx: { xPx: 600, yPx: 400 } }),
+          summit({ summitId: HORIZON, distanceKm: 18, truthPx: { xPx: 1300, yPx: 500 } }),
+        ],
+      },
+    ]);
+    const far = criterion(analysis, 'F3.far');
+    expect(far?.n).toBe(3);
+    expect(far?.outcome).toBe('pass');
+    expect(far?.evidence.join('\n')).not.toContain('the truth instrument limited this row');
+  });
+
+  it('still fails a thin band that holds a 3σ excursion', () => {
+    // 50 px at the frame centre is 2.23699°, past the far band's 1.95° 3σ limit.
+    // One draw refutes the budget whatever the sample size, so the stop rule
+    // withholds a pass and never a failure.
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [summit({ summitId: FAR, distanceKm: 12, errorPx: { xPx: 50, yPx: 0 } })],
+      },
+    ]);
+    expect(criterion(analysis, 'F3.far')?.n).toBe(1);
+    expect(criterion(analysis, 'F3.far')?.outcome).toBe('fail');
+  });
+
+  it('tells a band the app never drew from one the annotators could not settle', () => {
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [
+          summit({ summitId: FAR, distanceKm: 12, truthCannotIdentify: 'both' }),
+          summit({ summitId: DISTANT, distanceKm: 30, truthPx: { xPx: 600, yPx: 400 } }),
+        ],
+      },
+    ]);
+    // The `far` band held a drawn summit and graded none of it.
+    expect(criterion(analysis, 'F3.far')?.evidence.join('\n')).toContain(
+      '0 of 1 drawn summit-observation(s)',
+    );
+    // The `mid` band held nothing at all, and says so differently.
+    expect(criterion(analysis, 'F3.mid')?.evidence.join('\n')).toContain(
+      'no summit was drawn in this band',
+    );
+  });
+});
+
+describe('a summit an annotator cannot identify', () => {
+  it('is not a false visible, where an agreed absent is', () => {
+    const cannotIdentify = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [summit({ summitId: FAR, truthCannotIdentify: 'both' })],
+      },
+    ]);
+    expect(criterion(cannotIdentify, 'F5a')?.outcome).not.toBe('fail');
+    expect(criterion(cannotIdentify, 'F5a')?.evidence.join('\n')).toContain(
+      '1 summit(s) drawn visible were excluded',
+    );
+
+    const notThere = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [summit({ summitId: FAR, truthAbsent: 'clear-sky' })],
+      },
+    ]);
+    expect(criterion(notThere, 'F5a')?.outcome).toBe('fail');
+  });
+
+  it('is excluded from F3 and counted, not silently dropped', () => {
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [
+          summit({ summitId: FAR, distanceKm: 12, truthCannotIdentify: 'second' }),
+          summit({ summitId: DISTANT, distanceKm: 30, truthPx: { xPx: 600, yPx: 400 } }),
+        ],
+      },
+    ]);
+    expect(criterion(analysis, 'F3.far')?.n).toBe(0);
+    expect(criterion(analysis, 'F3.truth-unidentifiable')?.n).toBe(1);
+    expect(criterion(analysis, 'F3.truth-unidentifiable')?.evidence.join('\n')).toContain(
+      'one annotator could not identify',
+    );
+  });
+
+  it('is kept apart from a summit the two annotators disagree about', () => {
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [
+          summit({ summitId: FAR, distanceKm: 12, truthCannotIdentify: 'both' }),
+          summit({
+            summitId: DISTANT,
+            distanceKm: 15,
+            truthPx: { xPx: 600, yPx: 400 },
+            truthSecondAbsent: 'clear-sky',
+          }),
+        ],
+      },
+    ]);
+    expect(criterion(analysis, 'F3.truth-unidentifiable')?.n).toBe(1);
+    expect(criterion(analysis, 'F3.truth-disputed')?.n).toBe(1);
+  });
+});
+
+describe('landmark truth', () => {
+  const LANDMARK = 'the crest under the tallest mast, not its tip';
+
+  it('grades a landmark observation like any other apex', () => {
+    const plain = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [summit({ summitId: FAR, distanceKm: 12, errorPx: { xPx: 12, yPx: 0 } })],
+      },
+    ]);
+    const marked = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [
+          summit({
+            summitId: FAR,
+            distanceKm: 12,
+            errorPx: { xPx: 12, yPx: 0 },
+            landmark: LANDMARK,
+          }),
+        ],
+      },
+    ]);
+    expect(marked.graded[0]?.residual.horizontalDeg).toBe(plain.graded[0]?.residual.horizontalDeg);
+  });
+
+  it('reports the landmark observations apart from the rest', () => {
+    const analysis = run([
+      {
+        captureId: 'c1',
+        role: 'after-drag',
+        summits: [
+          summit({ summitId: FAR, distanceKm: 12, landmark: LANDMARK }),
+          summit({ summitId: DISTANT, distanceKm: 30, truthPx: { xPx: 600, yPx: 400 } }),
+        ],
+      },
+    ]);
+    expect(analysis.landmarkObservations).toHaveLength(1);
+    expect(analysis.landmarkObservations[0]).toContain(LANDMARK);
+    expect(analysis.graded.filter((row) => row.landmark !== undefined)).toHaveLength(1);
+    const text = renderFieldReport(analysis).join('\n');
+    expect(text).toContain('located from a named point feature, reported apart:');
+    expect(text).toContain(LANDMARK);
+  });
+});
+
+describe('what each annotator was given', () => {
+  it('carries the method through to the report', () => {
+    const { bundle, truth } = synthesiseFieldBundle({
+      annotatorMethods: ['bare-frame', 'frame-and-map'],
+      captures: [{ captureId: 'c1', role: 'after-drag', summits: [summit({ summitId: FAR })] }],
+    });
+    const analysis = analyseFieldRun(bundle, truth, lookup);
+    expect(analysis.annotatorMethods).toEqual([
+      'agent-a: bare-frame — the bare frame and the candidate summit names, nothing else',
+      'agent-b: frame-and-map — the bare frame, the candidate summit names, the viewpoint and a topographic map — never the app’s projection and never the pose',
+    ]);
+    expect(renderFieldReport(analysis).join('\n')).toContain('what each annotator was given:');
+  });
+
+  it('refuses a reading that does not say which method it was made under', () => {
+    const { truth } = synthesiseFieldBundle({
+      captures: [{ captureId: 'c1', role: 'after-drag', summits: [summit({ summitId: FAR })] }],
+    });
+    const raw = JSON.parse(JSON.stringify(truth)) as {
+      captures: { readings: Record<string, unknown>[] }[];
+    };
+    const reading = raw.captures[0]?.readings[0];
+    if (reading !== undefined) delete reading.method;
+    expect(parseFieldTruth(raw).ok).toBe(false);
+  });
+
+  it('refuses a method it does not register', () => {
+    const { truth } = synthesiseFieldBundle({
+      captures: [{ captureId: 'c1', role: 'after-drag', summits: [summit({ summitId: FAR })] }],
+    });
+    const raw = JSON.parse(JSON.stringify(truth)) as {
+      captures: { readings: { method: string }[] }[];
+    };
+    const reading = raw.captures[0]?.readings[0];
+    // The app's own projection is never an annotator input.
+    if (reading !== undefined) reading.method = 'frame-and-overlay';
+    expect(parseFieldTruth(raw).ok).toBe(false);
   });
 });
 
@@ -1646,7 +1977,56 @@ describe('the strict parser', () => {
     expect(parseFieldTruth(raw).ok).toBe(false);
   });
 
-  it('requires an explicit null rather than an absent apex', () => {
+  it('requires exactly one of the three answers', () => {
+    const { truth } = synthesiseFieldBundle({
+      captures: [{ captureId: 'c1', role: 'after-drag', summits: [summit({ summitId: FAR })] }],
+    });
+    const mutate = (change: (apex: Record<string, unknown>) => void): boolean => {
+      const raw = JSON.parse(JSON.stringify(truth)) as {
+        captures: { readings: { apexes: Record<string, unknown>[] }[] }[];
+      };
+      const apex = raw.captures[0]?.readings[0]?.apexes[0];
+      if (apex !== undefined) change(apex);
+      return parseFieldTruth(raw).ok;
+    };
+    // No answer at all.
+    expect(mutate((apex) => delete apex.apexPx)).toBe(false);
+    // Two answers at once.
+    expect(mutate((apex) => { apex.cannotIdentify = true; })).toBe(false);
+    // An absent answer that does not say what the region holds instead.
+    expect(
+      mutate((apex) => {
+        delete apex.apexPx;
+        apex.absent = true;
+      }),
+    ).toBe(false);
+    expect(
+      mutate((apex) => {
+        delete apex.apexPx;
+        apex.absent = true;
+        apex.reason = 'clear-sky';
+      }),
+    ).toBe(true);
+    // A reason the register does not hold.
+    expect(
+      mutate((apex) => {
+        delete apex.apexPx;
+        apex.absent = true;
+        apex.reason = 'too hazy to tell';
+      }),
+    ).toBe(false);
+    // A landmark belongs to an apex, not to an absence.
+    expect(
+      mutate((apex) => {
+        delete apex.apexPx;
+        apex.absent = true;
+        apex.reason = 'clear-sky';
+        apex.landmark = 'the tallest mast';
+      }),
+    ).toBe(false);
+  });
+
+  it('refuses apexPx: null, and says what to write instead', () => {
     const { truth } = synthesiseFieldBundle({
       captures: [{ captureId: 'c1', role: 'after-drag', summits: [summit({ summitId: FAR })] }],
     });
@@ -1654,8 +2034,28 @@ describe('the strict parser', () => {
       captures: { readings: { apexes: Record<string, unknown>[] }[] }[];
     };
     const apex = raw.captures[0]?.readings[0]?.apexes[0];
-    if (apex !== undefined) delete apex.apexPx;
-    expect(parseFieldTruth(raw).ok).toBe(false);
+    if (apex !== undefined) apex.apexPx = null;
+    const parsed = parseFieldTruth(raw);
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) return;
+    const message = parsed.problems.map((problem) => problem.message).join('\n');
+    expect(message).toContain('cannotIdentify');
+    expect(message).toContain('absent');
+  });
+
+  it('refuses the superseded truth format outright', () => {
+    const { truth } = synthesiseFieldBundle({
+      captures: [{ captureId: 'c1', role: 'after-drag', summits: [summit({ summitId: FAR })] }],
+    });
+    expect(SUPERSEDED_TRUTH_FORMAT).not.toBe(TRUTH_FORMAT);
+    const raw = JSON.parse(JSON.stringify(truth)) as Record<string, unknown>;
+    raw.format = SUPERSEDED_TRUTH_FORMAT;
+    const parsed = parseFieldTruth(raw);
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) return;
+    const message = parsed.problems.map((problem) => problem.message).join('\n');
+    expect(message).toContain('is not read');
+    expect(message).toContain(TRUTH_FORMAT);
   });
 });
 
@@ -1766,6 +2166,39 @@ describe('the committed synthetic fixtures', () => {
       .map((entry) => entry.id)
       .sort();
     expect(failed).toEqual(['F3.far', 'F5a', 'F5c']);
+  });
+
+  it('grades the aligned far band on three summits, and the thin bands not at all', () => {
+    const bundle = parseFieldBundle(alignedBundle);
+    const truth = parseFieldTruth(alignedTruth);
+    if (!bundle.ok || !truth.ok) throw new Error('the aligned fixture does not parse');
+    const analysis = analyseFieldRun(bundle.value, truth.value, lookup);
+    expect(criterion(analysis, 'F3.far')?.n).toBe(MIN_GRADED_PER_BAND);
+    expect(criterion(analysis, 'F3.far')?.outcome).toBe('pass');
+    // One graded summit apiece, so the stop rule withholds a verdict.
+    for (const id of ['F3.near', 'F3.horizon']) {
+      expect(criterion(analysis, id)?.n).toBe(1);
+      expect(criterion(analysis, id)?.outcome).toBe('no-sample');
+      expect(criterion(analysis, id)?.evidence.join('\n')).toContain(
+        'the truth instrument limited this row, not the app',
+      );
+    }
+    expect(analysis.landmarkObservations).toHaveLength(1);
+    expect(analysis.annotatorMethods).toHaveLength(2);
+  });
+
+  it('keeps the stray fixture’s unidentifiable summit out of F5a', () => {
+    const bundle = parseFieldBundle(strayBundle);
+    const truth = parseFieldTruth(strayTruth);
+    if (!bundle.ok || !truth.ok) throw new Error('the stray fixture does not parse');
+    const analysis = analyseFieldRun(bundle.value, truth.value, lookup);
+    const f5a = criterion(analysis, 'F5a')?.evidence.join('\n') ?? '';
+    // Mores Mountain is the injected false visible; Jackson Peak is the summit
+    // neither annotator could identify, and it convicts nothing.
+    expect(f5a).toContain('Mores Mountain: drawn visible, and both annotators say it is not in the frame');
+    expect(f5a).toContain('Jackson Peak: drawn visible, neither annotator could identify');
+    expect(f5a).not.toContain('Jackson Peak: drawn visible, and both annotators');
+    expect(criterion(analysis, 'F3.truth-unidentifiable')?.n).toBe(1);
   });
 
   it('carries both registered geometries: the § 1.2 viewport and the § 2.0 stored frame', () => {

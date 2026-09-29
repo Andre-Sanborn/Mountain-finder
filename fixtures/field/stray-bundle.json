@@ -48,8 +48,8 @@
       "fovSource": "calibrated",
       "sweepRadiusKm": 30,
       "band": {
-        "horizontalDeg": 8.7,
-        "verticalDeg": 1.5,
+        "horizontalDeg": 8.5,
+        "verticalDeg": 0.15,
         "hasUnquantifiedHorizontal": false,
         "hasUnquantifiedVertical": false
       },
@@ -63,8 +63,8 @@
             "altitudeDeg": 6.1,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 262.6510416666667,
-              "yPx": 151.28750000000002
+              "xPx": 258.9166666666667,
+              "yPx": 149.29583333333335
             },
             "labelled": true
           },
@@ -76,8 +76,8 @@
             "altitudeDeg": 4.1,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 541.9822916666667,
-              "yPx": 183.65208333333334
+              "xPx": 542.7291666666666,
+              "yPx": 184.15
             },
             "labelled": true
           },
@@ -89,8 +89,21 @@
             "altitudeDeg": 2.8,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 651.5239583333333,
-              "yPx": 203.56875000000002
+              "xPx": 652.2708333333334,
+              "yPx": 204.06666666666666
+            },
+            "labelled": true
+          },
+          {
+            "summitId": "overture/c72b4af9-b589-392c-9a35-02880fb5bff9",
+            "name": "Jackson Peak",
+            "elevationM": 2471,
+            "distanceKm": 30,
+            "altitudeDeg": 5.2,
+            "visibility": "visible",
+            "summitPx": {
+              "xPx": 388.375,
+              "yPx": 164.23333333333332
             },
             "labelled": true
           },
@@ -102,17 +115,15 @@
             "altitudeDeg": 1.2,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 759.571875,
-              "yPx": 238.42291666666668
+              "xPx": 766.7916666666666,
+              "yPx": 233.94166666666666
             },
             "labelled": true
           }
         ],
         "withheld": []
       },
-      "dragAnchorSummitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e",
-      "horizontalAccuracyM": 12.6
+      "dragAnchorSummitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e"
     }
-  ],
-  "accuracyConvention": "w3c-95-percent-horizontal-radius"
+  ]
 }

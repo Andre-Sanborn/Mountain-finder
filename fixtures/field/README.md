@@ -20,6 +20,33 @@ the script a real bundle goes through:
 npm run analyze:field -- fixtures/field/stray-bundle.json fixtures/field/stray-truth.json
 ```
 
+The verdict tables the two produce:
+
+```
+criterion   outcome    n            criterion                outcome    n
+──────────  ─────────  ─            ───────────────────────  ─────────  ─
+F2          pass       4            F2                       no-sample  0
+F3.near     no-sample  1            F3.near                  no-sample  1
+F3.mid      no-sample  0            F3.mid                   no-sample  0
+F3.far      pass       3            F3.far                   fail       1
+F3.distant  no-sample  0            F3.distant               no-sample  0
+F3.horizon  no-sample  1            F3.horizon               no-sample  1
+F4.near     no-sample  0            F3.truth-unidentifiable  no-sample  1
+F4.mid      no-sample  0            F4.near                  no-sample  0
+F4.far      pass       6            F4.mid                   no-sample  0
+F4.distant  no-sample  0            F4.far                   no-sample  0
+F4.horizon  no-sample  1            F4.distant               no-sample  0
+F5a         pass       16           F4.horizon               no-sample  0
+F5b         pass       4            F5a                      fail       4
+F5c         pass       4            F5b                      pass       1
+                                    F5c                      fail       1
+aligned: 6 passed, 0 failed,        stray: 1 passed, 3 failed,
+8 without a sample                  11 without a sample; failing:
+                                    F3.far, F5a, F5c
+```
+
+`analyze:field` exits 0 on the aligned pair and 1 on the stray one.
+
 ## How the numbers were made
 
 `synthesiseFieldBundle` in `src/live/field-analysis.ts` built them. It does no
@@ -52,22 +79,50 @@ The errors injected into `stray-bundle.json`, and the criterion each one breaks:
 | injected | criterion |
 |---|---|
 | Shafer Butte drawn 50 px off its apex, which is 2.223° where the `far` band's 3σ limit is 1.95° | `F3.far` |
-| Mores Mountain drawn `visible` while both annotators report it absent | `F5a` |
+| Mores Mountain drawn `visible` while both annotators report clear sky where it would sit | `F5a` |
 | Trinity Mountain drawn with a verdict from 55 km, beyond the capture's 30 km sweep | `F5c` |
+
+Jackson Peak is drawn `visible` in the same capture and neither annotator can
+identify it. That breaks nothing: an answer of "I cannot tell" is not evidence
+that the mountain is missing, so the summit is excluded from `F3` and `F5a` and
+counted in `F3.truth-unidentifiable`. Turning that exclusion into an agreed
+absence would make the fixture fail `F5a` twice, which is the mistake the
+three-state truth schema exists to prevent.
 
 The 50 px is a **3σ** excursion on purpose. A band tolerates one summit-axis past 2σ, so a
 single 2σ exceedance would pass and the fixture would assert nothing. The two-exceedance half
 of the gate is exercised in `src/live/field-analysis.test.ts`, where a capture can hold two
 summits in one band.
 
-`aligned-bundle.json` exercises the rest of the protocol: every summit is inside 2σ, its pan
-capture carries the drag anchor to 0.84 of the half-frame (the registered pan target is 0.8),
-and every capture reports a fix accuracy of 8.4 m under the bundle's declared convention, so
-the bands are graded against the limits that accuracy derives rather than the registered ones.
+`aligned-bundle.json` exercises the rest of the protocol. Every summit is inside 2σ; its pan
+capture carries the drag anchor to 0.84 of the half-frame (the registered pan target is 0.8);
+every capture reports a fix accuracy of 8.4 m under the bundle's declared convention, so the
+bands are graded against the limits that accuracy derives rather than the registered ones.
+Three summits sit in the `far` band, which is § 2.0's stop-rule floor, so that band returns a
+verdict; the `near` and `horizon` bands hold one graded summit each and are reported
+`no-sample` with the stop rule named. Deer Point is annotated from a landmark — the crest
+under the tallest mast — and the report lists it apart from the rest. Its two annotators
+worked under different methods, `bare-frame` and `frame-and-map`, and the report says which.
 
 To regenerate either pair, build a `SynthSpec` and write
 `synthesiseFieldBundle(spec).bundle` and `.truth` as JSON. The synthesiser is
 deterministic and takes no seed, so the files are byte-identical on any machine.
+
+## What the truth documents say
+
+Per summit per annotator, exactly one of three answers, in
+`mountain-finder/field-apex-truth@2`:
+
+```json
+{ "summitId": "…", "apexPx": { "xPx": 1040, "yPx": 370 } }
+{ "summitId": "…", "apexPx": { "xPx": 1540, "yPx": 470 }, "landmark": "the crest under the tallest mast, not its tip" }
+{ "summitId": "…", "absent": true, "reason": "clear-sky" }
+{ "summitId": "…", "cannotIdentify": true }
+```
+
+Each reading also names the method it was made under, `bare-frame` or
+`frame-and-map`. `apexPx: null` and the `@1` format are refused by the parser
+with a message saying what to write instead.
 
 ## Privacy rules these files follow
 

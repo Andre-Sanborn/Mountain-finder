@@ -1,66 +1,78 @@
 {
-  "format": "mountain-finder/field-apex-truth@1",
-  "method": "Synthetic. Apex pixels were placed, not read; the two readings straddle the placed pixel so their midpoint is it exactly.",
+  "format": "mountain-finder/field-apex-truth@2",
+  "procedure": "Synthetic. Apex pixels were placed, not read; the two readings straddle the placed pixel so their midpoint is it exactly.",
   "captures": [
     {
       "captureId": "c1",
       "readings": [
         {
           "annotatorId": "agent-a",
+          "method": "bare-frame",
           "apexes": [
             {
               "summitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e",
               "apexPx": {
                 "xPx": 518.5,
-                "yPx": 299
+                "yPx": 300
               }
             },
             {
               "summitId": "overture/daf0b989-7a13-36e1-b4d0-b4ebfecf1e4c",
               "apexPx": {
                 "xPx": 1038.5,
-                "yPx": 369
+                "yPx": 370
               }
             },
             {
               "summitId": "overture/f2a82749-a0cb-3cea-b08c-c3d2d6e87938",
-              "apexPx": null
+              "absent": true,
+              "reason": "clear-sky"
+            },
+            {
+              "summitId": "overture/c72b4af9-b589-392c-9a35-02880fb5bff9",
+              "cannotIdentify": true
             },
             {
               "summitId": "overture/bb7147e9-f16f-3d21-a0cb-a60a47cc8873",
               "apexPx": {
                 "xPx": 1538.5,
-                "yPx": 469
+                "yPx": 470
               }
             }
           ]
         },
         {
           "annotatorId": "agent-b",
+          "method": "bare-frame",
           "apexes": [
             {
               "summitId": "overture/91830abb-987b-3e66-9c17-856ce9b0ca5e",
               "apexPx": {
-                "xPx": 518.5,
-                "yPx": 299
+                "xPx": 521.5,
+                "yPx": 300
               }
             },
             {
               "summitId": "overture/daf0b989-7a13-36e1-b4d0-b4ebfecf1e4c",
               "apexPx": {
-                "xPx": 1038.5,
-                "yPx": 369
+                "xPx": 1041.5,
+                "yPx": 370
               }
             },
             {
               "summitId": "overture/f2a82749-a0cb-3cea-b08c-c3d2d6e87938",
-              "apexPx": null
+              "absent": true,
+              "reason": "clear-sky"
+            },
+            {
+              "summitId": "overture/c72b4af9-b589-392c-9a35-02880fb5bff9",
+              "cannotIdentify": true
             },
             {
               "summitId": "overture/bb7147e9-f16f-3d21-a0cb-a60a47cc8873",
               "apexPx": {
-                "xPx": 1538.5,
-                "yPx": 469
+                "xPx": 1541.5,
+                "yPx": 470
               }
             }
           ]

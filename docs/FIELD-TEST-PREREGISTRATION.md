@@ -416,20 +416,43 @@ The protocol:
    stored height rounded to whole pixels, which at 1920 px wide is under 0.05 %, and refuses
    any real crop: 4:3 against 16:9 is 25 %. A capture that reports no track size is reported
    as unchecked rather than passed.
-2. Two annotators work from the **bare frame**. Neither sees the overlay as drawn, the
-   other's picks, the pose, or the predicted positions. Each is given the frame, the list of
-   candidate summits by id, name and published height, and a labelled pixel grid.
-3. Each annotator reports, per summit, either an apex pixel or **`null`, meaning "I cannot
-   identify this summit in this frame"**. `null` is a positive answer and is what makes F5's
-   false-`visible` check possible.
+2. **Neither annotator ever sees the app's projection, the overlay as drawn, the pose, or
+   the other's picks.** What they are given beyond that is one of two registered methods,
+   and each reading records which:
+   - `bare-frame`: the frame, the candidate summits by id, name and published height, and a
+     labelled pixel grid.
+   - `frame-and-map`: the same, plus the viewpoint and a topographic map.
+
+   Both are allowed and the result reports which was used. A map tells an annotator what
+   ought to be on the skyline and in what order, which is the knowledge a person standing
+   there would have; it says nothing about where the app put a label.
+3. **Each annotator gives one of three answers per summit, and each is a positive claim.**
+   - **an apex pixel** — the point they judge to be the top of that summit;
+   - **`absent`, with a reason** — they looked at the region where the summit would sit and
+     it holds no summit. The reason is `clear-sky` or `foreground-blocked`, and the
+     annotator must say which;
+   - **`cannotIdentify`** — they could not decide either way.
+
+   **Only an agreed `absent` can convict the app of a false `visible`.** Separating the two
+   is what stops a hazy unidentifiable foothill being graded as a mountain that is not there.
 4. Truth for a summit is the midpoint of the two picks. The **disagreement** is the distance
    between them, recorded in pixels and degrees for every graded summit.
 5. **A summit whose annotators disagree by more than 0.30° is not graded.** It is reported
    as `truth-disputed` with its disagreement. 0.30° is a quarter of the tightest F3
    threshold: truth four times finer than the tolerance is the least that makes a verdict
    mean anything.
-6. A summit one annotator locates and the other calls `null` is `truth-disputed` too. The
-   two claims are not reconcilable by averaging.
+6. **The disagreement rules, in order.** Either annotator answering `cannotIdentify`
+   **excludes** the summit from F3, F4 and F5a, whatever the other said, and the count of
+   exclusions is reported. Two `absent` answers make the summit absent, and the two reasons
+   are both reported even when they differ. An `absent` against an apex is `truth-disputed`:
+   the two claims are not reconcilable by averaging. Two apexes go to the 0.30° rule above.
+7. **Landmark truth.** A summit whose committed position carries a sharp, unambiguous point
+   feature — a radio mast, a lookout tower, a notch — may be annotated from that feature.
+   The brief names the target point in words ("the crest under the tallest mast, not its
+   tip"), and the annotator records what they used in a `landmark` field. **The grader
+   treats a landmark apex as any other apex** and reports the landmark observations apart,
+   because a mast is a sharper target than a rounded skyline and a truth read off one is
+   finer than the rest. It is not a licence to claim the app did better.
 
 This is the same instrument the Railroad Ridge pose was solved with, and its own record
 says what it is: "my reading of the picture — an agent looking at a magnified crop with a
@@ -446,15 +469,33 @@ n = 1 in the result, per `AGENTS.md`. **This session can refute the budget. It c
 confirm it.** A pass means "nothing here contradicts the budget at this n", and any
 sentence that upgrades that is wrong.
 
-**The near and mid bands are pre-declared as likely `no-sample`.** The site package holds 5
-summits inside 3 km of the viewpoint, 4 more between 3 and 7 km and 15 between 7 and 20 km.
-From the viewpoint on Shafer Butte every one of them sits **below** horizontal: 2.8 to 7.6°
-down in the near band, 3.0 to 5.7° in the mid band, 1.7 to 5.0° in the far band, computed
-with a 1.6 m eye height and the k = 0.13 sightline. A capture framed on the skyline does not
-hold them, and the person is not asked to point the phone at the ground to manufacture a
-sample. So the `near` and `mid` rows of § 2.3 are expected to
-report `no-sample`, which is said here rather than after the run, because "the tightest band
-was never tested" reads very differently when it was predicted.
+**The near band is testable facing south, and one capture is registered for it.** The site
+package holds 5 summits inside 3 km of the viewpoint, 4 more between 3 and 7 km and 15
+between 7 and 20 km. From the viewpoint on Shafer Butte every one of them sits **below**
+horizontal: 2.8 to 7.6° down in the near band, 3.0 to 5.7° in the mid band, 1.7 to 5.0° in
+the far band, computed with a 1.6 m eye height and the k = 0.13 sightline. Below horizontal
+does not mean out of frame. The rehearsal frame puts Deer Point 2 km away at −4.5° with the
+skyline still in shot, and a 38.1° vertical field of view reaches 19° below the optical
+axis, so a phone held level facing south holds the near ridge and the sky above it in the
+same picture. **§ 2.7 therefore registers one capture facing south toward Deer Point and Doe
+Point**, and the `near` row of § 2.3 is expected to carry a sample.
+
+**The mid band is pre-declared as likely `no-sample`**, because its 4 summits sit 3.0 to
+5.7° down without a comparable near ridge to frame them, and nobody is asked to point the
+phone at the ground to manufacture a sample. That is said here rather than after the run,
+because "the band was never tested" reads very differently when it was predicted.
+
+**The stop rule: a band needs three graded summits before it may pass.** A band whose truth
+yields fewer than three graded summits is reported `no-sample`, and the report says the
+**truth instrument** rather than the app limited it, naming how many summits were drawn in
+that band and how many the annotators settled. Three is the smallest count at which the
+exceedance gate of § 2.3 distinguishes one unlucky draw from a wrong band: at n = 1 or 2 the
+gate tolerates every outcome short of a 3σ excursion, so a pass would report the sample
+rather than the app.
+
+**A band that fails the gate still fails, whatever its n.** One summit-axis past 3σ refutes
+the budget on its own. This document already says this session can refute the budget and
+cannot confirm it, so the stop rule withholds the confirmation and never the refutation.
 
 **That is where the observer terms live.** The geodesy and the observer height only matter
 inside 3 km (§ 1.5), so a session that grades only the `far`, `distant` and `horizon` bands
@@ -539,6 +580,19 @@ any axis whose band carries no unquantified term**. An axis whose band carries a
 unquantified term is a *floor*, not a bound — `summarise` says so on screen — and a floor
 cannot be exceeded. Such an axis is reported `recorded-not-gated`.
 
+**The vertical axis is `recorded-not-gated` unless the home session measured the tilt zero
+point.** The live band's vertical terms are the tilt scatter over the last second and, once
+the field of view is calibrated, nothing else. Scatter is not bias: a braced phone scatters a
+few thousandths of a degree while its gravity zero can sit whole degrees off, so a band built
+from scatter alone would claim a bound no phone holds. `live-uncertainty.ts` therefore carries
+an explicit unquantified term, "Tilt zero point never checked", until a measurement exists, and
+the rule above then puts the vertical axis in `recorded-not-gated` by construction. The home
+session supplies the measurement by pointing the camera at the Sun during the three aiming
+steps: the Sun centred in the frame puts the camera axis at the Sun's altitude, which
+`knownBearing.altitudeDeg` already carries, and `estimatePitchBias` reads the sensed tilt
+against it. The band then charges the bias and the re-aim spread together, and the vertical
+axis is gated like the horizontal one.
+
 **Failure.** A raw error outside a band that carried only measured terms. That is the app
 claiming a bound it does not hold, and it is the most serious failure available here:
 **it is fixed before the field data is used for anything else**, because every other
@@ -578,6 +632,9 @@ and its truth disagreement are printed whether it is inside or outside.
 - **More than one summit-axis past 2σ in a band fails it.** The two axes of one summit count
   separately, because they are two draws.
 - **Any summit-axis past 3σ fails the band on its own**, whatever else is in it.
+- **A band with fewer than three graded summits may not pass.** It is reported `no-sample`
+  under § 2.0's stop rule, with the truth instrument named. A band that fails the count
+  above still fails at any n.
 
 **Why one exceedance is tolerated, with the arithmetic.** The budget's terms are 1σ and each
 summit-axis is one draw, so a *correct* budget puts draws outside 2σ at the normal rate:
@@ -686,10 +743,14 @@ frame offset u, so an edge effect can be told from a whole-frame one.
 Three separate claims, each gated, each reported separately.
 
 **F5a — No false `visible`.** A summit drawn `visible` that both annotators independently
-report as `null` is a false `visible`. **Threshold: zero.** One is a failure.
+report as **`absent`** — the region where it would sit is clear sky, or blocked by a
+foreground object — is a false `visible`. **Threshold: zero.** One is a failure.
 `marginal` is excluded: it is the honest output of a ±1.8° near-field band (term 4) and
 carries "may be hidden" on screen. A summit the annotators disagree about is
-`truth-disputed`, reported, and not counted in either direction.
+`truth-disputed`, reported, and not counted in either direction. **A summit either annotator
+answered `cannotIdentify` on is excluded and counted**, because "I cannot tell" is not
+evidence that the mountain is missing; the count of exclusions is reported beside the
+verdict, and a criterion that excluded most of its sample says so.
 **On failure:** the summit's clearance, its occluder distance and its near-field band are
 reported. A false `visible` from an occluder inside the near-field radius is a
 near-field-band failure; one from a resolvable occluder kilometres away is a geometry or
@@ -747,8 +808,13 @@ The order the session is run in, because several criteria depend on it.
 7. Drag onto the most prominent summit you can positively identify, and capture again (F3).
 8. Without re-dragging: pan until that anchor summit sits at the frame edge, left and then
    right, and tilt ±10°. Hold 2 s and capture each time (F4).
-9. Repeat the drag onto the same summit three times, so its spread is recorded (§ 1.6).
-10. Note the minutes each step took (F6).
+9. **Turn to face south, toward Deer Point and Doe Point, and capture once more.** Frame it
+   so the near ridge and the sky above it are both in the picture: hold the phone level and
+   let the ridge sit in the lower half rather than tilting down onto it. This is the near
+   band's only sample (§ 2.0), and Deer Point's radio masts are the landmark the annotators
+   are told to read its apex from.
+10. Repeat the drag onto the same summit three times, so its spread is recorded (§ 1.6).
+11. Note the minutes each step took (F6).
 
 ---
 
@@ -781,6 +847,14 @@ platform's own horizontal accuracy, under a bundle-level `accuracyConvention` th
 the number means. A radius is not a position: it says how well the phone knew where it was,
 not where that was. A bare `accuracy` key, which is the shape a whole fix arrives in, is
 refused.
+
+**The truth document is `mountain-finder/field-apex-truth@2`**, and the parser refuses the
+`@1` format outright rather than reading it. `@1` wrote `apexPx: null` for everything an
+annotator did not locate, which conflated "the summit is not in this frame" with "I cannot
+identify it"; the two grade in opposite directions under § 2.0, so a document that cannot
+tell them apart is re-annotated rather than reinterpreted. Each annotation is exactly one of
+an apex pixel, `absent` with its reason, or `cannotIdentify`, and each reading names the
+method it was made under.
 
 `fixtures/field/` holds synthetic bundles with known injected errors, and nothing recorded
 from a phone.
@@ -827,6 +901,29 @@ the site package and the app as built.
   calibration, as F3 and F4 already were (§ 2.2). The steps on site are written down, starting
   with standing within a few hundred metres of the site coordinate (§ 2.7). Three cells of
   § 1.5 were rounded the wrong way and now read 0.286°, 0.689° and 0.627°.
+
+### 2026-09-29 — the vertical band gets a tilt-bias term
+
+Still before any field number exists. F2's vertical axis would have failed by construction on a
+phone, because the band it is graded against had no term for the one error that dominates it.
+
+- **§ 2.2 states when F2's vertical axis is gated and when it is only recorded.** The live
+  band's vertical terms were the tilt scatter over the last second and, once the field of view
+  was calibrated, nothing else — so a braced phone's band claimed the pitch was known to a few
+  thousandths of a degree while an unchecked gravity zero can sit whole degrees off. The band
+  now carries an explicit unquantified term, "Tilt zero point never checked", until a
+  measurement exists, which puts the vertical axis in `recorded-not-gated` under the rule
+  § 2.2 already had. Nothing about the thresholds moved; what changed is that the band no
+  longer claims a bound it does not hold.
+- **The home session measures the term.** The three aiming steps ask for the Sun in the middle
+  of the frame, so the camera axis sits at the Sun's altitude, a figure the recording already
+  carries. The analyzer reads the sensed tilt against it, reports the bias and how far two
+  re-aims land apart, and the band charges both. Once a measurement is stored, F2's vertical
+  axis is gated like the horizontal one.
+- **The compass's own accuracy figure is checked at the same steps.** The analyzer reports the
+  reading's bias against the Sun's magnetic azimuth beside the `webkitCompassAccuracy` the phone
+  claimed, which says whether that claim covers the error. Term 3's horizontal figures are
+  unchanged until the session produces a number.
 
 ### 2026-09-29 — the viewport and the stored frame registered apart
 
@@ -878,3 +975,47 @@ Nothing about the thresholds, the bands or the criteria moved. `analyze:field` o
 committed fixture pairs is unchanged except for one vertical residual, 0.849° to 0.850°:
 those fixtures' viewport and stored frame are 0.036 % apart in aspect, so the whole frame's
 vertical field of view is 0.03 % wider than the visible box's.
+
+### 2026-09-29 — truth gets three answers, a stop rule, and a near-band capture
+
+Still before any field number exists. The rehearsal annotation was the truth instrument's
+first run: two independent agents, given a bare Bogus Basin frame and 17 summit names,
+returned nothing for all 17 — correctly, because the rehearsal pose was 92° off and none of
+them were in the picture — and both independently placed the Deer Point radio-tower summit
+within about 10 px of each other. The instrument works. Its schema did not: it had one
+answer, `apexPx: null`, for both "the summit is not there" and "I cannot identify it", and
+F5a read the second as the first. A hazy foothill nobody could name would have been graded
+as a mountain the app fabricated.
+
+- **Truth has three answers per summit per annotator (§ 2.0).** An apex pixel; `absent` with
+  the reason the region holds no summit, `clear-sky` or `foreground-blocked`, which the
+  annotator must choose; or `cannotIdentify`. Only an agreed `absent` counts toward F5a's
+  false-`visible` claim (§ 2.5). `cannotIdentify` from either annotator excludes the summit
+  from F3, F4 and F5a, and the count is reported. Two apexes go to the existing 0.30° rule;
+  an `absent` against an apex is `truth-disputed`.
+- **The `@1` truth format is refused, not reinterpreted (§ 3).** No field data exists, so
+  nothing depends on reading it. The parser names the format, says why it is not read, and
+  says what to write instead. The committed fixtures are regenerated in the new format.
+- **Landmark truth is registered (§ 2.0).** A summit whose committed position carries a
+  sharp point feature may be annotated from it, with the target point named in the brief and
+  the feature recorded in a `landmark` field. The grader treats it as any other apex and
+  reports those observations apart, because a mast is a finer target than a skyline.
+- **Each reading records what its annotator was given (§ 2.0).** Either the bare frame and
+  the summit names, or those plus the viewpoint and a topographic map. Both are allowed and
+  the report says which. Neither ever includes the app's projection or the pose.
+- **A stop rule (§ 2.0, § 2.3).** A band whose truth yields fewer than three graded summits
+  is reported `no-sample` and the report says the truth instrument, not the app, limited it,
+  naming how many summits were drawn in that band and how many were settled. Three is the
+  smallest count at which the exceedance gate tells one unlucky draw from a wrong band. **A
+  band that fails the gate still fails at any n**: one axis past 3σ refutes the budget on its
+  own, and this document already holds that the session can refute the budget and cannot
+  confirm it.
+- **The near band is no longer pre-declared `no-sample` (§ 2.0, § 2.7).** The earlier
+  pre-declaration read "below horizontal" as "out of frame". The rehearsal frame puts Deer
+  Point 2 km away at −4.5° with the skyline still in shot, and the 38.1° vertical field of
+  view reaches 19° below the optical axis. § 2.7 now registers one capture facing south
+  toward Deer Point and Doe Point, framed so the near ridge and the sky sit in the same
+  picture. The mid band's pre-declaration stands.
+
+Nothing about the thresholds, the bands or the error budget moved. What moved is which
+observations reach them.

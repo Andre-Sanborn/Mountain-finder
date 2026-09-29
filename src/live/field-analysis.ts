@@ -52,6 +52,23 @@
  * human's own action to their own account, is never committed, and is never
  * attached to an issue.
  *
+ * ── TRUTH HAS THREE ANSWERS, AND ONLY ONE OF THEM CONVICTS ─────────────────
+ * Per summit per annotator: an apex pixel, `absent` with the reason the region
+ * holds no summit, or `cannot-identify`. Only a summit both annotators call
+ * `absent` counts against F5a's false-`visible` claim. One an annotator could
+ * not identify is excluded from F3, F4 and F5a, and the count is reported.
+ * Averaging a presence disagreement is never done: an `absent` against an apex
+ * is `truth-disputed`.
+ *
+ * A summit whose committed position carries a sharp point feature may be marked
+ * `landmark`, naming what the apex was taken from. The grader treats it as any
+ * other apex and reports the landmark observations apart, because a mast is a
+ * finer target than a rounded skyline.
+ *
+ * Each reading records what its annotator was given: the bare frame and the
+ * names, or those plus the viewpoint and a topographic map. Neither method ever
+ * includes the app's projection or the pose.
+ *
  * ── WHERE SUMMIT TRUTH COMES FROM ──────────────────────────────────────────
  * Not from the bundle. The bundle is written by the device under test, so
  * letting it supply the identity and height of a summit would let a wrong
@@ -199,6 +216,24 @@ export const PREREGISTERED_THRESHOLDS: readonly BandThreshold[] = [
  * (pre-registration § 2.3).
  */
 export const MAX_TWO_SIGMA_EXCEEDANCES = 1;
+
+/**
+ * Fewest graded summits a band needs before its verdict may be a pass.
+ *
+ * The stop rule of § 2.0. A band whose truth yields one or two graded summits is
+ * reported `no-sample`, and the report says the truth instrument rather than the
+ * app limited it — the app drew summits there and the annotators could not
+ * settle enough of them. Three is the smallest count at which the exceedance
+ * gate can distinguish "one draw was unlucky" from "the band is wrong": at n = 1
+ * or 2 the gate tolerates every outcome short of a 3σ excursion, so a pass
+ * reports the sample rather than the app.
+ *
+ * **A band that fails the gate still fails**, however few summits it holds. One
+ * summit past 3σ refutes the budget on its own, and § 2.0 is explicit that this
+ * session can refute the budget and cannot confirm it. The stop rule withholds
+ * the confirmation, never the refutation.
+ */
+export const MIN_GRADED_PER_BAND = 3;
 
 /**
  * Widest apex disagreement between the two annotators that still permits a
@@ -460,7 +495,15 @@ export function exceedancesOf(
 export const BUNDLE_FORMAT = 'mountain-finder/field-bundle@1';
 
 /** Format tag of the separate truth-annotation document. */
-export const TRUTH_FORMAT = 'mountain-finder/field-apex-truth@1';
+export const TRUTH_FORMAT = 'mountain-finder/field-apex-truth@2';
+
+/**
+ * The format that wrote `apexPx: null` for everything an annotator did not
+ * locate. It is refused rather than read, and the refusal says what to write
+ * instead: `null` conflated "the summit is not there" with "I cannot tell",
+ * and those two answers grade in opposite directions.
+ */
+export const SUPERSEDED_TRUTH_FORMAT = 'mountain-finder/field-apex-truth@1';
 
 /** The only timestamp basis either format permits. */
 export const TIMESTAMP_BASIS = 'ms-since-session-start';
@@ -638,20 +681,77 @@ export interface FieldBundle {
  * ══════════════════════════════════════════════════════════════════════════ */
 
 /**
- * One annotator's reading of one summit in one frame.
+ * Why an annotator says a summit is not in the frame.
  *
- * `apexPx: null` means "I cannot identify this summit in this frame". It is a
- * positive answer, and it is what makes F5a's false-`visible` check possible.
+ * Both are claims about a region of the picture the annotator looked at and
+ * found summit-free, which is what F5a needs. `clear-sky` is the region showing
+ * sky; `foreground-blocked` is a nearer object standing in front of it. An
+ * annotator who cannot make either claim reports `cannotIdentify` instead.
  */
-export interface ApexAnnotation {
-  readonly summitId: string;
-  readonly apexPx: PixelPoint | null;
-  readonly note?: string;
+export const ABSENT_REASONS = ['clear-sky', 'foreground-blocked'] as const;
+export type AbsentReason = (typeof ABSENT_REASONS)[number];
+
+/** What an annotator was given before they looked at the frame. */
+export const ANNOTATOR_METHODS = ['bare-frame', 'frame-and-map'] as const;
+export type AnnotatorMethod = (typeof ANNOTATOR_METHODS)[number];
+
+/** What each method means, for the report. */
+export const ANNOTATOR_METHOD_DESCRIPTIONS: Readonly<Record<AnnotatorMethod, string>> = {
+  'bare-frame': 'the bare frame and the candidate summit names, nothing else',
+  'frame-and-map':
+    'the bare frame, the candidate summit names, the viewpoint and a topographic map — never the app’s projection and never the pose',
+};
+
+/**
+ * One annotator's reading of one summit in one frame. Exactly one of three
+ * answers, and each is a positive claim.
+ *
+ * `apex` locates the summit. `absent` says the region where the summit would sit
+ * holds no summit, and names which of {@link ABSENT_REASONS} it holds instead.
+ * `cannot-identify` says the annotator could not decide either way — a haze, a
+ * crowded ridge line, an unresolvable foothill.
+ *
+ * Only `absent` can convict the app of a false `visible`. Separating the two is
+ * what stops an unidentifiable foothill being graded as a mountain that is not
+ * there.
+ */
+export type ApexAnnotation =
+  | {
+      readonly summitId: string;
+      readonly apexPx: PixelPoint;
+      /**
+       * The point feature the apex was taken from, when the brief named one —
+       * a mast, a lookout, a notch. Present only when the annotator marked it.
+       */
+      readonly landmark?: string;
+      readonly note?: string;
+    }
+  | {
+      readonly summitId: string;
+      readonly absent: true;
+      readonly reason: AbsentReason;
+      readonly note?: string;
+    }
+  | {
+      readonly summitId: string;
+      readonly cannotIdentify: true;
+      readonly note?: string;
+    };
+
+/** Which of the three answers an annotation is. */
+export function apexAnswer(
+  annotation: ApexAnnotation,
+): 'apex' | 'absent' | 'cannot-identify' {
+  if ('apexPx' in annotation) return 'apex';
+  if ('absent' in annotation) return 'absent';
+  return 'cannot-identify';
 }
 
 export interface AnnotatorReading {
   /** Stable annotator id, e.g. `agent-a`. Never a person's name. */
   readonly annotatorId: string;
+  /** What this annotator was given. Both methods are allowed; the report says which. */
+  readonly method: AnnotatorMethod;
   readonly apexes: readonly ApexAnnotation[];
 }
 
@@ -663,8 +763,8 @@ export interface CaptureTruth {
 /** The apex truth for a whole session, from two independent annotators. */
 export interface FieldTruth {
   readonly format: typeof TRUTH_FORMAT;
-  /** How the annotators worked, and what they were shown. One or two lines. */
-  readonly method: string;
+  /** How the annotation was run, in prose. Each annotator's own method is on its reading. */
+  readonly procedure: string;
   readonly captures: readonly CaptureTruth[];
 }
 
@@ -1420,24 +1520,89 @@ export function parseFieldBundle(raw: unknown): ParseResult<FieldBundle> {
   };
 }
 
-const APEX_KEYS = ['summitId', 'apexPx', 'note'] as const;
-const READING_KEYS = ['annotatorId', 'apexes'] as const;
+const APEX_KEYS = ['summitId', 'apexPx', 'landmark', 'absent', 'reason', 'cannotIdentify', 'note'] as const;
+const READING_KEYS = ['annotatorId', 'method', 'apexes'] as const;
 const CAPTURE_TRUTH_KEYS = ['captureId', 'readings'] as const;
-const TRUTH_KEYS = ['format', 'method', 'captures'] as const;
+const TRUTH_KEYS = ['format', 'procedure', 'captures'] as const;
 
+/** The three answers, and what each one must carry. */
+const APEX_SHAPES =
+  '{ "apexPx": { "xPx": …, "yPx": … } } to locate it, { "absent": true, "reason": "clear-sky" | "foreground-blocked" } to say the region holds no summit, or { "cannotIdentify": true } to say you could not decide';
+
+/**
+ * One annotation, in exactly one of the three shapes.
+ *
+ * `apexPx: null` is refused by name. It was the previous format's way of
+ * writing both "not there" and "cannot tell", and those grade in opposite
+ * directions: only the first can convict the app of a false `visible`.
+ */
 function parseApex(p: Problems, path: string, value: unknown): ApexAnnotation | undefined {
   const obj = asRecord(p, path, value);
   if (!obj) return undefined;
   checkKeys(p, path, obj, APEX_KEYS);
   const summitId = asString(p, `${path}.summitId`, obj.summitId);
-  if (!('apexPx' in obj)) {
-    p.add(`${path}.apexPx`, 'required: a pixel, or null for "I cannot identify this summit"');
+  const note = 'note' in obj ? asString(p, `${path}.note`, obj.note) : undefined;
+  const extras = note !== undefined ? { note } : {};
+
+  if (obj.apexPx === null) {
+    p.add(
+      `${path}.apexPx`,
+      `null is no longer an answer: it meant both "the summit is not in this frame" and "I cannot identify it", and only the first can convict the app of a false visible. Write ${APEX_SHAPES}`,
+    );
     return undefined;
   }
-  const apexPx = obj.apexPx === null ? null : asPixelPoint(p, `${path}.apexPx`, obj.apexPx);
-  const note = 'note' in obj ? asString(p, `${path}.note`, obj.note) : undefined;
-  if (summitId === undefined || apexPx === undefined) return undefined;
-  return { summitId, apexPx, ...(note !== undefined ? { note } : {}) };
+
+  for (const flag of ['absent', 'cannotIdentify'] as const) {
+    if (flag in obj && obj[flag] !== true) {
+      p.add(`${path}.${flag}`, 'expected true; leave the key out rather than writing false');
+      return undefined;
+    }
+  }
+
+  const claims = [
+    'apexPx' in obj ? 'apexPx' : undefined,
+    obj.absent === true ? 'absent' : undefined,
+    obj.cannotIdentify === true ? 'cannotIdentify' : undefined,
+  ].filter((claim): claim is string => claim !== undefined);
+  if (claims.length !== 1) {
+    p.add(
+      path,
+      claims.length === 0
+        ? `no answer: write exactly one of ${APEX_SHAPES}`
+        : `${claims.join(' and ')} together are ${claims.length} answers; write exactly one`,
+    );
+    return undefined;
+  }
+
+  if ('apexPx' in obj) {
+    const apexPx = asPixelPoint(p, `${path}.apexPx`, obj.apexPx);
+    const landmark =
+      'landmark' in obj ? asString(p, `${path}.landmark`, obj.landmark) : undefined;
+    if ('reason' in obj) p.add(`${path}.reason`, 'a reason belongs to an absent answer');
+    if (summitId === undefined || apexPx === undefined) return undefined;
+    return { summitId, apexPx, ...(landmark !== undefined ? { landmark } : {}), ...extras };
+  }
+
+  if ('landmark' in obj) {
+    p.add(`${path}.landmark`, 'a landmark belongs to an apex answer');
+  }
+
+  if (obj.absent === true) {
+    if (!('reason' in obj)) {
+      p.add(
+        `${path}.reason`,
+        `an absent answer must say what the region holds instead: one of ${ABSENT_REASONS.join(', ')}`,
+      );
+      return undefined;
+    }
+    const reason = asMember(p, `${path}.reason`, obj.reason, ABSENT_REASONS);
+    if (summitId === undefined || reason === undefined) return undefined;
+    return { summitId, absent: true, reason, ...extras };
+  }
+
+  if ('reason' in obj) p.add(`${path}.reason`, 'a reason belongs to an absent answer');
+  if (summitId === undefined) return undefined;
+  return { summitId, cannotIdentify: true, ...extras };
 }
 
 /** Parse the truth document, or say everything that is wrong with it. */
@@ -1448,8 +1613,15 @@ export function parseFieldTruth(raw: unknown): ParseResult<FieldTruth> {
   const obj = asRecord(p, '', raw);
   if (!obj) return { ok: false, problems: p.list };
   checkKeys(p, '', obj, TRUTH_KEYS);
-  if (obj.format !== TRUTH_FORMAT) p.add('format', `expected exactly "${TRUTH_FORMAT}"`);
-  const method = asString(p, 'method', obj.method);
+  if (obj.format === SUPERSEDED_TRUTH_FORMAT) {
+    p.add(
+      'format',
+      `"${SUPERSEDED_TRUTH_FORMAT}" is not read. It wrote apexPx: null for everything an annotator did not locate, which conflated "the summit is not in this frame" with "I cannot identify it"; only the first can convict the app of a false visible. Re-annotate into "${TRUTH_FORMAT}", where each answer is ${APEX_SHAPES}, and each reading names the method it was made under: ${ANNOTATOR_METHODS.join(' or ')}`,
+    );
+  } else if (obj.format !== TRUTH_FORMAT) {
+    p.add('format', `expected exactly "${TRUTH_FORMAT}"`);
+  }
+  const procedure = asString(p, 'procedure', obj.procedure);
 
   const rawCaptures = asArray(p, 'captures', obj.captures);
   const captures: CaptureTruth[] = [];
@@ -1473,14 +1645,15 @@ export function parseFieldTruth(raw: unknown): ParseResult<FieldTruth> {
       if (!readingObj) return;
       checkKeys(p, readingPath, readingObj, READING_KEYS);
       const annotatorId = asString(p, `${readingPath}.annotatorId`, readingObj.annotatorId);
+      const method = asMember(p, `${readingPath}.method`, readingObj.method, ANNOTATOR_METHODS);
       const rawApexes = asArray(p, `${readingPath}.apexes`, readingObj.apexes);
       const apexes: ApexAnnotation[] = [];
       rawApexes?.forEach((rawApex, apexIndex) => {
         const apex = parseApex(p, `${readingPath}.apexes[${apexIndex}]`, rawApex);
         if (apex) apexes.push(apex);
       });
-      if (annotatorId === undefined) return;
-      readings.push({ annotatorId, apexes });
+      if (annotatorId === undefined || method === undefined) return;
+      readings.push({ annotatorId, method, apexes });
     });
     if (captureId === undefined) return;
     if (new Set(readings.map((reading) => reading.annotatorId)).size !== readings.length) {
@@ -1490,10 +1663,10 @@ export function parseFieldTruth(raw: unknown): ParseResult<FieldTruth> {
   });
 
   if (p.list.length > 0) return { ok: false, problems: p.list };
-  if (method === undefined) {
+  if (procedure === undefined) {
     return { ok: false, problems: [{ path: '', message: 'incomplete truth document' }] };
   }
-  return { ok: true, value: { format: TRUTH_FORMAT, method, captures } };
+  return { ok: true, value: { format: TRUTH_FORMAT, procedure, captures } };
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -1685,10 +1858,23 @@ export type SummitTruth =
       readonly apexPx: PixelPoint;
       readonly disagreementDeg: number;
       readonly disagreementPx: number;
+      /**
+       * The point feature both annotators took the apex from, when both named
+       * one. A landmark observation is graded like any other and reported apart,
+       * because its precision comes from a mast rather than from a skyline.
+       */
+      readonly landmark?: string;
     }
   | {
-      /** Both annotators independently say the summit is not in this frame. */
+      /** Both annotators say the summit is not in this frame, and why. */
       readonly kind: 'absent';
+      /** One per annotator, in reading order. They may differ and still agree it is absent. */
+      readonly reasons: readonly AbsentReason[];
+    }
+  | {
+      /** An annotator could not decide. The summit is graded by nothing. */
+      readonly kind: 'excluded';
+      readonly why: string;
     }
   | {
       /** They disagree, by distance or by presence. Reported, never averaged. */
@@ -1701,6 +1887,11 @@ export type SummitTruth =
 /**
  * Reduce two independent readings of one summit to one truth.
  *
+ * The four outcomes follow the pre-registration's § 2.0 rules, in this order:
+ * either annotator answering `cannot-identify` excludes the summit, whatever the
+ * other said; two `absent` answers make it absent; an `absent` against an apex is
+ * disputed; and two apexes are graded against the 0.30° agreement limit.
+ *
  * A disagreement is never split: two annotators who disagree about whether a
  * summit is in the picture are not making a measurement with an error bar, they
  * are making two incompatible claims, and averaging them would manufacture a
@@ -1708,20 +1899,40 @@ export type SummitTruth =
  */
 export function reduceTruth(
   capture: Capture,
-  picks: readonly (PixelPoint | null)[],
+  picks: readonly ApexAnnotation[],
 ): SummitTruth | undefined {
   if (picks.length !== REQUIRED_ANNOTATORS) return undefined;
   const [first, second] = picks;
   if (first === undefined || second === undefined) return undefined;
-  if (first === null && second === null) return { kind: 'absent' };
-  if (first === null || second === null) {
+
+  const answers = [apexAnswer(first), apexAnswer(second)];
+  const unidentifiable = answers.filter((answer) => answer === 'cannot-identify').length;
+  if (unidentifiable > 0) {
     return {
-      kind: 'disputed',
-      why: 'one annotator located the summit and the other could not identify it',
+      kind: 'excluded',
+      why:
+        unidentifiable === REQUIRED_ANNOTATORS
+          ? 'neither annotator could identify this summit in the frame'
+          : 'one annotator could not identify this summit in the frame',
     };
   }
-  const dxPx = first.xPx - second.xPx;
-  const dyPx = first.yPx - second.yPx;
+  if ('absent' in first && 'absent' in second) {
+    return { kind: 'absent', reasons: [first.reason, second.reason] };
+  }
+  if ('absent' in first || 'absent' in second) {
+    return {
+      kind: 'disputed',
+      why: 'one annotator located the summit and the other says it is not in the frame',
+    };
+  }
+  if (!('apexPx' in first) || !('apexPx' in second)) return undefined;
+
+  const landmarks = [first.landmark, second.landmark];
+  const landmark = landmarks.every((entry): entry is string => entry !== undefined)
+    ? [...new Set(landmarks)].join(' / ')
+    : undefined;
+  const dxPx = first.apexPx.xPx - second.apexPx.xPx;
+  const dyPx = first.apexPx.yPx - second.apexPx.yPx;
   const disagreementPx = Math.hypot(dxPx, dyPx);
   const { widthPx, heightPx } = capture.framePx;
   // Both picks are pixels on the whole stored frame, so they are converted with
@@ -1731,11 +1942,11 @@ export function reduceTruth(
   const hFovDeg = uncroppedFovDeg(capture.pose.hFovDeg, fraction.x);
   const vFovDeg = uncroppedFovDeg(capture.pose.vFovDeg, fraction.y);
   const dxDeg =
-    angularOffsetDeg(first.xPx - widthPx / 2, widthPx, hFovDeg) -
-    angularOffsetDeg(second.xPx - widthPx / 2, widthPx, hFovDeg);
+    angularOffsetDeg(first.apexPx.xPx - widthPx / 2, widthPx, hFovDeg) -
+    angularOffsetDeg(second.apexPx.xPx - widthPx / 2, widthPx, hFovDeg);
   const dyDeg =
-    angularOffsetDeg(first.yPx - heightPx / 2, heightPx, vFovDeg) -
-    angularOffsetDeg(second.yPx - heightPx / 2, heightPx, vFovDeg);
+    angularOffsetDeg(first.apexPx.yPx - heightPx / 2, heightPx, vFovDeg) -
+    angularOffsetDeg(second.apexPx.yPx - heightPx / 2, heightPx, vFovDeg);
   const disagreementDeg = Math.hypot(dxDeg, dyDeg);
   if (disagreementDeg > MAX_TRUTH_DISAGREEMENT_DEG) {
     return {
@@ -1747,20 +1958,24 @@ export function reduceTruth(
   }
   return {
     kind: 'located',
-    apexPx: { xPx: (first.xPx + second.xPx) / 2, yPx: (first.yPx + second.yPx) / 2 },
+    apexPx: {
+      xPx: (first.apexPx.xPx + second.apexPx.xPx) / 2,
+      yPx: (first.apexPx.yPx + second.apexPx.yPx) / 2,
+    },
     disagreementDeg,
     disagreementPx,
+    ...(landmark !== undefined ? { landmark } : {}),
   };
 }
 
-function truthIndex(truth: FieldTruth, captureId: string): Map<string, (PixelPoint | null)[]> {
-  const index = new Map<string, (PixelPoint | null)[]>();
+function truthIndex(truth: FieldTruth, captureId: string): Map<string, ApexAnnotation[]> {
+  const index = new Map<string, ApexAnnotation[]>();
   const entry = truth.captures.find((capture) => capture.captureId === captureId);
   if (entry === undefined) return index;
   for (const reading of entry.readings) {
     for (const apex of reading.apexes) {
       const picks = index.get(apex.summitId) ?? [];
-      picks.push(apex.apexPx);
+      picks.push(apex);
       index.set(apex.summitId, picks);
     }
   }
@@ -1803,6 +2018,8 @@ export interface GradedSummit {
   /** 0 at the frame centre, 1 at its edge. Separates the scale terms. */
   readonly frameOffset: number;
   readonly truthDisagreementDeg: number;
+  /** The point feature both annotators took the apex from, when both named one. */
+  readonly landmark?: string;
   /** Inside the 2σ band on both axes. */
   readonly withinThreshold: boolean;
   readonly exceedances: readonly AxisExceedance[];
@@ -1816,6 +2033,22 @@ export interface FieldAnalysis {
   readonly captureCount: number;
   readonly criteria: readonly Criterion[];
   readonly graded: readonly GradedSummit[];
+  /**
+   * What each annotator was given, one line each.
+   *
+   * Both registered methods are allowed and the report says which was used, so a
+   * reader can tell a skyline read from the bare frame from one read with a
+   * topographic map beside it.
+   */
+  readonly annotatorMethods: readonly string[];
+  /**
+   * Graded summits whose apex both annotators took from a named point feature.
+   *
+   * Reported apart from the rest. A mast is a sharper target than a rounded
+   * summit, so these observations carry a finer truth than the others and saying
+   * which they are keeps that from being read as the app doing better.
+   */
+  readonly landmarkObservations: readonly string[];
   /** Problems that stop a capture being graded at all. */
   readonly refusals: readonly string[];
   /**
@@ -1955,9 +2188,9 @@ interface Observation {
 function gradedSummitOf(
   capture: Capture,
   summit: DrawnSummit,
-  apexPx: PixelPoint,
-  truthDisagreementDeg: number,
+  truth: Extract<SummitTruth, { kind: 'located' }>,
 ): GradedSummit | undefined {
+  const { apexPx, disagreementDeg: truthDisagreementDeg, landmark } = truth;
   const threshold = bandFor(summit.distanceKm);
   if (threshold === undefined) return undefined;
   const limits = bandLimitsFor(threshold, capture.horizontalAccuracyM);
@@ -1972,6 +2205,7 @@ function gradedSummitOf(
     residual,
     frameOffset: frameOffsetFraction(apexPx.xPx, capture.framePx.widthPx),
     truthDisagreementDeg,
+    ...(landmark !== undefined ? { landmark } : {}),
     withinThreshold: withinThreshold(residual, limits),
     exceedances,
     axesOverTwoSigma: exceedances.filter((axis) => axis.overTwoSigma).length,
@@ -2091,23 +2325,36 @@ function gradePositional(
 ): readonly Criterion[] {
   const rows: GradedSummit[] = [];
   const disputed: string[] = [];
+  const excluded: string[] = [];
+  /** Drawn summits per band, whatever their truth. The stop rule counts these. */
+  const drawnPerBand = new Map<BandId, number>();
 
   for (const { capture, summit, truth } of observations) {
     if (!select(capture)) continue;
+    const drawnBand = bandFor(summit.distanceKm);
+    if (drawnBand !== undefined) {
+      drawnPerBand.set(drawnBand.band, (drawnPerBand.get(drawnBand.band) ?? 0) + 1);
+    }
     if (truth.kind === 'disputed') {
       disputed.push(`${capture.captureId} ${summit.name}: truth disputed — ${truth.why}`);
       continue;
     }
+    if (truth.kind === 'excluded') {
+      excluded.push(`${capture.captureId} ${summit.name}: ${truth.why}`);
+      continue;
+    }
     if (truth.kind !== 'located') continue;
-    const row = gradedSummitOf(capture, summit, truth.apexPx, truth.disagreementDeg);
+    const row = gradedSummitOf(capture, summit, truth);
     if (row !== undefined) rows.push(row);
   }
 
   const criteria: Criterion[] = PREREGISTERED_THRESHOLDS.map((threshold) => {
     const band = rows.filter((row) => row.band === threshold.band);
+    const drawn = drawnPerBand.get(threshold.band) ?? 0;
     const overTwoSigma = band.reduce((count, row) => count + row.axesOverTwoSigma, 0);
     const overThreeSigma = band.reduce((count, row) => count + row.axesOverThreeSigma, 0);
     const failed = overThreeSigma > 0 || overTwoSigma > MAX_TWO_SIGMA_EXCEEDANCES;
+    const underStopRule = band.length < MIN_GRADED_PER_BAND;
     const evidence = band.map((row) => {
       const across = row.exceedances[0];
       const upDown = row.exceedances[1];
@@ -2117,18 +2364,26 @@ function gradePositional(
           : row.axesOverTwoSigma > 0
             ? ' — over 2σ'
             : '';
-      return `${row.captureId} ${row.name}: ${Math.abs(row.residual.horizontalDeg).toFixed(3)}° across (2σ ${across?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${across?.threeSigmaDeg.toFixed(2) ?? '?'}°), ${Math.abs(row.residual.verticalDeg).toFixed(3)}° up/down (2σ ${upDown?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${upDown?.threeSigmaDeg.toFixed(2) ?? '?'}°), at ${(row.frameOffset * 100).toFixed(0)}% of the half-frame, truth ±${row.truthDisagreementDeg.toFixed(3)}°${flag}`;
+      const mark = row.landmark === undefined ? '' : ` [landmark: ${row.landmark}]`;
+      return `${row.captureId} ${row.name}: ${Math.abs(row.residual.horizontalDeg).toFixed(3)}° across (2σ ${across?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${across?.threeSigmaDeg.toFixed(2) ?? '?'}°), ${Math.abs(row.residual.verticalDeg).toFixed(3)}° up/down (2σ ${upDown?.twoSigmaDeg.toFixed(2) ?? '?'}°, 3σ ${upDown?.threeSigmaDeg.toFixed(2) ?? '?'}°), at ${(row.frameOffset * 100).toFixed(0)}% of the half-frame, truth ±${row.truthDisagreementDeg.toFixed(3)}°${mark}${flag}`;
     });
+    // The stop rule withholds a pass, never a failure: one summit past 3σ
+    // refutes the budget whatever the sample size (§ 2.0).
+    const stopRuleLine =
+      drawn === 0
+        ? 'no summit was drawn in this band, so there was nothing for the truth instrument to settle'
+        : `${band.length} of ${drawn} drawn summit-observation(s) in this band were graded, under the pre-registered floor of ${MIN_GRADED_PER_BAND}; the truth instrument limited this row, not the app (§ 2.0 stop rule)`;
     return {
       id: `${id}.${threshold.band}`,
       claim: `${claim} (${threshold.band}: ${threshold.fromKm}${Number.isFinite(threshold.toKm) ? `–${threshold.toKm}` : '+'} km)`,
-      outcome: band.length === 0 ? 'no-sample' : failed ? 'fail' : 'pass',
+      outcome: failed ? 'fail' : underStopRule ? 'no-sample' : 'pass',
       n: band.length,
       evidence:
         band.length === 0
-          ? ['no graded summit fell in this band']
+          ? [stopRuleLine]
           : [
               band.length === 1 ? 'n = 1' : `n = ${band.length}`,
+              ...(underStopRule ? [stopRuleLine] : []),
               `${overTwoSigma} summit-axis/axes past 2σ (${MAX_TWO_SIGMA_EXCEEDANCES} tolerated), ${overThreeSigma} past 3σ (none tolerated)`,
               ...evidence,
             ],
@@ -2142,6 +2397,15 @@ function gradePositional(
       outcome: 'no-sample',
       n: disputed.length,
       evidence: disputed,
+    });
+  }
+  if (excluded.length > 0) {
+    criteria.push({
+      id: `${id}.truth-unidentifiable`,
+      claim: 'summits an annotator could not identify, excluded from grading',
+      outcome: 'no-sample',
+      n: excluded.length,
+      evidence: excluded,
     });
   }
   return criteria;
@@ -2196,19 +2460,34 @@ function gradeF4Envelope(captures: readonly Capture[]): readonly string[] {
   return problems;
 }
 
-/** F5a — a summit drawn `visible` that both annotators say is not there. */
+/**
+ * F5a — a summit drawn `visible` that both annotators say is not there.
+ *
+ * Only an agreed `absent` convicts. A summit an annotator could not identify is
+ * excluded and counted, because "I cannot tell" is not evidence that the
+ * mountain is missing: a hazy foothill nobody can name would otherwise be graded
+ * as a fabricated label.
+ */
 function gradeF5a(observations: readonly Observation[]): Criterion {
   const evidence: string[] = [];
   let graded = 0;
   let falseVisible = 0;
+  let unidentifiable = 0;
 
   for (const { capture, summit, truth } of observations) {
     if (summit.visibility !== 'visible') continue;
+    if (truth.kind === 'excluded') {
+      unidentifiable += 1;
+      evidence.push(
+        `${capture.captureId} ${summit.name}: drawn visible, ${truth.why}; excluded from F5a`,
+      );
+      continue;
+    }
     graded += 1;
     if (truth.kind === 'absent') {
       falseVisible += 1;
       evidence.push(
-        `${capture.captureId} ${summit.name}: drawn visible, and both annotators say it is not in the frame — FALSE VISIBLE`,
+        `${capture.captureId} ${summit.name}: drawn visible, and both annotators say it is not in the frame (${truth.reasons.join(', ')}) — FALSE VISIBLE`,
       );
     } else if (truth.kind === 'disputed') {
       evidence.push(
@@ -2217,6 +2496,7 @@ function gradeF5a(observations: readonly Observation[]): Criterion {
     }
   }
 
+  const excludedLine = `${unidentifiable} summit(s) drawn visible were excluded because an annotator could not identify them`;
   return {
     id: 'F5a',
     claim: 'no summit is drawn `visible` that is not in the picture',
@@ -2224,8 +2504,8 @@ function gradeF5a(observations: readonly Observation[]): Criterion {
     n: graded,
     evidence:
       graded === 0
-        ? ['no summit was drawn visible in any capture']
-        : [`${graded} summit(s) drawn visible; ${falseVisible} false`, ...evidence],
+        ? ['no summit was drawn visible in any capture with a truth that grades', excludedLine]
+        : [`${graded} summit(s) drawn visible; ${falseVisible} false`, excludedLine, ...evidence],
   };
 }
 
@@ -2369,18 +2649,48 @@ export function analyseFieldRun(
   const graded: GradedSummit[] = [];
   for (const { capture, summit, truth: reduced } of observations) {
     if (capture.role === 'before-drag' || reduced.kind !== 'located') continue;
-    const row = gradedSummitOf(capture, summit, reduced.apexPx, reduced.disagreementDeg);
+    const row = gradedSummitOf(capture, summit, reduced);
     if (row !== undefined) graded.push(row);
   }
+
+  const landmarkObservations = graded.flatMap((row) =>
+    row.landmark === undefined
+      ? []
+      : [`${row.captureId} ${row.name}: apex taken from ${row.landmark}`],
+  );
 
   return {
     device: bundle.device,
     captureCount: bundle.captures.length,
     criteria,
     graded,
+    annotatorMethods: annotatorMethodLines(truth),
+    landmarkObservations,
     refusals,
     notes,
   };
+}
+
+/**
+ * What each annotator was given, one line each.
+ *
+ * An annotator who worked under two methods across the session gets a line per
+ * method, because the two readings are not the same instrument.
+ */
+function annotatorMethodLines(truth: FieldTruth): readonly string[] {
+  const seen = new Set<string>();
+  const lines: string[] = [];
+  for (const capture of truth.captures) {
+    for (const reading of capture.readings) {
+      const key = `${reading.annotatorId}\u0000${reading.method}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      lines.push(
+        `${reading.annotatorId}: ${reading.method} — ${ANNOTATOR_METHOD_DESCRIPTIONS[reading.method]}`,
+      );
+    }
+  }
+  return lines;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -2400,6 +2710,16 @@ export function renderFieldReport(analysis: FieldAnalysis, options: { brief?: bo
   lines.push(`device:   ${analysis.device}`);
   lines.push(`captures: ${analysis.captureCount}`);
   lines.push(`graded:   ${analysis.graded.length} summit-observation(s)`);
+  if (analysis.annotatorMethods.length > 0) {
+    lines.push('');
+    lines.push('what each annotator was given:');
+    for (const line of analysis.annotatorMethods) lines.push(`  · ${line}`);
+  }
+  if (analysis.landmarkObservations.length > 0) {
+    lines.push('');
+    lines.push('located from a named point feature, reported apart:');
+    for (const line of analysis.landmarkObservations) lines.push(`  △ ${line}`);
+  }
   if (analysis.refusals.length > 0) {
     lines.push('');
     lines.push('not graded:');
@@ -2465,10 +2785,14 @@ export interface SynthSummit {
   readonly labelled?: boolean;
   /** How far the second annotator's pick sits from the first's, pixels. */
   readonly annotatorSplitPx?: PixelPoint;
-  /** Both annotators report the summit absent, whatever it is drawn as. */
-  readonly truthAbsent?: boolean;
-  /** Only the first annotator finds it, which makes the truth disputed. */
-  readonly truthOnlyFirst?: boolean;
+  /** Both annotators report the summit absent, for this reason. */
+  readonly truthAbsent?: AbsentReason;
+  /** The first locates it and the second calls it absent, which disputes the truth. */
+  readonly truthSecondAbsent?: AbsentReason;
+  /** One annotator, or both, cannot identify it, which excludes it from grading. */
+  readonly truthCannotIdentify?: 'both' | 'second';
+  /** Both annotators name this point feature as what they took the apex from. */
+  readonly landmark?: string;
 }
 
 export interface SynthCapture {
@@ -2493,6 +2817,8 @@ export interface SynthCapture {
 export interface SynthSpec {
   readonly device?: string;
   readonly captures: readonly SynthCapture[];
+  /** What the two annotators were given. Defaults to the bare frame for both. */
+  readonly annotatorMethods?: readonly [AnnotatorMethod, AnnotatorMethod];
   /** Emitted when any capture carries an accuracy, which the parser requires. */
   readonly accuracyConvention?: typeof ACCURACY_CONFIDENCE;
 }
@@ -2557,30 +2883,42 @@ export function synthesiseFieldBundle(spec: SynthSpec): {
     const first: ApexAnnotation[] = [];
     const second: ApexAnnotation[] = [];
     for (const summit of synth.summits) {
-      if (summit.truthAbsent === true) {
-        first.push({ summitId: summit.summitId, apexPx: null });
-        second.push({ summitId: summit.summitId, apexPx: null });
+      const { summitId } = summit;
+      if (summit.truthCannotIdentify === 'both') {
+        first.push({ summitId, cannotIdentify: true });
+        second.push({ summitId, cannotIdentify: true });
+        continue;
+      }
+      if (summit.truthAbsent !== undefined) {
+        first.push({ summitId, absent: true, reason: summit.truthAbsent });
+        second.push({ summitId, absent: true, reason: summit.truthAbsent });
         continue;
       }
       const split = summit.annotatorSplitPx ?? { xPx: 0, yPx: 0 };
+      const landmark = summit.landmark !== undefined ? { landmark: summit.landmark } : {};
       // The two picks straddle the truth, so their midpoint is the truth exactly.
       first.push({
-        summitId: summit.summitId,
+        summitId,
         apexPx: {
           xPx: summit.truthPx.xPx - split.xPx / 2,
           yPx: summit.truthPx.yPx - split.yPx / 2,
         },
+        ...landmark,
       });
-      second.push({
-        summitId: summit.summitId,
-        apexPx:
-          summit.truthOnlyFirst === true
-            ? null
-            : {
-                xPx: summit.truthPx.xPx + split.xPx / 2,
-                yPx: summit.truthPx.yPx + split.yPx / 2,
-              },
-      });
+      if (summit.truthCannotIdentify === 'second') {
+        second.push({ summitId, cannotIdentify: true });
+      } else if (summit.truthSecondAbsent !== undefined) {
+        second.push({ summitId, absent: true, reason: summit.truthSecondAbsent });
+      } else {
+        second.push({
+          summitId,
+          apexPx: {
+            xPx: summit.truthPx.xPx + split.xPx / 2,
+            yPx: summit.truthPx.yPx + split.yPx / 2,
+          },
+          ...landmark,
+        });
+      }
     }
 
     captures.push({
@@ -2633,11 +2971,12 @@ export function synthesiseFieldBundle(spec: SynthSpec): {
         : {}),
     });
 
+    const [methodA, methodB] = spec.annotatorMethods ?? ['bare-frame', 'bare-frame'];
     truthCaptures.push({
       captureId: synth.captureId,
       readings: [
-        { annotatorId: 'agent-a', apexes: first },
-        { annotatorId: 'agent-b', apexes: second },
+        { annotatorId: 'agent-a', method: methodA, apexes: first },
+        { annotatorId: 'agent-b', method: methodB, apexes: second },
       ],
     });
   });
@@ -2656,7 +2995,7 @@ export function synthesiseFieldBundle(spec: SynthSpec): {
     },
     truth: {
       format: TRUTH_FORMAT,
-      method:
+      procedure:
         'Synthetic. Apex pixels were placed, not read; the two readings straddle the placed pixel so their midpoint is it exactly.',
       captures: truthCaptures,
     },

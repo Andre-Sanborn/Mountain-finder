@@ -33,6 +33,16 @@
  * The committed peak data under `fixtures/peaks/`, by summit id, never the
  * bundle. The bundle is written by the device under test.
  *
+ * The truth document carries three answers per summit per annotator: an apex
+ * pixel, `absent` with the reason the region holds no summit, or
+ * `cannotIdentify`. Only an agreed `absent` can fail F5a; a summit an annotator
+ * could not identify is excluded from F3, F4 and F5a, and the count is printed.
+ * Each reading says what its annotator was given, and the report repeats it.
+ *
+ * A band whose truth yields fewer than three graded summits is reported
+ * `no-sample` with the stop rule named, so a thin row cannot read as a pass. A
+ * band that fails the exceedance gate still fails, whatever its n.
+ *
  * Exit status is 1 when either document will not parse, or when a criterion
  * fails, and 0 otherwise — including when every criterion comes back
  * `no-sample`. "The session did not produce a summit in that band" is an answer
