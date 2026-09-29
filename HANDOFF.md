@@ -24,7 +24,13 @@ and self-checks in [IMPLEMENTATION.md](IMPLEMENTATION.md), open work in [TODO.md
 - **Recorded, not asked: how "archive all of our work" was read.** Snapshot the state, archive
   the governance documents, keep the code and build on it. The human can say if they meant a
   whole-tree archive and rebuild.
-- **Coming later: the home session (~15 min) and the field session (~25 min).** The steps are
+- **Told, not asked (2026-09-29): what the Bogus Basin session can grade.** Agent annotators,
+  with or without a top-down map, agreed on no summit beyond the drag anchor (Deer Point) in the
+  rehearsal frame, and the near band is site-limited. Expect the session to test sensors, pose,
+  visibility and the tilt zero point (F2, F5, F6), and probably not label placement beyond the
+  anchor. The orchestrator is going ahead; the human can say the drive is not worth it. A second
+  site is not proposed until this session's data exists. Repeat until acknowledged.
+- **Coming later: the home session (~15 min) and the field session (~30 min).** The steps are
   written in [docs/HOME-SESSION-GUIDE.md](docs/HOME-SESSION-GUIDE.md) and
   [docs/FIELD-SESSION-GUIDE.md](docs/FIELD-SESSION-GUIDE.md). Both are blocked on GitHub Pages
   being on. The home session comes first, because it measures the drag and roll terms.
