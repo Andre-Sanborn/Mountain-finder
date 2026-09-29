@@ -1762,10 +1762,18 @@ The 0.106° truth read treats the 0.3° disagreement limit as a 2σ bound on two
 annotators. If 0.3° is one annotator's 1σ, the term is 0.212° and the limits would be 0.70° /
 1.00°. The tighter figure is registered, before any field number exists.
 
-**Known limitation.** `fixtures/field/aligned-*` now fails `F4.c3` and was left unchanged. It
-draws each summit's error independently in every capture, about ±10 px, which a real summit does
-not do; the paired change turns two such draws into 0.73° and 0.81° against 0.60°. The fixture's
-noise model failed, not the criterion.
+**The field fixtures are generated.** `npm run field:fixtures` writes all four from
+`scripts/make-field-fixtures.ts`, offline and seeded, byte-identical across runs. Each summit
+draws one error for the session (position, height, field-of-view scale, roll) and carries it
+into every capture. A capture adds one drag draw shared by its summits; a moved capture inherits
+its reference's drag and adds only a draw from § 2.4's movement budget. Draws are Gaussian
+truncated at 0.8σ, and the script computes every graded unit from its injected pixels and
+refuses to write a file whose unit sits outside its limit. `aligned` passes every criterion its
+data reaches; `stray` fails exactly `F3.far`, `F5a` and `F5c`, with Shafer Butte pinned at 70 px.
+
+Known limitation: `aligned` c4 names Shafer Butte as its drag anchor while its trim came from
+c2's drag onto Trinity Mountain. That leaves the movement two paired summits, under the stop
+rule's floor, the only demonstration of the floor on a movement.
 
 ## The rehearsal walks the 19-step session
 

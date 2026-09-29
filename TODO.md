@@ -70,7 +70,7 @@ after its self-check has run and passed here. The checks are in
 
 - [x] Redesign field truth: three answers, landmark truth, annotator method, stop rule, south-facing capture
 - [x] Update the e2e specs to write @2 truth documents
-- [ ] Move the field fixture generator into scripts/ with an npm script
+- [x] Move the field fixture generator into scripts/ with an npm script
 - [x] Add a measured pitch-bias term to the live vertical band; until measured, F2 vertical is not gated
 - [ ] Write the sun's frame offset into RecordedSegment.aimOffsetDeg at each aiming step
 - [ ] Give protocolSegments() aiming attitudes that point at a plausible sun altitude
@@ -107,7 +107,9 @@ after its self-check has run and passed here. The checks are in
 - [x] Qualify the north-east direction's Sun claim by season, in the pre-registration and the field guide
 - [x] Make F3's unit a summit-axis medianed over its captures, with per-k drag factors and an allowance schedule
 - [x] Make F4 grade the paired change over each movement, on its own distance-independent budget
-- [ ] Regenerate `fixtures/field/aligned-*` so a summit's error is carried into both frames of a pair
+- [x] Regenerate `fixtures/field/aligned-*` so a summit's error is carried into both frames of a pair
+- [ ] Fix F4's field-of-view term for summits crossing the axis; register Deer Point's start offset
+- [ ] Withhold F4 verdicts from off-protocol movements; restate pass rates under shared-term correlation
 
 ## Other open work
 

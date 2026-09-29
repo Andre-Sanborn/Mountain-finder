@@ -65,8 +65,8 @@
             "altitudeDeg": 6.1,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 258.9166666666667,
-              "yPx": 149.29583333333335
+              "xPx": 259.38084449999997,
+              "yPx": 147.46018437291667
             },
             "labelled": true
           },
@@ -79,7 +79,7 @@
             "visibility": "visible",
             "summitPx": {
               "xPx": 552.6875,
-              "yPx": 184.15
+              "yPx": 183.75730656875
             },
             "labelled": true
           },
@@ -91,8 +91,8 @@
             "altitudeDeg": 2.8,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 652.2708333333334,
-              "yPx": 204.06666666666666
+              "xPx": 655.0936917104167,
+              "yPx": 203.09550460625002
             },
             "labelled": true
           },
@@ -104,8 +104,8 @@
             "altitudeDeg": 5.2,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 388.375,
-              "yPx": 164.23333333333332
+              "xPx": 391.10596437083336,
+              "yPx": 162.65347711041667
             },
             "labelled": true
           },
@@ -117,8 +117,8 @@
             "altitudeDeg": 1.2,
             "visibility": "visible",
             "summitPx": {
-              "xPx": 766.7916666666666,
-              "yPx": 233.94166666666666
+              "xPx": 761.5113968458334,
+              "yPx": 234.28351932083336
             },
             "labelled": true
           }

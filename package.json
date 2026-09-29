@@ -29,6 +29,7 @@
     "fixtures:case-tiles": "tsx scripts/make-case-tile-fixtures.ts",
     "fetch:peaks": "tsx scripts/fetch-peaks.ts",
     "fixtures:peak-parquet": "tsx scripts/make-peak-parquet-fixture.ts",
+    "field:fixtures": "tsx scripts/make-field-fixtures.ts",
     "annotate": "tsx scripts/annotate-photo.ts",
     "analyze:recording": "tsx scripts/analyze-recording.ts",
     "analyze:field": "tsx scripts/analyze-field.ts",

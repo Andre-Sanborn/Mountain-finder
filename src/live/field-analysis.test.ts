@@ -3302,7 +3302,7 @@ describe('F4 grades the paired change', () => {
 });
 
 describe('the committed synthetic fixtures', () => {
-  it('parses the aligned bundle and passes every criterion but the paired one', () => {
+  it('parses the aligned bundle and fails no criterion', () => {
     const bundle = parseFieldBundle(alignedBundle);
     const truth = parseFieldTruth(alignedTruth);
     expect(bundle.ok).toBe(true);
@@ -3310,18 +3310,71 @@ describe('the committed synthetic fixtures', () => {
     if (!bundle.ok || !truth.ok) return;
     const analysis = analyseFieldRun(bundle.value, truth.value, lookup);
     expect(analysis.refusals).toEqual([]);
-    // The fixture draws each summit with an error of its own in every capture:
-    // about ±10 px, independent between c2 and c3. Every one is inside F3's
-    // 1.90° far band, so F3 passes. F4 differences the pair, where a summit's
-    // own position error cancels and an independent redraw does not, and two
-    // units land past the 0.60° movement budget. That is the fixture's noise
-    // model failing the criterion, not the criterion failing: a real summit
-    // carries ONE position error into both frames of a pair.
+    // The fixture is an app inside the registered budget: every criterion its
+    // data reaches passes, and the rest report no-sample.
     expect(
       analysis.criteria.filter((entry) => entry.outcome === 'fail').map((entry) => entry.id),
-    ).toEqual(['F4.c3']);
-    expect(criterion(analysis, 'F4.c3')?.evidence.join('\n')).toContain('over 2σ');
+    ).toEqual([]);
+    expect(criterion(analysis, 'F4.c3')?.outcome).toBe('pass');
     expect(analysis.criteria.some((entry) => entry.outcome === 'pass')).toBe(true);
+  });
+
+  it('carries one position error per summit into both frames of a pair', () => {
+    // The property F4 rests on, read off the fixture rather than off a verdict.
+    // A summit's own error and the drag are the same in c2 and c3, so the
+    // difference of the two injected offsets is what the movement added, and
+    // `scripts/make-field-fixtures.ts` draws that from § 2.4's 0.304°/0.472°
+    // truncated at 0.8σ. Converted at the frame centre, where a pixel is worth
+    // the most, that is the bound below. The generator's own draws are the
+    // expectation; nothing here comes from the grader.
+    const movementBoundPx = {
+      xPx: FOCAL_PX * Math.tan(((0.8 * 0.304) * Math.PI) / 180),
+      yPx: FOCAL_PX * Math.tan(((0.8 * 0.472) * Math.PI) / 180),
+    };
+    expect(movementBoundPx.xPx).toBeCloseTo(5.433, 3);
+    expect(movementBoundPx.yPx).toBeCloseTo(8.436, 3);
+
+    const bundle = parseFieldBundle(alignedBundle);
+    const truth = parseFieldTruth(alignedTruth);
+    if (!bundle.ok || !truth.ok) throw new Error('the aligned fixture does not parse');
+
+    /** The pixel offset injected into one capture, per summit. */
+    const injectedPx = (captureId: string): Map<string, { xPx: number; yPx: number }> => {
+      const capture = bundle.value.captures.find((entry) => entry.captureId === captureId);
+      const truthCapture = truth.value.captures.find((entry) => entry.captureId === captureId);
+      if (capture === undefined || truthCapture === undefined) {
+        throw new Error(`no capture ${captureId}`);
+      }
+      const offsets = new Map<string, { xPx: number; yPx: number }>();
+      for (const drawn of capture.overlay.drawn) {
+        // The two readings straddle the placed apex, so their midpoint is it.
+        const picks = truthCapture.readings.flatMap((reading) => {
+          const apex = reading.apexes.find((entry) => entry.summitId === drawn.summitId);
+          return apex !== undefined && 'apexPx' in apex ? [apex.apexPx] : [];
+        });
+        const [first, second] = picks;
+        if (picks.length !== 2 || first === undefined || second === undefined) continue;
+        const residual = residualOf(capture, drawn.summitPx, {
+          xPx: (first.xPx + second.xPx) / 2,
+          yPx: (first.yPx + second.yPx) / 2,
+        });
+        if (residual === undefined) continue;
+        offsets.set(drawn.summitId, { xPx: residual.horizontalPx, yPx: residual.verticalPx });
+      }
+      return offsets;
+    };
+
+    const reference = injectedPx('c2');
+    const moved = injectedPx('c3');
+    let checked = 0;
+    for (const [summitId, movedPx] of moved) {
+      const referencePx = reference.get(summitId);
+      if (referencePx === undefined) continue;
+      checked += 1;
+      expect(Math.abs(movedPx.xPx - referencePx.xPx)).toBeLessThan(movementBoundPx.xPx);
+      expect(Math.abs(movedPx.yPx - referencePx.yPx)).toBeLessThan(movementBoundPx.yPx);
+    }
+    expect(checked).toBe(4);
   });
 
   it('grades the aligned c4 movement as no-sample: it pairs two summits, under the floor', () => {
@@ -3370,6 +3423,28 @@ describe('the committed synthetic fixtures', () => {
     );
     expect(analysis.landmarkObservations).toHaveLength(1);
     expect(analysis.annotatorMethods).toHaveLength(2);
+  });
+
+  it('reads the aligned before-drag capture as a pose inside the displayed band', () => {
+    const bundle = parseFieldBundle(alignedBundle);
+    const truth = parseFieldTruth(alignedTruth);
+    if (!bundle.ok || !truth.ok) throw new Error('the aligned fixture does not parse');
+    const analysis = analyseFieldRun(bundle.value, truth.value, lookup);
+    const pose = criterion(analysis, 'F2.pose');
+    expect(pose?.outcome).toBe('pass');
+    expect(pose?.n).toBe(1);
+    // `scripts/make-field-fixtures.ts` displaces every c1 marker by one common
+    // pointing offset of 55 px plus that summit's own carried error, which is
+    // drawn from § 1.5's terms truncated at 0.8σ. The largest carried term is
+    // Deer Point's at 2 km under the capture's 8.4 m fix: 0.8 × (0.581° + 0.275°
+    // + 0.034°) = 0.712°. A least-squares heading over those markers lies inside
+    // their span, so the solve cannot sit further from the compass than
+    const bound = degreesAcross(0, 55) + 0.8 * (0.581 + 0.275 + 0.034);
+    expect(bound).toBeCloseTo(3.174, 2);
+    // and the band the capture displayed is 8.700° wide, so the pose is inside
+    // it by construction rather than by luck.
+    expect(bound).toBeLessThan(8.7 / 2);
+    expect(pose?.evidence.join('\n')).toContain('against a band of 8.700° — inside');
   });
 
   it('keeps the stray fixture’s unidentifiable summit out of F5a', () => {

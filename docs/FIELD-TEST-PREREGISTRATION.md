@@ -1678,3 +1678,13 @@ summit's own position error would cancel and an independent redraw does not, and
 land past the 0.60° movement budget. A real summit carries one position error into both
 frames of a pair, so what failed is the fixture's noise model rather than the criterion. The
 fixture stays as it is, and `fixtures/field/README.md` records the verdict.
+
+### 2026-09-29 — the committed fixtures are generated
+
+`scripts/make-field-fixtures.ts` (`npm run field:fixtures`) writes the four field fixtures,
+offline and seeded. Each summit carries one position error into every capture it appears in; an
+after-drag capture adds one drag draw, inherited by the captures moved from it; a movement adds
+a term drawn from § 2.4's budget. So the paired change reads the movement, and the `aligned`
+pair now passes `F4.c3` on three summits and fails nothing. The previous entry's statement that
+it fails `F4.c3` described the hand-built fixture this replaces. No criterion or limit changed.
+
