@@ -89,14 +89,17 @@
  * closed form above for a true heading of 265.4°.
  */
 
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { expect, test, type Page } from '@playwright/test';
 
 import { geomagneticField } from '../../src/core/declination';
 import { moonPosition, sunPosition } from '../../src/core/celestial';
 import { EPOCH_FLOOR, findForbiddenContent, parseRecording, POSE_LABELS } from '../../src/live/recording';
+import { parseSiteDefinition, SITE_DEFINITION_DIR, SITE_PACKAGE_DIR } from '../../src/sites/site-package';
+import { parseTerrainManifest, type TerrainManifest } from '../../src/providers/terrain-manifest';
 import { FAKE_CAMERA_DIR, FAKE_FRAME, writeFakeCameraVideo } from './support/fake-camera';
 
 const FAKE_VIDEO = resolve(
@@ -106,6 +109,9 @@ const FAKE_VIDEO = resolve(
 
 /** Same rule as playwright.config.ts: prefer this environment's Chromium. */
 const preinstalled = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium';
+
+/** Repository root, for the committed site definition and the built package. */
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
 const DEG = Math.PI / 180;
 
@@ -1002,6 +1008,52 @@ async function tapAt(page: Page, xPx: number, yPx: number): Promise<void> {
   );
 }
 
+/**
+ * One drag on the picture, below the panel, for the repeated-drag trials.
+ *
+ * The y is in the lower third of the frame: the session panel occupies the top
+ * strip, and a press that started on it would be a button press rather than a
+ * drag of the labels.
+ */
+async function dragPicture(page: Page, dxPx: number, dyPx: number): Promise<void> {
+  // The two chrome strips grow with their contents, and during the session the
+  // top one is a panel of instructions. So the start of the drag is found rather
+  // than assumed: the first point where the drag surface is the topmost element
+  // is a point a finger would reach.
+  const from = await page.evaluate(
+    ([width, height]: readonly number[]) => {
+      const surface = document.querySelector('[data-testid="live-drag"]');
+      if (surface === null || width === undefined || height === undefined) return undefined;
+      for (let y = Math.round(height / 2); y < height - 10; y += 5) {
+        for (let x = 40; x < width - 40; x += 40) {
+          if (document.elementFromPoint(x, y) === surface) return { x, y };
+        }
+      }
+      return undefined;
+    },
+    [FRAME.widthPx, FRAME.heightPx] as const,
+  );
+  expect(from, 'no part of the picture is reachable for a drag').toBeDefined();
+  if (from === undefined) return;
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x + dxPx, from.y + dyPx, { steps: 6 });
+  await page.mouse.up();
+}
+
+/** Work through the six drag attempts the session ends with. */
+async function walkDragTrials(page: Page): Promise<void> {
+  const session = page.getByTestId('home-session');
+  await expect(session).toHaveAttribute('data-phase', 'drag-trials', { timeout: 15_000 });
+  const progress = page.getByTestId('home-session-trial-progress');
+  for (let index = 0; index < 6; index += 1) {
+    await expect(progress).toHaveAttribute('data-trial-index', String(index));
+    // A different offset per attempt, so the scatter the panel reports is not
+    // zero by construction.
+    await dragPicture(page, 20 + (index % 3) * 6, -8 + (index % 3) * 2);
+  }
+}
+
 /** Click through every step, moving the phone so the poses are not all identical. */
 async function walkEveryStep(page: Page): Promise<void> {
   const session = page.getByTestId('home-session');
@@ -1014,6 +1066,7 @@ async function walkEveryStep(page: Page): Promise<void> {
     await pumpSet(page, { alpha: index * 17, beta: 60 + index * 5, gamma: index * 3 - 20 });
     await page.getByTestId('home-session-next').click();
   }
+  await walkDragTrials(page);
   await expect(session).toHaveAttribute('data-phase', 'finished', { timeout: 30_000 });
 }
 
@@ -1365,4 +1418,516 @@ test('the observer stands on the map’s ground, not on the GPS altitude', async
   expect(ground).toBeLessThan(3100);
   expect(eye).toBeCloseTo(1.6, 2);
   expect(total).toBeCloseTo(ground + eye, 1);
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * THE FIELD SITE'S OWN SWEEP RADIUS
+ * ══════════════════════════════════════════════════════════════════════════
+ * At a viewpoint inside a served site mosaic the live sweep must reach the
+ * radius that mosaic was cut for, not the app's 30 km default. The mosaic under
+ * test is the REAL packaged one, `data/sites/bogus-basin/`, served here the way
+ * `npm run package:deploy` publishes it: its grid listed in the same index as
+ * the whole tiles, at `terrain/sites/<id>/<file>`. The dev server publishes the
+ * four Idaho tiles it holds, so `selectTerrainGrid` is choosing between a whole
+ * 1° tile and the mosaic exactly as it does on the deployment.
+ *
+ * ── WHY THIS MATTERS ENOUGH TO PAY FOR THE SWEEP ───────────────────────────
+ * 63 of the 104 summits within 60 km of this viewpoint lie beyond 30 km, and
+ * the ten highest by apparent height are all 34–58 km out. At the default range
+ * every one of them comes back `unmeasured`, so the screen draws none of them.
+ * The assertion below is a name on screen that can only be there because the
+ * rays reached it.
+ */
+
+const BOGUS_BASIN_TARGETS = ['Trinity Mountain', 'Freeman Peak', 'Pilot Peak'] as const;
+
+/**
+ * The magnetic bearing to inject at an arbitrary site.
+ *
+ * `magneticBearingFor` above evaluates WMM2025 at Gornergrat, where the
+ * declination is about +2.5°; Idaho's is about +11.7°, so a Bogus Basin heading
+ * has to be converted at Bogus Basin. `heightM: 0` for the same reason as there:
+ * Playwright's fix carries no altitude, so the screen evaluates the model at sea
+ * level too.
+ */
+function magneticBearingAt(
+  site: { lat: number; lon: number },
+  trueHeadingDeg: number,
+  when: Date,
+): number {
+  const field = geomagneticField(
+    { latitudeDeg: site.lat, longitudeDeg: site.lon, heightM: 0 },
+    when,
+  );
+  return (((trueHeadingDeg - field.declinationDeg) % 360) + 360) % 360;
+}
+
+/** Where the built site package lives, and where it is published from. */
+const SITE_ID = 'bogus-basin';
+
+interface SiteTarget {
+  readonly name: string;
+  readonly bearingDeg: number;
+  readonly rangeKm: number;
+}
+
+/**
+ * The three far summits, read out of the committed peak region and measured
+ * with this file's own geodesy.
+ *
+ * Their bearings and ranges are derived here rather than written down, so the
+ * heading the phone is pointed along comes from the same coordinates the app
+ * labels — and a peak that moved in a later Overture release moves this test
+ * with it instead of silently failing it.
+ */
+function bogusBasinTargets(observer: { lat: number; lon: number }): readonly SiteTarget[] {
+  const cellDir = resolve(ROOT, 'fixtures/peaks/regions/idaho-bogus-basin/cells');
+  const found: SiteTarget[] = [];
+  for (const file of readdirSync(cellDir)) {
+    if (!file.endsWith('.json')) continue;
+    const cell = JSON.parse(readFileSync(resolve(cellDir, file), 'utf8')) as {
+      peaks: { name: string; lat: number; lon: number }[];
+    };
+    for (const peak of cell.peaks) {
+      if (!(BOGUS_BASIN_TARGETS as readonly string[]).includes(peak.name)) continue;
+      found.push({
+        name: peak.name,
+        bearingDeg: bearingDeg(observer, peak),
+        rangeKm: rangeM(observer, peak) / 1000,
+      });
+    }
+  }
+  return found.sort((left, right) => right.rangeKm - left.rangeKm);
+}
+
+/**
+ * Publish the built site package the way `package:deploy` does, over the dev
+ * server's own index.
+ *
+ * The dev terrain plugin serves whole tiles and the committed case windows and
+ * knows nothing of `data/sites/`, so the index is read from it and the site's
+ * one grid is appended at the published path. Only those two URLs are
+ * intercepted; every tile request still goes to the dev server.
+ */
+async function serveBogusBasinPackage(page: Page): Promise<TerrainManifest> {
+  const packageDir = resolve(ROOT, SITE_PACKAGE_DIR, SITE_ID);
+  const sitePath = resolve(packageDir, 'terrain/manifest.json');
+  const siteManifest = parseTerrainManifest(
+    JSON.parse(readFileSync(sitePath, 'utf8')) as unknown,
+    sitePath,
+  );
+  const grid = siteManifest.grids[0];
+  expect(grid, `${SITE_PACKAGE_DIR}/${SITE_ID}/ holds no built terrain package`).toBeDefined();
+  if (grid === undefined) throw new Error('no site grid');
+  const samplesPath = resolve(packageDir, 'terrain', grid.url);
+  const publishedUrl = `sites/${SITE_ID}/${grid.url.split('/').pop() ?? ''}`;
+
+  // Read the dev server's own index BEFORE the route is installed. `page.request`
+  // does not go through `page.route`, but reading it first removes the question.
+  const devIndex = await page.request.get('/terrain/manifest.json');
+  expect(devIndex.status()).toBe(200);
+  const served: TerrainManifest = {
+    ...parseTerrainManifest((await devIndex.json()) as unknown, 'dev index'),
+    grids: [
+      ...parseTerrainManifest((await devIndex.json()) as unknown, 'dev index').grids,
+      { ...grid, url: publishedUrl },
+    ],
+  };
+
+  await page.route(
+    (url) =>
+      url.pathname === '/terrain/manifest.json' || url.pathname === `/terrain/${publishedUrl}`,
+    async (route) => {
+      if (new URL(route.request().url()).pathname === '/terrain/manifest.json') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json; charset=utf-8',
+          body: JSON.stringify(served),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/octet-stream',
+        path: samplesPath,
+      });
+    },
+  );
+  return served;
+}
+
+test('a viewpoint inside the Bogus Basin mosaic sweeps the site’s 60 km, and labels a summit beyond 30 km', async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(SCENE_TIMEOUT_MS + 240_000);
+
+  const definitionPath = resolve(ROOT, SITE_DEFINITION_DIR, `${SITE_ID}.json`);
+  const site = parseSiteDefinition(
+    JSON.parse(readFileSync(definitionPath, 'utf8')) as unknown,
+    definitionPath,
+  );
+  expect(site.sweepRadiusKm).toBe(60);
+  const targets = bogusBasinTargets(site.observer);
+  expect(targets.length, 'the committed peak region names none of the three summits').toBe(3);
+  for (const target of targets) expect(target.rangeKm).toBeGreaterThan(30);
+
+  await installSensorPump(page);
+  await context.setGeolocation({
+    latitude: site.observer.lat,
+    longitude: site.observer.lon,
+  });
+  await serveBogusBasinPackage(page);
+
+  await page.goto('/live.html');
+  await page.getByTestId('live-start').click();
+  await expect(page.getByTestId('live-root')).toHaveAttribute('data-phase', 'running');
+  const first = targets[0];
+  if (first === undefined) return;
+  await pumpSet(
+    page,
+    eventAnglesFor(magneticBearingAt(site.observer, first.bearingDeg, new Date()), 0),
+  );
+
+  const sceneState = page.getByTestId('live-scene-state');
+  await expect(sceneState).toHaveAttribute('data-scene', 'ready', { timeout: SCENE_TIMEOUT_MS });
+
+  // The decisive number: the sweep ran at the site's radius, not the default.
+  await expect(sceneState).toHaveAttribute('data-max-range-km', String(site.sweepRadiusKm));
+  await expect(page.getByTestId('live-sweep-range')).toHaveAttribute(
+    'data-max-range-km',
+    String(site.sweepRadiusKm),
+  );
+  await expect(page.getByTestId('live-sweep-range')).toContainText(
+    `measured out to ${site.sweepRadiusKm} km`,
+  );
+
+  // Every ray carried terrain: the mosaic covers its own 60 km, so a range this
+  // wide is measured rather than claimed.
+  await expect(sceneState).toHaveAttribute('data-rays-requested', '720');
+  await expect(sceneState).toHaveAttribute('data-rays-with-terrain', '720');
+  console.log(
+    `live 360° sweep at ${await sceneState.getAttribute('data-max-range-km')} km: ` +
+      `${Number(await sceneState.getAttribute('data-sweep-ms')).toFixed(0)} ms ` +
+      'for 720 rays in the browser',
+  );
+
+  // A summit beyond the default range, drawn, at a heading facing it. At 30 km
+  // all three are `unmeasured` and none of these names can appear.
+  const drawn: string[] = [];
+  for (const target of targets) {
+    await pumpSet(
+      page,
+      eventAnglesFor(magneticBearingAt(site.observer, target.bearingDeg, new Date()), 0),
+    );
+    await expect
+      .poll(async () => poseNumber(page, 'data-heading-deg'), { timeout: 20_000 })
+      .toBeCloseTo(target.bearingDeg, 1);
+    const labels = (await page.getByTestId('live-labels').textContent()) ?? '';
+    if (labels.includes(target.name)) drawn.push(target.name);
+  }
+  expect(
+    drawn,
+    `none of ${targets.map((target) => `${target.name} (${target.rangeKm.toFixed(1)} km)`).join(', ')} ` +
+      'was drawn, so the sweep did not reach past 30 km',
+  ).not.toEqual([]);
+});
+
+test('fine drag moves the labels a quarter as far as normal drag', async ({ page }) => {
+  test.setTimeout(SCENE_TIMEOUT_MS + 90_000);
+  await startLive(page, { trueHeadingDeg: TRUE_HEADING_DEG, pitchDeg: 0 });
+  await expect(page.getByTestId('live-scene-state')).toHaveAttribute('data-scene', 'ready', {
+    timeout: SCENE_TIMEOUT_MS,
+  });
+
+  // The mode is named on screen, with the step size beside it. 1 mm of finger is
+  // 6.037 CSS px at the field phone's 460 ppi, which the readout states in
+  // degrees for whatever frame the page is actually in.
+  const modeLine = page.getByTestId('live-drag-mode');
+  await expect(modeLine).toHaveAttribute('data-mode', 'normal');
+  await expect(page.getByTestId('live-fine-drag')).toContainText('4× slower');
+  const normalStep = Number(await page.getByTestId('live-drag-step').getAttribute('data-per-px-deg'));
+  // 800 px across 2·atan(0.75): the centre scale is 2·tan(hFOV/2)/widthPx.
+  expect(normalStep).toBeCloseTo((1.5 / FRAME.widthPx / DEG), 9);
+  await expect(page.getByTestId('live-drag-step')).toContainText('Normal drag');
+
+  const dragSurface = page.getByTestId('live-drag');
+  const dragBy = async (dxPx: number): Promise<void> => {
+    await dragSurface.hover({ position: { x: 300, y: 225 } });
+    await page.mouse.down();
+    await page.mouse.move(300 + dxPx, 225, { steps: 8 });
+    await page.mouse.up();
+  };
+  const trimHeading = async (): Promise<number> =>
+    Number(await page.getByTestId('live-trim').getAttribute('data-heading-deg'));
+
+  // Normal: `drag-trim.ts` inverts the projection, so 100 px is
+  // atan((100/800)·2·tan(hFOV/2)) = atan(0.1875) = 10.61965°.
+  const expectedNormalDeg = -Math.atan(0.1875) / DEG;
+  const before = await summitDots(page);
+  const dot = before.find(
+    (entry) => Math.abs(entry.cx - expectedSummitPx(TRUE_HEADING_DEG).xPx) < TOLERANCE_PX,
+  );
+  expect(dot).toBeDefined();
+  if (dot === undefined) return;
+
+  await dragBy(100);
+  await expect.poll(trimHeading).toBeCloseTo(expectedNormalDeg, 3);
+  const afterNormal = await summitDots(page);
+  expect(afterNormal.find((entry) => Math.abs(entry.cx - (dot.cx + 100)) < 2)).toBeDefined();
+
+  await page.getByTestId('live-reset-trim').click();
+  await expect(page.getByTestId('live-trim')).toHaveAttribute('data-heading-deg', '0');
+
+  // Fine: the SAME 100 px, at a quarter of the gain. The gain multiplies the
+  // ANGLE, so this is exactly a quarter of the degrees rather than 0.2519 of
+  // them, which is what quartering the pixels would give.
+  await page.getByTestId('live-fine-drag').click();
+  await expect(modeLine).toHaveAttribute('data-mode', 'fine');
+  await expect(page.getByTestId('live-fine-drag')).toContainText('Fine drag is ON');
+  const fineStep = Number(await page.getByTestId('live-drag-step').getAttribute('data-per-px-deg'));
+  expect(fineStep).toBeCloseTo(normalStep / 4, 12);
+  // The budget's own unit: 1 mm of finger at 460 ppi.
+  expect(
+    Number(await page.getByTestId('live-drag-step').getAttribute('data-per-mm-deg')),
+  ).toBeCloseTo(fineStep * 6.037, 9);
+
+  await dragBy(100);
+  const expectedFineDeg = expectedNormalDeg / 4;
+  await expect.poll(trimHeading).toBeCloseTo(expectedFineDeg, 6);
+
+  // And on screen: a trim of −2.65491° puts the summit at
+  // 800·(0.5 + tan(0.0227° + 2.65491°)/1.5) = 424.94 px, which is 24.73 px along
+  // — a quarter of the 100 px the same drag moved it at normal gain, to within a
+  // third of a pixel.
+  const expectedFinePx = expectedSummitPx(TRUE_HEADING_DEG + expectedFineDeg);
+  const afterFine = await summitDots(page);
+  const moved = afterFine.find((entry) => Math.abs(entry.cx - expectedFinePx.xPx) < TOLERANCE_PX);
+  expect(
+    moved,
+    `no dot near ${expectedFinePx.xPx.toFixed(1)}; dots were ${JSON.stringify(afterFine.slice(0, 12))}`,
+  ).toBeDefined();
+  if (moved === undefined) return;
+  const shiftPx = moved.cx - dot.cx;
+  expect(shiftPx).toBeGreaterThan(100 / 4 - 1);
+  expect(shiftPx).toBeLessThan(100 / 4 + 1);
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * THE OFFLINE STRIP
+ * ══════════════════════════════════════════════════════════════════════════
+ * The service worker itself is proved by `npm run test:deploy`, which takes
+ * Chromium's network away and reads a cached grid back at its exact byte length.
+ * The dev server deliberately serves no worker (`live-main.tsx` says why), so
+ * what is provable here is the other half: that the strip reports the real state
+ * of the cache, that the button names the grid the sweep at this position would
+ * read and its size, and that tapping it runs the download and refreshes the
+ * status.
+ *
+ * The controller is replaced on `window` after the page has loaded, which is the
+ * same handle `live-main.tsx` installs and the deployment check drives. The
+ * panel reads it on every poll, so the swap takes effect without a reload.
+ */
+
+interface StubbedOfflineApi {
+  calls: string[];
+  release: () => void;
+}
+
+async function stubOfflineController(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const calls: string[] = [];
+    let release = (): void => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let data: string[] = [];
+    (window as unknown as { __mfOffline: StubbedOfflineApi }).__mfOffline = {
+      calls,
+      release: () => release(),
+    };
+    (window as unknown as Record<string, unknown>).mountainFinderOffline = {
+      status: () =>
+        Promise.resolve({
+          supported: true,
+          controlled: true,
+          shell: ['live.html', 'live.js', 'live.css'],
+          data,
+          usageBytes: 26_000_000,
+          quotaBytes: 1_000_000_000,
+        }),
+      downloadTerrainGrid: async (gridName: string) => {
+        calls.push(gridName);
+        await held;
+        data = ['terrain/manifest.json', 'terrain/tiles/N45E007.hgt'];
+        return { ok: true, gridName, cached: data, failed: [] };
+      },
+      forgetData: () => Promise.resolve(true),
+    };
+  });
+}
+
+test('the offline strip reports the cache, and the button downloads the grid this viewpoint needs', async ({
+  page,
+}) => {
+  test.setTimeout(SCENE_TIMEOUT_MS + 90_000);
+  await startLive(page, { trueHeadingDeg: TRUE_HEADING_DEG, pitchDeg: 0 });
+
+  const strip = page.getByTestId('live-offline');
+  const status = page.getByTestId('live-offline-status');
+
+  // The dev server registers no worker, and the strip says so rather than
+  // showing an empty line or claiming the page is installed.
+  await expect(strip).toHaveAttribute('data-controlled', 'false');
+  await expect(status).toContainText('not installed for offline use yet');
+
+  // The button names the grid `selectTerrainGrid` would hand this viewpoint and
+  // its exact size: a whole SRTM1 tile is 3601² samples at two bytes each.
+  const button = page.getByTestId('live-offline-download');
+  await expect(button).toBeVisible({ timeout: 30_000 });
+  await expect(strip).toHaveAttribute('data-grid', 'N45E007');
+  await expect(strip).toHaveAttribute('data-grid-bytes', String(3601 * 3601 * 2));
+  await expect(button).toHaveText('Download N45E007 for offline use (25.9 MB)');
+
+  await stubOfflineController(page);
+  // The poll picks the new controller up; the line then reports what it holds.
+  await expect(strip).toHaveAttribute('data-controlled', 'true', { timeout: 15_000 });
+  await expect(status).toContainText('3 page files');
+  await expect(status).toContainText('no terrain yet');
+  await expect(status).toContainText('using 26.0 MB of 1000.0 MB allowed');
+
+  await button.click();
+  await expect(strip).toHaveAttribute('data-busy', 'true');
+  await expect(page.getByTestId('live-offline-progress')).toContainText('Downloading N45E007');
+  await expect(page.getByTestId('live-offline-progress')).toContainText('25.9 MB');
+  await expect(button).toBeDisabled();
+
+  // The grid asked for is the one the button named, not a hard-coded site.
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { __mfOffline: StubbedOfflineApi }).__mfOffline.calls,
+    ),
+  ).toEqual(['N45E007']);
+
+  await page.evaluate(() =>
+    (window as unknown as { __mfOffline: StubbedOfflineApi }).__mfOffline.release(),
+  );
+
+  const result = page.getByTestId('live-offline-result');
+  await expect(result).toHaveAttribute('data-ok', 'true', { timeout: 15_000 });
+  await expect(result).toContainText('Done');
+  await expect(result).toContainText('works with no signal');
+  await expect(strip).toHaveAttribute('data-busy', 'false');
+
+  // And the status line was re-read, so it now counts the terrain that arrived.
+  await expect(strip).toHaveAttribute('data-data-count', '2', { timeout: 15_000 });
+  await expect(status).toContainText('2 terrain files');
+});
+
+test('the session ends with six repeated drags, three normal and three fine', async ({ page }) => {
+  // The measurement the field-test budget's largest term is waiting for: drag
+  // precision, assumed at 0.543° from 1 mm of finger. Six attempts at putting a
+  // drawn mark where it belongs replace the assumption with a scatter.
+  //
+  // They are NOT in the shared file. `src/live/recording.ts` accepts exactly the
+  // poses `POSE_LABELS` names and exactly the keys its whitelists list, so the
+  // trials have nowhere to go in the current format — the recording below must
+  // still hold those thirteen poses and nothing else.
+  test.setTimeout(SCENE_TIMEOUT_MS + 120_000);
+  await startHomeSession(page);
+  await page.getByTestId('home-session-start').click();
+  for (let index = 0; index < POSE_LABELS.length; index += 1) {
+    await page.getByTestId('home-session-next').click();
+  }
+
+  const session = page.getByTestId('home-session');
+  await expect(session).toHaveAttribute('data-phase', 'drag-trials', { timeout: 15_000 });
+
+  // The plan is three at normal gain then three fine, and the screen puts the
+  // drag layer into the gain each attempt asks for rather than asking the person
+  // to remember.
+  const progress = page.getByTestId('home-session-trial-progress');
+  const instruction = page.getByTestId('home-session-trial-instruction');
+  const modeLine = page.getByTestId('live-drag-mode');
+  for (let index = 0; index < 6; index += 1) {
+    const mode = index < 3 ? 'normal' : 'fine';
+    await expect(progress).toHaveAttribute('data-trial-index', String(index));
+    await expect(progress).toHaveAttribute('data-trial-mode', mode);
+    await expect(modeLine).toHaveAttribute('data-mode', mode);
+    await expect(instruction).toContainText(`Attempt ${(index % 3) + 1} of 3, ${mode} speed`);
+    await expect(instruction).toContainText('both hands');
+    await expect(page.getByTestId('home-session-trial-count')).toHaveAttribute(
+      'data-count',
+      String(index),
+    );
+    await dragPicture(page, 20 + (index % 3) * 6, -8 + (index % 3) * 2);
+  }
+
+  await expect(session).toHaveAttribute('data-phase', 'finished', { timeout: 15_000 });
+  // The gain is put back, so the next person to touch the picture is not
+  // silently in a mode they did not choose.
+  await expect(modeLine).toHaveAttribute('data-mode', 'normal');
+
+  const summary = page.getByTestId('home-session-trial-summary');
+  await expect(summary).toHaveAttribute('data-trial-count', '6');
+  // Each mode gets the same three offsets — 20, 26 and 32 px — so each has a
+  // 6 px sample standard deviation, the same arithmetic as 2, 4, 6 scaled.
+  for (const mode of ['normal', 'fine']) {
+    const line = page.getByTestId(`home-session-trial-${mode}`);
+    await expect(line).toContainText('3 attempts');
+    await expect(line).toContainText('6.0 px');
+    await expect(line).toContainText('roll held to');
+  }
+  // Fine mode's degrees are a quarter of normal mode's for the same pixels, so
+  // its scatter is a quarter too — which is the whole point of measuring both.
+  // The comparison is to two places because the screen rounds the figure to
+  // three, not because the ratio is approximate.
+  const scatterOf = async (mode: string): Promise<number> => {
+    const text = (await page.getByTestId(`home-session-trial-${mode}`).textContent()) ?? '';
+    const matched = /spread (-?[\d.]+)°/.exec(text);
+    expect(matched, `no spread in "${text}"`).not.toBeNull();
+    return Number(matched?.[1] ?? Number.NaN);
+  };
+  const normalScatter = await scatterOf('normal');
+  expect(normalScatter).toBeGreaterThan(0);
+  expect(await scatterOf('fine')).toBeCloseTo(normalScatter / 4, 2);
+
+  // The shared file is unchanged: thirteen poses, and nothing the parser refuses.
+  await expect(page.getByTestId('home-session-parse')).toHaveAttribute('data-valid', 'true');
+  await page.getByTestId('home-session-share').click();
+  // The share is a promise, so the bytes are read once the screen reports the
+  // outcome rather than straight after the click.
+  await expect(page.getByTestId('home-session-share-result')).toHaveAttribute(
+    'data-outcome',
+    'shared',
+  );
+  const captured = await sharedRecording(page);
+  expect(captured).toBeDefined();
+  if (captured === undefined) return;
+  const parsed = parseRecording(JSON.parse(captured.text) as unknown);
+  expect(parsed.ok ? [] : parsed.problems).toEqual([]);
+  if (!parsed.ok) return;
+  expect(parsed.value.segments.map((segment) => segment.pose)).toEqual([...POSE_LABELS]);
+  for (const absent of ['trial', 'dragTrial', 'rollSpread', 'offsetPx']) {
+    expect(captured.text, absent).not.toContain(absent);
+  }
+});
+
+test('the drag trials can be skipped, and the recording is still complete', async ({ page }) => {
+  // The recording is the session's product; the trials are a measurement on top
+  // of it. Someone who cannot brace the phone must still be able to finish.
+  test.setTimeout(SCENE_TIMEOUT_MS + 120_000);
+  await startHomeSession(page);
+  await page.getByTestId('home-session-start').click();
+  for (let index = 0; index < POSE_LABELS.length; index += 1) {
+    await page.getByTestId('home-session-next').click();
+  }
+  const session = page.getByTestId('home-session');
+  await expect(session).toHaveAttribute('data-phase', 'drag-trials', { timeout: 15_000 });
+  await page.getByTestId('home-session-skip-trials').click();
+
+  await expect(session).toHaveAttribute('data-phase', 'finished', { timeout: 15_000 });
+  await expect(page.getByTestId('home-session-trial-summary')).toHaveCount(0);
+  await expect(page.getByTestId('home-session-parse')).toHaveAttribute('data-valid', 'true');
+  await expect(page.getByTestId('live-drag-mode')).toHaveAttribute('data-mode', 'normal');
 });

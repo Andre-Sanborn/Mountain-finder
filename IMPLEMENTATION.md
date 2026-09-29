@@ -900,7 +900,7 @@ the suite uses. Three mutations fail 4, 1 and 4 tests. `test:deploy` adds a test
 - whether permissions survive a reload and airplane mode
 
 **Limits.**
-- The offline status and download button are not rendered yet.
+- The offline status and download button are on screen; see "Live sweep range, fine drag, offline strip".
 - Eye height is 1.6 m.
 - The observer stands 1.6 m above the DEM's ground at the fix. GPS altitude is only a fallback,
   and the screen shows which was used; see "The home session" below.
@@ -1158,3 +1158,36 @@ The drag and roll terms are unchanged until the home session measures them.
 
 The suite has 79 tests. Ten mutations are caught. The stray fixture now carries a 3σ
 excursion, 2.223° against 1.95°.
+
+## Live sweep range, fine drag, offline strip
+
+**The sweep range comes from the served grid's geometry.** `sweep-range.ts` finds the largest
+radius whose full ring lies inside the grid `TerrainCoverage` already chose, using a closed
+form: meridian arcs north and south, and `sin Δλ = sin δ / cos φ` east and west. It then
+subtracts 0.25 km, caps the result at 60 km and floors it at 30 km. So Gornergrat stays at
+30 km, and inside the Bogus Basin mosaic the sweep reaches 60 km. That sweep took 3.0–6.4 s in
+headless Chromium, unthrottled, with 720/720 rays. The range is not read from the grid's name,
+which would move the sweep if the grid were renamed. The range only ever raises the sweep:
+`rangeIsMeasured` refuses honestly on short rays.
+
+The e2e serves the real built package and asserts `data-max-range-km` = 60. It also asserts
+that Trinity, Freeman or Pilot Peak is drawn at a heading facing it. Forcing 30 km fails both
+assertions independently.
+
+**Fine drag** is a labelled 4× toggle. The gain multiplies degrees, not pixels, because the
+projection is linear in the tangent. A test pins gain 1 as identical to `trimFromDrag`. Nudges
+of 0.05° were rejected, because one pixel is 0.0899°.
+
+**The drag trials.** The home session ends with 3 normal and 3 fine attempts at putting a label
+on its feature. Each attempt records its offset and its roll spread, and the scatter (sample sd)
+is the measurement. The trials are shown on screen but not yet written to the file: the parser
+whitelists exact keys, so `dragTrials` needs a schema addition.
+
+**The offline strip** shows cached page and terrain files and the storage estimate. It also
+shows "Download <grid> for offline use (NN MB)", naming the grid `selectTerrainGrid` would pick
+and its exact byte count. The status read is raced against 4 s, because `serviceWorker.ready`
+never settles when no worker is registered.
+
+There are 50 new unit tests and 5 new e2e tests. Three mutations of the range derivation were
+run. Dropping the margin survived at first, until a test was added that searches for a
+viewpoint where the margin matters.

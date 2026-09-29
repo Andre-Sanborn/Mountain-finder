@@ -33,7 +33,7 @@ after its self-check has run and passed here. The checks are in
 - [x] Measure the 360° annotateScene under phone-class CPU throttling (60 km: 0.64 s at 1x, 4.5 s at 6x)
 - [x] Build the web AR screen in landscape: single-lens camera, live loop, drag, band, sun and moon discs
 - [x] Add a service worker to live.html, so the AR screen opens with no network after one visit
-- [ ] Render the offline status line and the "Download Bogus Basin" button on the live screen
+- [x] Render the offline status line and the "Download Bogus Basin" button on the live screen
 - [ ] Measure the real 42.55 MB download on the phone, and what iOS keeps after a week
 - [x] Prefer the DEM's ground at the fix over GPS altitude on the live screen; the geoid gap reaches ~50 m
 - [x] Build field-of-view calibration from taps on the sun or a landmark, stored against track settings
@@ -48,10 +48,11 @@ after its self-check has run and passed here. The checks are in
 - [ ] Re-check CV-2/CV-8's 14 mm figures via `npm run annotate`: suggestPoseTrim now reads coverage 66.6 %, not 0 %
 - [ ] Write the field-session steps; run the field test with the human
 
-- [ ] Take the live sweep range from the served site (60 km at Bogus Basin), not APP_SWEEP's 30 km
+- [x] Take the live sweep range from the served site (60 km at Bogus Basin), not APP_SWEEP's 30 km
 - [x] Measure the 60 km live sweep in Chromium under 4-6x CPU throttling; precondition of the field session
 - [ ] Measure the live start on the phone: iOS Cache Storage read of 42.55 MB, permissions, fix, first paint
-- [ ] Fine-drag mode (4x slow) on the live screen; home session records drag and roll spread
+- [x] Fine-drag mode (4x slow) on the live screen; home session measures drag and roll spread on screen
+- [ ] Add `dragTrials` to the recording schema and parser, then write the trials into the shared file
 - [x] Prereg: gate F3/F4 at one 2σ exceedance and no 3σ; F4 pan to frame edge; accuracy confidence; text fixes
 - [ ] Emit horizontalAccuracyM and accuracyConvention from the live screen into the capture bundle
 - [ ] Re-derive the drag and roll terms from the home-session measurements; record in the prereg revision history

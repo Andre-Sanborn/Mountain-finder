@@ -27,14 +27,17 @@ import {
   TerrainUnavailableError,
   type TerrainSource,
 } from '../overlay-builder';
+import type { GridGeometry } from '../../providers/hgt-tile';
 import {
   buildLiveScene,
   groundHeightNote,
   LIVE_SWEEP_SPAN_DEG,
   liveSweepConfig,
+  liveSweepRangeAt,
   metresFromFix,
   RESWEEP_DISTANCE_M,
 } from './live-terrain';
+import { ringIsInside, SWEEP_RANGE_CAP_KM } from './sweep-range';
 
 const OBSERVER = { lat: 45, lon: 7, eyeHeightM: 1.6, fallbackGroundElevationM: 1000 };
 
@@ -74,9 +77,80 @@ describe('liveSweepConfig', () => {
     expect(config.peakRadiusKm).toBe(APP_PEAK_RADIUS_KM);
   });
 
+  it('takes the range it is given, and changes nothing else', () => {
+    const config = liveSweepConfig(60);
+    expect(config.sweep?.maxRangeKm).toBe(60);
+    expect(config.sweep?.bearingStepDeg).toBe(0.5);
+    expect(config.sweep?.rangeStepM).toBe(90);
+    expect(config.sweep?.spanDeg).toBe(360);
+  });
+
   it('turns D10’s near field on, at the same 150 m the still app uses', () => {
     expect(liveSweepConfig().nearFieldRadiusM).toBe(APP_NEAR_FIELD_RADIUS_M);
     expect(APP_NEAR_FIELD_RADIUS_M).toBe(150);
+  });
+});
+
+/**
+ * A terrain source that names the grid answering a position, the way
+ * `HttpTerrainStore` does. `terrainSource` above deliberately names none, so the
+ * existing cases exercise the "nothing known about the range" path.
+ */
+function terrainSourceWithGrid(geometry: GridGeometry, elevationM = 1000): TerrainSource {
+  const coverage: TerrainCoverage = {
+    covered: true,
+    tileName: 'N45E007',
+    available: ['served-grid'],
+    grid: { name: 'served-grid', url: 'windows/served.i16be', dataset: 'srtm1', geometry },
+  };
+  return {
+    elevation: new FunctionElevationSource(() => elevationM),
+    coverage: () => Promise.resolve(coverage),
+  };
+}
+
+describe('the sweep range comes from the served grid', () => {
+  it('keeps 30 km when coverage names no grid', async () => {
+    const scene = await buildLiveScene(OBSERVER, {
+      terrain: terrainSource(true),
+      peaks: new StaticPeakSource([SUMMIT]),
+    });
+    expect(scene.config.sweep.maxRangeKm).toBe(30);
+  });
+
+  it('reaches the cap inside a mosaic wide enough for it', async () => {
+    // A grid two degrees on a side centred on the observer covers well over
+    // 60 km in every direction, so the cap is what sets the range — and every ray
+    // end at that range is inside the grid, which is what keeps the verdicts
+    // honest.
+    const geometry: GridGeometry = {
+      northLat: 46,
+      westLon: 6,
+      rows: 2 * 3600 + 1,
+      cols: 2 * 3600 + 1,
+      latStepDeg: 1 / 3600,
+      lonStepDeg: 1 / 3600,
+    };
+    const scene = await buildLiveScene(OBSERVER, {
+      terrain: terrainSourceWithGrid(geometry),
+      peaks: new StaticPeakSource([SUMMIT]),
+    });
+    expect(scene.config.sweep.maxRangeKm).toBe(SWEEP_RANGE_CAP_KM);
+    expect(ringIsInside(geometry, OBSERVER, scene.config.sweep.maxRangeKm, 720)).toBe(true);
+  });
+
+  it('is reported before the sweep runs, from the same coverage answer', async () => {
+    const geometry: GridGeometry = {
+      northLat: 46,
+      westLon: 6,
+      rows: 2 * 3600 + 1,
+      cols: 2 * 3600 + 1,
+      latStepDeg: 1 / 3600,
+      lonStepDeg: 1 / 3600,
+    };
+    const range = await liveSweepRangeAt(OBSERVER, terrainSourceWithGrid(geometry));
+    expect(range.maxRangeKm).toBe(SWEEP_RANGE_CAP_KM);
+    expect(range.source).toBe('served-grid');
   });
 });
 

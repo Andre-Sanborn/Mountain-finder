@@ -19,10 +19,18 @@
  *
  * ── WHAT IT COSTS, AND WHAT THAT BUYS ──────────────────────────────────────
  * The full circle is 720 rays at `APP_SWEEP`'s half-degree spacing, each walked
- * to 30 km in 90 m steps: about 240 000 elevation reads against tiles already
- * in memory. Four times the work the still app does, once, against a turn that
- * would otherwise stall. TODO.md carries measuring it under CPU throttling as
- * its own item; the e2e prints the wall time it actually took.
+ * in 90 m steps as far as the served terrain covers: about 240 000 elevation
+ * reads at the 30 km default and 480 000 at the 60 km a field-site mosaic
+ * permits. Four to eight times the work the still app does, once, against a turn
+ * that would otherwise stall. TODO.md carries measuring it under CPU throttling
+ * as its own item; the e2e prints the wall time it actually took.
+ *
+ * ── HOW FAR THE RAYS GO ────────────────────────────────────────────────────
+ * From the served grid, not from a constant. `sweep-range.ts` takes the geometry
+ * `TerrainCoverage` already carries and works out the largest radius covered in
+ * every direction, so a viewpoint inside the Bogus Basin mosaic sweeps the site's
+ * own 60 km and a viewpoint on a whole tile keeps the 30 km default. That module
+ * says why the default is a floor rather than a ceiling.
  *
  * ── D10 IS ON ──────────────────────────────────────────────────────────────
  * `nearFieldRadiusM` is `APP_NEAR_FIELD_RADIUS_M`, the same 150 m the still app
@@ -54,6 +62,7 @@ import {
   noTerrainMessage,
   type TerrainSource,
 } from '../overlay-builder';
+import { DEFAULT_SWEEP_RANGE_KM, liveSweepRange, type LiveSweepRange } from './sweep-range';
 
 /** Where the observer is standing, as the position fix reports it. */
 export interface LiveObserver extends LatLng {
@@ -81,12 +90,12 @@ export interface LiveObserver extends LatLng {
 /** The full circle, from due north. */
 export const LIVE_SWEEP_SPAN_DEG = 360;
 
-/** The pipeline configuration the live sweep runs under. */
-export function liveSweepConfig(): PipelineConfig {
+/** The pipeline configuration the live sweep runs under, at a given range. */
+export function liveSweepConfig(maxRangeKm: number = DEFAULT_SWEEP_RANGE_KM): PipelineConfig {
   return {
     peakRadiusKm: APP_PEAK_RADIUS_KM,
     nearFieldRadiusM: APP_NEAR_FIELD_RADIUS_M,
-    sweep: { ...APP_SWEEP, spanDeg: LIVE_SWEEP_SPAN_DEG, startBearingDeg: 0 },
+    sweep: { ...APP_SWEEP, maxRangeKm, spanDeg: LIVE_SWEEP_SPAN_DEG, startBearingDeg: 0 },
   };
 }
 
@@ -97,12 +106,31 @@ export interface BuildLiveSceneDeps {
 }
 
 /**
+ * The range the sweep at `observer` will run at, given what the server holds.
+ *
+ * Exported so a caller can state the radius before waiting minutes for the
+ * sweep, and so the screen's label and the sweep itself cannot disagree: both
+ * read this.
+ */
+export async function liveSweepRangeAt(
+  observer: LatLng,
+  terrain: TerrainSource,
+): Promise<LiveSweepRange> {
+  const coverage = await terrain.coverage(observer.lat, observer.lon);
+  return liveSweepRange(coverage.grid?.geometry, observer);
+}
+
+/**
  * Sweep the circle at the fix, or refuse with the position named.
  *
  * Coverage is settled before the pipeline runs, exactly as the still path does
  * it, and its absence is raised as `TerrainUnavailableError` carrying
  * `noTerrainMessage`. An empty overlay would read as "no peaks are visible from
  * here", which is a claim, and a fabricated one.
+ *
+ * The same coverage answer sets how far the rays go: it carries the served
+ * grid's geometry, and `sweep-range.ts` turns that into the radius the grid can
+ * answer for.
  */
 export async function buildLiveScene(
   observer: LiveObserver,
@@ -112,6 +140,7 @@ export async function buildLiveScene(
   if (!coverage.covered) {
     throw new TerrainUnavailableError(noTerrainMessage(coverage, observer), coverage);
   }
+  const range = liveSweepRange(coverage.grid?.geometry, observer);
 
   return annotateScene({
     observer: {
@@ -132,7 +161,7 @@ export async function buildLiveScene(
     camera: { headingDeg: 0, pitchDeg: 0, rollDeg: 0, hFovDeg: 60, vFovDeg: 45 },
     elevation: deps.terrain.elevation,
     peaks: deps.peaks,
-    config: liveSweepConfig(),
+    config: liveSweepConfig(range.maxRangeKm),
     ...(deps.signal === undefined ? {} : { signal: deps.signal }),
   });
 }

@@ -427,3 +427,24 @@
   touch-action: none;
   cursor: crosshair;
 }
+
+/*
+ * The offline strip. It stays in the bottom chrome rather than behind Settings,
+ * because whether the page survives losing signal is something to find out while
+ * there is still signal to fix it with.
+ */
+.live__offline {
+  pointer-events: auto;
+  font-size: 0.8rem;
+}
+
+.live__offline p {
+  margin: 0.2rem 0;
+}
+
+.live__offline button {
+  display: block;
+  width: 100%;
+  margin: 0.3rem 0;
+  min-height: 40px;
+}

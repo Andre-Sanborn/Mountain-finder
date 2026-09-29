@@ -32,6 +32,19 @@
  * orders below the analyzer's own 12° residual threshold — so one bearing serves
  * all three. What it returns is three numbers; the position and the instant
  * behind them never reach this component.
+ *
+ * ── THE REPEATED-DRAG TRIALS, AND WHY THEY ARE NOT IN THE FILE ─────────────
+ * After the last recorded pose the session runs six drag attempts — three at
+ * normal gain, three fine — and keeps each one's final offset and the spread of
+ * the phone's roll while it was held. That is the measurement the field-test
+ * budget's largest term is waiting for (`drag-trial.ts`).
+ *
+ * They are held in memory and shown on screen, and they are NOT written into the
+ * recording. `src/live/recording.ts` accepts exactly the keys its whitelists
+ * name and exactly the poses `POSE_LABELS` lists, so a trial has nowhere to go
+ * in the current format and a sidecar object would be refused by the parser
+ * rather than tolerated. IMPLEMENTATION.md carries the schema addition this
+ * needs; until it lands, the numbers are read off the screen.
  */
 
 import {
@@ -52,6 +65,17 @@ import {
   type RecordingAnalysis,
   type RecordingProblem,
 } from '../../live/recording';
+import {
+  angularSpreadDeg,
+  DRAG_TRIAL_PLAN,
+  dragTrialInstruction,
+  dragTrialSentence,
+  ROLL_SAMPLE_INTERVAL_MS,
+  summariseDragTrials,
+  type CompletedDrag,
+  type DragTrial,
+} from './drag-trial';
+import type { DragMode } from './fine-drag';
 import {
   MAX_TAP_DISTANCE_PX,
   calibrationFromFit,
@@ -92,9 +116,17 @@ export interface HomeSessionPanelProps {
   /** Hand a finished measurement to the screen, which stores and applies it. */
   readonly onCalibrated: (fit: FovFit, references: readonly CalibrationReference[]) => void;
   readonly shareTarget: ShareTarget;
+  /** The last drag the screen finished, or undefined before the first one. */
+  readonly completedDrag: CompletedDrag | undefined;
+  /** The gain the drag layer is running at, so a trial can state which it used. */
+  readonly dragMode: DragMode;
+  /** Set the gain, so each trial runs at the one the plan asks for. */
+  readonly setDragMode: (mode: DragMode) => void;
+  /** The pose's roll now, sampled through each trial. Undefined before a pose. */
+  readonly readRollDeg: () => number | undefined;
 }
 
-type Phase = 'explaining' | 'recording' | 'finished';
+type Phase = 'explaining' | 'recording' | 'drag-trials' | 'finished';
 
 interface Finished {
   readonly recording: HomeSessionRecording;
@@ -112,18 +144,25 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
   const [calibrationNote, setCalibrationNote] = useState<string | undefined>(undefined);
   const [finished, setFinished] = useState<Finished | undefined>(undefined);
   const [shareResult, setShareResult] = useState<ShareResult | undefined>(undefined);
+  const [trialIndex, setTrialIndex] = useState(0);
+  const [trials, setTrials] = useState<readonly DragTrial[]>([]);
 
   const bearingRef = useRef<KnownBearing | undefined>(undefined);
   const stepStartedRef = useRef(0);
   const tapLayerRef = useRef<HTMLDivElement>(null);
+  const rollSamplesRef = useRef<number[]>([]);
+  /** Serial of the last drag already turned into a trial, so none is counted twice. */
+  const lastDragSerialRef = useRef(0);
 
   const step = HOME_SESSION_STEPS[stepIndex];
+  const trialMode = DRAG_TRIAL_PLAN[trialIndex];
 
   // Destructured rather than reached for through `props`. The live screen
   // re-renders twenty times a second, so a callback that depended on the whole
   // props object would be a new function every 50 ms — and the countdown's own
   // 250 ms interval would be torn down before it ever fired.
-  const { recorder, computeKnownBearing, device, shareTarget } = props;
+  const { recorder, computeKnownBearing, device, shareTarget, setDragMode, readRollDeg } = props;
+  const completedDrag = props.completedDrag;
 
   /** Open a step, taking the Sun's bearing the first time one needs it. */
   const openStep = useCallback(
@@ -165,13 +204,30 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
     });
   }, [recorder, computeKnownBearing, device]);
 
+  /**
+   * Leave the recorded poses and start the drag trials.
+   *
+   * `endSegment` first: nothing after this point has a `PoseLabel`, so an event
+   * arriving during a trial must fall outside every segment rather than be filed
+   * under the pose that happened to be open.
+   */
+  const startTrials = useCallback(() => {
+    recorder.endSegment();
+    rollSamplesRef.current = [];
+    lastDragSerialRef.current = completedDrag?.serial ?? 0;
+    setTrialIndex(0);
+    setTrials([]);
+    setDragMode(DRAG_TRIAL_PLAN[0] ?? 'normal');
+    setPhase('drag-trials');
+  }, [recorder, setDragMode, completedDrag?.serial]);
+
   const advance = useCallback(() => {
     if (stepIndex + 1 < HOME_SESSION_STEPS.length) {
       openStep(stepIndex + 1);
       return;
     }
-    finish();
-  }, [stepIndex, openStep, finish]);
+    startTrials();
+  }, [stepIndex, openStep, startTrials]);
 
   const start = useCallback(() => {
     recorder.begin();
@@ -190,6 +246,57 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
     }, TICK_MS);
     return () => window.clearInterval(handle);
   }, [phase, step, advance]);
+
+  /* ── the drag trials ────────────────────────────────────────────────────── */
+  /** Sample the roll while a trial is open. Ten a second is the plan's interval. */
+  useEffect(() => {
+    if (phase !== 'drag-trials') return undefined;
+    const handle = window.setInterval(() => {
+      const roll = readRollDeg();
+      if (roll !== undefined) rollSamplesRef.current.push(roll);
+    }, ROLL_SAMPLE_INTERVAL_MS);
+    return () => window.clearInterval(handle);
+  }, [phase, readRollDeg]);
+
+  /** Put the gain where the plan wants it as each attempt opens. */
+  useEffect(() => {
+    if (phase !== 'drag-trials' || trialMode === undefined) return;
+    setDragMode(trialMode);
+  }, [phase, trialMode, setDragMode]);
+
+  /**
+   * Turn a finished drag into the current attempt.
+   *
+   * Keyed on the drag's serial rather than on its offset, so three attempts that
+   * happen to land identically are still three attempts. The mode recorded is the
+   * one the DRAG ran at, read off the drag itself: a plan and a gain that
+   * disagreed would otherwise be recorded as agreeing.
+   */
+  useEffect(() => {
+    if (phase !== 'drag-trials' || completedDrag === undefined || trialMode === undefined) return;
+    if (completedDrag.serial <= lastDragSerialRef.current) return;
+    lastDragSerialRef.current = completedDrag.serial;
+    const samples = rollSamplesRef.current;
+    rollSamplesRef.current = [];
+    const trial: DragTrial = {
+      index: trialIndex,
+      mode: completedDrag.mode,
+      offsetPx: completedDrag.offsetPx,
+      offsetDeg: completedDrag.offsetDeg,
+      rollSpreadDeg: angularSpreadDeg(samples),
+      rollSampleCount: samples.length,
+      durationMs: completedDrag.durationMs,
+    };
+    setTrials((current) => [...current, trial]);
+    setTrialIndex(trialIndex + 1);
+  }, [phase, completedDrag, trialMode, trialIndex]);
+
+  /** Every attempt done: back to normal gain, then build the recording. */
+  useEffect(() => {
+    if (phase !== 'drag-trials' || trialIndex < DRAG_TRIAL_PLAN.length) return;
+    setDragMode('normal');
+    finish();
+  }, [phase, trialIndex, setDragMode, finish]);
 
   /* ── the tap, on the sun step ───────────────────────────────────────────── */
   const onTap = useCallback(
@@ -281,8 +388,9 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
               ))}
             </div>
             <p data-testid="home-session-length">
-              {HOME_SESSION_STEPS.length} short steps, about five minutes. You can stop at any time
-              by closing the page; nothing is kept if you do.
+              {HOME_SESSION_STEPS.length} short steps, about five minutes, then{' '}
+              {DRAG_TRIAL_PLAN.length} quick lining-up attempts. You can stop at any time by
+              closing the page; nothing is kept if you do.
             </p>
             <button
               type="button"
@@ -320,7 +428,9 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
               {Math.ceil(remainingMs / 1000)} s left.
             </p>
             <button type="button" data-testid="home-session-next" onClick={advance}>
-              {stepIndex + 1 === HOME_SESSION_STEPS.length ? 'Finish' : 'Move on now'}
+              {stepIndex + 1 === HOME_SESSION_STEPS.length
+                ? 'On to the lining-up practice'
+                : 'Move on now'}
             </button>
             {bearingWarning !== undefined && (
               <p className="live__warn" data-testid="home-session-sun-warning">
@@ -371,8 +481,46 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
           </>
         )}
 
+        {phase === 'drag-trials' && trialMode !== undefined && (
+          <>
+            <p data-testid="home-session-trial-progress" data-trial-index={trialIndex} data-trial-mode={trialMode}>
+              Lining-up practice — attempt {trialIndex + 1} of {DRAG_TRIAL_PLAN.length}
+            </p>
+            <p className="live__session-instruction" data-testid="home-session-trial-instruction">
+              {dragTrialInstruction(trialIndex)}
+            </p>
+            <p data-testid="home-session-trial-count" data-count={trials.length}>
+              {trials.length} of {DRAG_TRIAL_PLAN.length} recorded. Each attempt keeps how far you
+              dragged and how steady the phone was — no picture and no position.
+            </p>
+            <button
+              type="button"
+              data-testid="home-session-skip-trials"
+              onClick={() => {
+                setDragMode('normal');
+                finish();
+              }}
+            >
+              Skip the practice and finish
+            </button>
+          </>
+        )}
+
         {phase === 'finished' && (
           <>
+            {trials.length > 0 && (
+              <div data-testid="home-session-trial-summary" data-trial-count={trials.length}>
+                <p>
+                  Lining-up practice: {trials.length} attempt
+                  {trials.length === 1 ? '' : 's'}. These stay on screen and are not in the file.
+                </p>
+                {(['normal', 'fine'] as const).map((mode) => (
+                  <p key={mode} data-testid={`home-session-trial-${mode}`}>
+                    {dragTrialSentence(summariseDragTrials(trials, mode))}
+                  </p>
+                ))}
+              </div>
+            )}
             <p data-testid="home-session-done">
               Recording finished: {recorder.completedSegments.length} steps,{' '}
               {counts.events} sensor readings.

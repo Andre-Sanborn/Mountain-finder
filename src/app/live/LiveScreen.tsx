@@ -64,15 +64,25 @@ import {
 
 import type { CameraPose } from '../../core/types';
 import { liveOverlayScene } from '../../live/loop';
-import { trimFromDrag } from '../../live/drag-trim';
 import { buildOverlaySvgFromLayout, layoutOverlay } from '../../render';
 import type { OverlayLayout } from '../../render/types';
 import type { AnnotatedScene } from '../../pipeline/types';
+import { DEFAULT_TERRAIN_MANIFEST_URL } from '../../providers/terrain-manifest';
+import { resolveFromBase } from '../base-path';
 import { selectOverlayPeaks, TerrainUnavailableError } from '../overlay-builder';
 import { NO_TRIM, isUntrimmed, type TrimState } from '../trim';
 import { BrowserSensorTraces, requestMotionPermission, type RawEventSink } from './browser-sensors';
 import { CameraOpenError, openRearCamera, readTrackSettings, TRACK_POLL_INTERVAL_MS } from './camera-stream';
 import { celestialMarks, offFrameDirection, type CelestialMark } from './celestial-markers';
+import {
+  dragGain,
+  dragStepSentence,
+  dragStepSize,
+  FINE_DRAG_FACTOR,
+  trimFromDragAtGain,
+  type DragMode,
+} from './fine-drag';
+import type { CompletedDrag } from './drag-trial';
 import { HomeSessionPanel } from './HomeSessionPanel';
 import type { CalibrationFrame, CalibrationReference, FovFit } from './fov-calibration';
 import { calibrationFromFit } from './fov-calibration';
@@ -99,7 +109,9 @@ import {
 import { EMPTY_LENS_LOG, lensSwitchWarning, recordTrackSettings, type LensLog } from './lens-log';
 import { groundHeightNote, metresFromFix, RESWEEP_DISTANCE_M, type LiveObserver } from './live-terrain';
 import { horizontalBandHalfWidthPx, liveUncertainty } from './live-uncertainty';
+import { OfflinePanel } from './OfflinePanel';
 import { liveRefusal, refusalForWebSample, type LiveRefusalCode } from './refusals';
+import { sweepRangeSentence } from './sweep-range';
 import { videoBoxGeometry, type SafeAreaInsetsPx } from './video-box';
 
 /** How often the overlay is laid out again, milliseconds. */
@@ -121,6 +133,11 @@ export interface LiveScreenProps {
    * so `live-main.tsx` needs no knowledge of this mode.
    */
   readonly homeSession?: boolean;
+  /**
+   * Where the terrain index is served. Defaults to this build's own base, which
+   * is what the offline strip needs to name the grid it would download.
+   */
+  readonly terrainManifestUrl?: string;
 }
 
 type Phase = 'idle' | 'starting' | 'running';
@@ -177,6 +194,9 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
   const [sceneError, setSceneError] = useState<string | undefined>(undefined);
   const [sweepMs, setSweepMs] = useState<number | undefined>(undefined);
   const [trim, setTrim] = useState<TrimState>(NO_TRIM);
+  const [dragMode, setDragMode] = useState<DragMode>('normal');
+  /** The last drag that finished, for the home session's repeated-drag trials. */
+  const [completedDrag, setCompletedDrag] = useState<CompletedDrag | undefined>(undefined);
   const [modelName, setModelName] = useState(DEFAULT_MODEL_NAME);
   const [lensLabel, setLensLabel] = useState(DEFAULT_LENS_LABEL);
   const [rollHypothesis, setRollHypothesis] = useState<ScreenRollHypothesis>(
@@ -192,7 +212,13 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
   const tracesRef = useRef<BrowserSensorTraces | undefined>(undefined);
   const trackRef = useRef<MediaStreamTrack | undefined>(undefined);
   const streamRef = useRef<MediaStream | undefined>(undefined);
-  const dragRef = useRef<{ x: number; y: number; base: TrimState } | undefined>(undefined);
+  const dragRef = useRef<
+    { x: number; y: number; dx: number; dy: number; base: TrimState; startedAtMs: number } | undefined
+  >(undefined);
+  /** Serial number of finished drags, so a repeat of the same offset is a new one. */
+  const dragSerialRef = useRef(0);
+  /** The pose's roll, readable without a re-render, for the drag trials. */
+  const rollRef = useRef<number | undefined>(undefined);
 
   const landscape = isLandscapeViewport(viewport.widthPx, viewport.heightPx);
 
@@ -509,10 +535,17 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
     });
   }, [poseResult, pose, fov?.source, sensorStatus?.compassAccuracyDeg, framePx.widthPx]);
 
-  /* ── the drag (D9) ──────────────────────────────────────────────────────── */
+  /* ── the drag (D9), at normal or fine gain ──────────────────────────────── */
   const onPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
-      dragRef.current = { x: event.clientX, y: event.clientY, base: trim };
+      dragRef.current = {
+        x: event.clientX,
+        y: event.clientY,
+        dx: 0,
+        dy: 0,
+        base: trim,
+        startedAtMs: Date.now(),
+      };
       event.currentTarget.setPointerCapture(event.pointerId);
     },
     [trim],
@@ -522,19 +555,52 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
     (event: ReactPointerEvent<HTMLDivElement>) => {
       const drag = dragRef.current;
       if (drag === undefined || pose === undefined) return;
+      drag.dx = event.clientX - drag.x;
+      drag.dy = event.clientY - drag.y;
       setTrim(
-        trimFromDrag(
+        trimFromDragAtGain(
           drag.base,
-          { dx: event.clientX - drag.x, dy: event.clientY - drag.y },
+          { dx: drag.dx, dy: drag.dy },
           framePx,
           { hFovDeg: pose.hFovDeg, vFovDeg: pose.vFovDeg },
+          dragGain(dragMode),
         ),
       );
     },
-    [pose, framePx.widthPx, framePx.heightPx],
+    [pose, framePx.widthPx, framePx.heightPx, dragMode],
   );
 
+  /**
+   * Close the drag and publish what it moved, relative to where it went down.
+   *
+   * The offset is what the home session's repeated-drag trials measure, and it
+   * is relative on purpose: an offset from the start of a gesture says nothing
+   * about where the phone was pointed. The degrees are worked out against the
+   * trim this drag started from, so they are what this attempt contributed
+   * rather than the total nudge in force.
+   */
   const onPointerUp = useCallback(() => {
+    const drag = dragRef.current;
+    dragRef.current = undefined;
+    if (drag === undefined || pose === undefined) return;
+    if (drag.dx === 0 && drag.dy === 0) return;
+    const offsetPx = { dx: drag.dx, dy: drag.dy };
+    const after = trimFromDragAtGain(drag.base, offsetPx, framePx, pose, dragGain(dragMode));
+    dragSerialRef.current += 1;
+    setCompletedDrag({
+      serial: dragSerialRef.current,
+      mode: dragMode,
+      offsetPx,
+      offsetDeg: {
+        headingDeg: after.headingDeg - drag.base.headingDeg,
+        pitchDeg: after.pitchDeg - drag.base.pitchDeg,
+      },
+      durationMs: Date.now() - drag.startedAtMs,
+    });
+  }, [dragMode, pose, framePx.widthPx, framePx.heightPx]);
+
+  /** A cancelled gesture is not an attempt: it is dropped rather than recorded. */
+  const onPointerCancel = useCallback(() => {
     dragRef.current = undefined;
   }, []);
 
@@ -666,6 +732,28 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
   const heightNote =
     scene === undefined ? undefined : groundHeightNote(scene.observer, scene.observerResolution);
 
+  /**
+   * The drag's current step size, and the roll the trials sample.
+   *
+   * The step size is stated for the mode in force rather than for both, because
+   * what a person needs to know while dragging is how far this gesture moves the
+   * labels. The roll goes into a ref: the trials sample it ten times a second,
+   * and a state variable would re-render the whole screen at that rate.
+   */
+  const stepSize = useMemo(
+    () =>
+      pose === undefined
+        ? undefined
+        : dragStepSize(framePx, pose, dragGain(dragMode)),
+    [pose, framePx.widthPx, dragMode],
+  );
+  rollRef.current = pose?.rollDeg;
+  const readRollDeg = useCallback(() => rollRef.current, []);
+
+  const manifestUrl =
+    props.terrainManifestUrl ??
+    resolveFromBase(import.meta.env.BASE_URL, DEFAULT_TERRAIN_MANIFEST_URL);
+
   /* ── which refusal, if any, stops the drawing ───────────────────────────── */
   const activeRefusal: LiveRefusalCode | undefined = (() => {
     // Ordered by what the user has to do FIRST, not by which check is cheapest.
@@ -773,7 +861,7 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onPointerCancel={onPointerCancel}
       />
 
       {/*
@@ -826,6 +914,10 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
             calibrationFrame={calibrationFrame}
             onCalibrated={applyFovFit}
             shareTarget={shareTarget}
+            completedDrag={completedDrag}
+            dragMode={dragMode}
+            setDragMode={setDragMode}
+            readRollDeg={readRollDeg}
           />
         )}
 
@@ -973,6 +1065,31 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
           </button>
         </p>
 
+        {/* Fine drag sits beside the nudge rather than in Settings, for the same
+            reason the undo does: it is part of the gesture, and the step size is
+            only useful while someone is making it. */}
+        <p className="live__nudge" data-testid="live-drag-mode" data-mode={dragMode}>
+          <button
+            type="button"
+            data-testid="live-fine-drag"
+            aria-pressed={dragMode === 'fine'}
+            onClick={() => setDragMode((current) => (current === 'fine' ? 'normal' : 'fine'))}
+          >
+            {dragMode === 'fine'
+              ? 'Fine drag is ON — tap for normal speed'
+              : `Fine drag is OFF — tap for ${FINE_DRAG_FACTOR}× slower`}
+          </button>{' '}
+          {stepSize !== undefined && (
+            <span
+              data-testid="live-drag-step"
+              data-per-px-deg={stepSize.perPxDeg}
+              data-per-mm-deg={stepSize.perMmDeg}
+            >
+              {dragStepSentence(dragMode, stepSize)}
+            </span>
+          )}
+        </p>
+
         {layout !== undefined && (
           <p
             className="live__labels"
@@ -999,12 +1116,32 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
           data-sweep-span-deg={scene?.config.sweep.spanDeg ?? ''}
           data-rays-requested={scene?.sweep.raysRequested ?? ''}
           data-rays-with-terrain={scene?.sweep.raysWithTerrain ?? ''}
+          data-max-range-km={scene?.config.sweep.maxRangeKm ?? ''}
         >
           {scene === undefined
             ? 'Skyline not worked out yet.'
             : `Skyline swept ${scene.config.sweep.spanDeg}° around you in ` +
               `${(sweepMs ?? 0).toFixed(0)} ms.`}
         </p>
+
+        {/* The radius stays on screen rather than in the disclosure. A label 56 km
+            away and a label 6 km away look the same, and how far the app looked
+            is the difference between "that mountain is not drawn" and "that
+            mountain is outside what this deployment measured". */}
+        {scene !== undefined && (
+          <p
+            className="live__status"
+            data-testid="live-sweep-range"
+            data-max-range-km={scene.config.sweep.maxRangeKm}
+          >
+            {sweepRangeSentence(scene.config.sweep.maxRangeKm)}
+          </p>
+        )}
+
+        <OfflinePanel
+          at={fix === undefined ? undefined : { lat: fix.lat, lon: fix.lon }}
+          manifestUrl={manifestUrl}
+        />
 
         <p
           className="live__hidden-note"
