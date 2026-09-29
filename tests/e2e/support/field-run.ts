@@ -10,6 +10,8 @@
 
 import { expect, type Page } from '@playwright/test';
 
+import { STILL_FOR_REANCHOR_MS } from '../../../src/app/live/reanchor';
+
 /** A file the share sheet was handed, as the page saw it. */
 export interface SharedFile {
   readonly name: string;
@@ -76,6 +78,45 @@ export async function sharedBytes(page: Page): Promise<readonly { name: string; 
 /** Tap the picture at one point, on the field session's own tap surface. */
 export async function fieldTapAt(page: Page, xPx: number, yPx: number): Promise<void> {
   await page.getByTestId('field-session-tap-layer').evaluate(
+    (node, point) => {
+      node.dispatchEvent(
+        new PointerEvent('pointerup', {
+          bubbles: true,
+          cancelable: true,
+          clientX: point.xPx,
+          clientY: point.yPx,
+          pointerId: 1,
+          pointerType: 'touch',
+        }),
+      );
+    },
+    { xPx, yPx },
+  );
+}
+
+/**
+ * Wait until the phone has been still long enough to be allowed a re-anchor.
+ *
+ * The screen counts stillness from the SENSED pose, so this is a property of
+ * the phone rather than of the labels, and a drag does not reset it.
+ */
+export async function holdStillForReanchor(page: Page): Promise<void> {
+  await expect
+    .poll(async () => Number(await page.getByTestId('live-reanchor').getAttribute('data-still-ms')), {
+      timeout: STILL_FOR_REANCHOR_MS + 30_000,
+    })
+    .toBeGreaterThanOrEqual(STILL_FOR_REANCHOR_MS);
+}
+
+/**
+ * Tap the real thing in the picture while a re-anchor is armed.
+ *
+ * The re-anchor layer only exists while the mode is on, and it sits above the
+ * drag surface, so a finger on the picture means "the thing you named is here"
+ * rather than "push the labels".
+ */
+export async function tapReanchorAt(page: Page, xPx: number, yPx: number): Promise<void> {
+  await page.getByTestId('live-reanchor-tap-layer').evaluate(
     (node, point) => {
       node.dispatchEvent(
         new PointerEvent('pointerup', {

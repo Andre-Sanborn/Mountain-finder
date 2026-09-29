@@ -78,7 +78,10 @@ after its self-check has run and passed here. The checks are in
 - [ ] Re-run the rehearsal at a 956x440 viewport over a 1920x1080 camera, without cropToAspect
 - [x] Separate refusals from notes in the field report
 
-- [ ] Re-run the Bogus Basin rehearsal at the solved pose (187.9°, −4.94°), Deer Point as anchor, grade other features
+- [x] Re-run the Bogus Basin rehearsal at the solved pose (187.9°, −4.94°), Deer Point as anchor, grade other features
+- [ ] Grade the re-run rehearsal against @2 truth from two independent annotators
+- [ ] Let the field anchor picker offer crowded-out summits, so a hidden label cannot block the anchor
+- [ ] Make the anchor-drift warning allow for a deliberate turn
 - [ ] Make `npm run annotate` warn when GPSImgDirection is the only heading source (X-10)
 - [ ] Renumber the duplicate X-7 and X-8 ids in docs/FINDINGS.md
 

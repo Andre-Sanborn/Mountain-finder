@@ -15,14 +15,21 @@ import {
   capture,
   fieldTapAt,
   holdStill,
+  holdStillForReanchor,
   installBundleShareStub,
   sharedBundleFiles,
   sharedBytes,
   summitDots,
+  tapReanchorAt,
 } from './support/field-run';
 import {
+  DEER_POINT_ANNOTATED_PX,
+  DEER_POINT_LANDMARK,
+  DEER_POINT_NAME,
   DEG,
+  EXIF_HEADING_DEG,
   EYE_ABOVE_GROUND_M,
+  GROSS_COMPASS_ERROR_DEG,
   PHOTO_PATH,
   PHOTO_POSE,
   ROOT,
@@ -49,15 +56,36 @@ import {
  * `field-session.spec.ts` proves the guided sequence and the bundle against a
  * synthetic Alpine scene. This runs the same sequence against everything the
  * field session will actually meet: the packaged Bogus Basin terrain at its own
- * 60 km radius, the committed `idaho-bogus-basin` peak region, the position and
- * true heading IMG_7270's EXIF carries, and IMG_7270 itself as the camera.
+ * 60 km radius, the committed `idaho-bogus-basin` peak region, the pose
+ * IMG_7270 was taken at, and IMG_7270 itself as the camera.
  *
- * ── WHAT IS DELIBERATELY WRONG ─────────────────────────────────────────────
- * The sensors are given the photograph's documented heading plus 8° and its
- * documented pitch minus 2°. So the overlay starts wrong by a known amount, the
- * drag has real work to do, and the residual after the drag is a measurement
- * rather than a rounding error. 8° is inside the 5–15° this repository records
- * for a phone compass; 2° is the order of the unrecorded pitch.
+ * ── THE POSE, AND THE FAILURE INJECTED ON TOP OF IT ────────────────────────
+ * The photograph's pose is SOLVED, not recorded: 187.938° true and −4.939°,
+ * derived in `docs/IMG-7270-HEADING.md` § 3 from Deer Point's annotated crest
+ * and confirmed by the Sun's side of the frame in § 4. That is the truth this
+ * run is graded against.
+ *
+ * The phone's compass said **280.336°**, and this run feeds the sensors exactly
+ * that. So the rehearsal starts under the real-world failure the photograph
+ * measured: **a +92.398° gross compass error** (§ 7, finding X-10), which is
+ * three times the ±30° the fine drag can reach. Nothing on screen is recoverable
+ * by dragging, and the run has to use the "Fix direction" re-anchor to get back.
+ *
+ * The sensors' pitch is the solved pitch minus 2°. EXIF carries no pitch at all,
+ * so there is no recorded figure to inject; 2° is the order of a phone's
+ * unmeasured tilt zero point.
+ *
+ * ── THE RE-ANCHOR IS THE SUMMIT PATH, NOT THE SUN PATH ─────────────────────
+ * `reanchorFromTap` takes either the Sun or a summit named by the person. **The
+ * Sun cannot be used on this photograph.** At the recorded instant it is at
+ * azimuth 238.3°, elevation 57.1°, which is 50.4° right of the optical axis
+ * against a 36.87° half-frame — outside the picture, which is why the frame
+ * carries a corner flare rather than a disc (`docs/IMG-7270-HEADING.md` § 4).
+ * So this run exercises the fallback: Deer Point, picked by name and tapped.
+ *
+ * The tap is placed a few pixels off the true apex on purpose. A person taps by
+ * eye, and a pixel-exact tap would solve the pose in one gesture and leave the
+ * three drags nothing to close.
  *
  * ── WHAT THIS RUN CANNOT DECIDE ────────────────────────────────────────────
  * 1. **The fake camera cannot move.** Chromium serves one still frame, so when
@@ -65,34 +93,50 @@ import {
  *    overlay does not move with them. On a real phone the frame and the sensors
  *    move together. **F4 on this rehearsal therefore tests the overlay's
  *    arithmetic under a moving pose, and nothing about whether the labels agree
- *    with the photograph.** Only the two captures taken at the photograph's own
- *    pose — the raw one and the first after-drag one — can be compared with the
+ *    with the photograph.** Only the captures taken at the photograph's own pose
+ *    — the raw one and the three after-drag ones — can be compared with the
  *    picture at all.
- * 2. **The documented pose has no pitch.** EXIF records none, so the documented
- *    pose's pitch is zero and the drag target below is computed at zero.
- *    `docs/REAL-PHOTO-POSE.md` records this viewpoint as looking slightly down
- *    by an unmeasured amount (eyeball reading, n = 1). Any vertical residual an
- *    annotator later measures carries that unknown inside it.
- * 3. **Nobody has annotated the photograph.** `out/rehearsal/ANNOTATE.md` is the
+ * 2. **Nobody has annotated these frames.** `out/rehearsal/ANNOTATE.md` is the
  *    brief that asks two people to, and until they answer there is no truth to
  *    grade against. The truth document this spec writes is SYNTHETIC — it is the
- *    injected pose projected back onto the frame — and it exists to exercise the
+ *    solved pose projected back onto the frame — and it exists to exercise the
  *    grader, not to say where a summit is.
+ * 3. **Deer Point is not graded against itself.** The solved pose comes from
+ *    Deer Point's annotated crest, the re-anchor is taken on Deer Point, and the
+ *    drag is aimed at Deer Point. A residual measured there would be the
+ *    arithmetic closing on its own input. The graded summits are the others the
+ *    overlay draws — Doe Point and Little Deer Point at this pose.
+ *
+ * ── THE SOUTH-FACING CAPTURE § 2.7 REGISTERS ───────────────────────────────
+ * The prereg registers one capture facing south toward Deer Point and Doe Point,
+ * so the near band gets a sample. At 187.938° this frame already faces south,
+ * with Deer Point 2 km out at −4.52° and the sky above it in the same picture,
+ * so every capture taken at the photograph's own pose is that capture. The run
+ * asserts it rather than assuming it.
  *
  * ── THE FRAME ──────────────────────────────────────────────────────────────
  * The app asks the camera for 1920 × 1080 and the photograph is 8064 × 6048, so
  * the fake camera is the photograph CENTRE-CROPPED to 16:9 rather than squeezed
  * into it: the full 73.74° width of the 24 mm-equivalent lens survives, and the
- * top and bottom eighths of the picture do not. The viewport is 800 × 450, the
+ * top and bottom eighths of the picture do not. The viewport is 960 × 540, the
  * same 16:9, so `object-fit: cover` crops nothing further and the stored frame
- * is the overlay's own space scaled by exactly 2.4 on both axes.
+ * is the overlay's own space scaled by exactly 2 on both axes.
  *
  * That last point is load-bearing. `residualOf` in the grader scales the overlay
  * into the stored frame by a plain ratio of widths and of heights, with no
  * offset, which is right only when the two share an aspect ratio. A 4:3 camera
  * in a 16:9 viewport would break it: the visible picture is then a 75 % crop of
  * the stored frame's width, and every horizontal residual would be scaled by
- * 2.4 where the truth is 1.8 about a shifted centre.
+ * 2 where the truth is 1.5 about a shifted centre.
+ *
+ * 960 px of width is also what gets Deer Point a name rather than a bare dot.
+ * The label budget is `floor(usableWidth / meanLabelWidth)` columns of slots, so
+ * it grows with the viewport. At 800 px this frame held 25 summits and could
+ * name 21, and the four it dropped were the near low ones — Deer Point, Doe
+ * Point and Little Deer Point among them. The field session's anchor list only
+ * offers NAMED markers, so at 800 px the protocol's own anchor summit could not
+ * be picked. At 960 px, which is nearer a landscape phone than 800 was, all 25
+ * are named and none is crowded out.
  *
  * ── HOW IT IS GATED ────────────────────────────────────────────────────────
  * `data/sites/bogus-basin/` is gitignored and built by `npm run site:package`.
@@ -103,7 +147,7 @@ import {
 /** A 60 km mosaic fetch and a 360° sweep, on a throttled shared runner. */
 const SCENE_TIMEOUT_MS = 240_000;
 
-const FRAME = { widthPx: 800, heightPx: 450 } as const;
+const FRAME = { widthPx: 960, heightPx: 540 } as const;
 const CAMERA = { widthPx: 1920, heightPx: 1080 } as const;
 const CAMERA_VIDEO = resolve(
   FAKE_CAMERA_DIR,
@@ -113,12 +157,25 @@ const CAMERA_VIDEO = resolve(
 /** What the overlay and the stored frame both span, from the documented lens. */
 const VISIBLE_FOV = fovForFrame(CAMERA.widthPx, CAMERA.heightPx);
 
-/** Overlay pixels to stored-frame pixels. Exact: 1920/800 = 1080/450 = 2.4. */
+/** Overlay pixels to stored-frame pixels. Exact: 1920/960 = 1080/540 = 2. */
 const FRAME_SCALE = CAMERA.widthPx / FRAME.widthPx;
 
-/** The errors injected into the sensors, so the raw overlay is wrong by a known amount. */
-const COMPASS_ERROR_DEG = 8;
+/**
+ * The pitch error injected into the sensors, degrees.
+ *
+ * The heading error is not a constant here: it is whatever the compass really
+ * said, {@link GROSS_COMPASS_ERROR_DEG}, read off the photograph.
+ */
 const PITCH_ERROR_DEG = -2;
+
+/**
+ * How far off the true apex the re-anchor tap lands, overlay pixels.
+ *
+ * A person taps by eye. At this lens and this viewport the overlay's focal
+ * length is 640 px, so 6 px across is 0.54° of heading and 4 px down is 0.36° of
+ * pitch — the size of a careful tap, and well inside the fine trim's ±30°.
+ */
+const REANCHOR_TAP_ERROR_PX = { xPx: 6, yPx: -4 } as const;
 
 /** The peak region cut for this site's 60 km disc. */
 const PEAK_REGION = 'idaho-bogus-basin';
@@ -126,7 +183,7 @@ const PEAK_REGION = 'idaho-bogus-basin';
 const OUT_DIR = resolve(ROOT, 'out/rehearsal');
 const FRAMES_DIR = resolve(OUT_DIR, 'frames');
 
-/** Where the anchor may start, so an F4 pan can still reach either edge. */
+/** How far off centre the anchor may sit, so an F4 pan can still reach either edge. */
 const MAX_ANCHOR_OFFSET_U = 0.6;
 /** Where an F4 pan puts the anchor. The registered target is 0.8. */
 const PAN_TARGET_U = 0.85;
@@ -233,8 +290,13 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
         eventAnglesFor(magneticBearingAt(PHOTO_POSE, trueHeadingDeg, new Date()), pitchDeg),
       );
     };
-    /** The sensor pose for a capture taken at the documented pose. */
-    const RAW_HEADING_DEG = PHOTO_POSE.headingDeg + COMPASS_ERROR_DEG;
+    /**
+     * What the sensors say while the phone is aimed as the photograph was.
+     *
+     * The heading is the compass reading off the file itself, 92.398° from where
+     * the camera pointed. The pitch is the solved pitch minus 2°.
+     */
+    const RAW_HEADING_DEG = EXIF_HEADING_DEG;
     const RAW_PITCH_DEG = PHOTO_POSE.pitchDeg + PITCH_ERROR_DEG;
 
     /** What was injected for each capture, for the synthetic truth document. */
@@ -265,7 +327,7 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
     console.log(
       `rehearsal sweep: 720/720 rays to 60 km in ${sweepMs.toFixed(0)} ms in the browser; ` +
         `${labelled.labelled} labelled, ${labelled.offFrame} off frame, ` +
-        `${labelled.crowdedOut} crowded out at the raw pose`,
+        `${labelled.crowdedOut} crowded out at the compass's own pose, before the re-anchor`,
     );
 
     /* ── the observer height the app read, against the documented DEM ─────── */
@@ -287,6 +349,60 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
     expect(startPose.hFovDeg).toBeCloseTo(VISIBLE_FOV.hFovDeg, 2);
     expect(startPose.vFovDeg).toBeCloseTo(VISIBLE_FOV.vFovDeg, 2);
 
+    /* ── the anchor, and the pixel everything is measured from ────────────── */
+    /**
+     * Deer Point: the summit the pose was solved from, and the field protocol's
+     * re-anchor and drag anchor.
+     *
+     * Its bearing, range and apparent altitude come from this file's geodesy
+     * over the committed peak cell, never from the app.
+     */
+    const anchor = inFrameCandidates().find((peak) => peak.name === DEER_POINT_NAME);
+    expect(anchor, `${DEER_POINT_NAME} is not in the committed peak region`).toBeDefined();
+    if (anchor === undefined) return;
+    // Near enough the centre that an F4 pan can still carry it to either edge.
+    expect(anchor.offsetU).toBeLessThanOrEqual(MAX_ANCHOR_OFFSET_U);
+    console.log(
+      `rehearsal anchor: ${anchor.name} — ${anchor.elevationM} m, ` +
+        `${anchor.rangeKm.toFixed(3)} km, bearing ${anchor.bearingDeg.toFixed(3)}°, ` +
+        `apparent altitude ${anchor.altitudeDeg.toFixed(3)}°, u ${anchor.offsetU.toFixed(3)}`,
+    );
+
+    /**
+     * Where Deer Point's crest sits under the SOLVED pose, in overlay pixels.
+     *
+     * This is the re-anchor's true tap point and the drag's target, and the app
+     * has no part in computing it: the position and the lens are EXIF's, the
+     * heading and pitch are `docs/IMG-7270-HEADING.md` § 3's, the coordinate is
+     * the committed peak cell's, and the projection is this harness's own.
+     *
+     * The check below is the second instrument. The document solved the pose by
+     * running Newton on `src/core/projection.ts` until Deer Point landed on the
+     * annotators' pixel. Re-projecting through independent geometry has to come
+     * back to that same pixel, and 0.15 px is the room the document's three
+     * printed decimals leave: 0.001° is 0.01 px at this focal length.
+     */
+    const TARGET_PX = projectInto(
+      FRAME,
+      { ...PHOTO_POSE, rollDeg: 0, ...VISIBLE_FOV },
+      anchor.bearingDeg,
+      anchor.altitudeDeg,
+    );
+    expect(
+      Math.hypot(
+        TARGET_PX.xPx * FRAME_SCALE - DEER_POINT_ANNOTATED_PX.xPx,
+        TARGET_PX.yPx * FRAME_SCALE - DEER_POINT_ANNOTATED_PX.yPx,
+      ),
+      'the solved pose does not put Deer Point back on the annotated pixel',
+    ).toBeLessThan(0.15);
+    console.log(
+      `rehearsal drag target (solved pose): ${TARGET_PX.xPx.toFixed(2)}, ` +
+        `${TARGET_PX.yPx.toFixed(2)} overlay px = ` +
+        `${(TARGET_PX.xPx * FRAME_SCALE).toFixed(2)}, ` +
+        `${(TARGET_PX.yPx * FRAME_SCALE).toFixed(2)} frame px, ` +
+        `against the annotated ${DEER_POINT_ANNOTATED_PX.xPx}, ${DEER_POINT_ANNOTATED_PX.yPx}`,
+    );
+
     const session = page.getByTestId('field-session');
     await expect(page.getByTestId('field-session-start')).toBeEnabled({ timeout: 60_000 });
     await page.getByTestId('field-session-start').click();
@@ -298,9 +414,13 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
     /* ── 2. the camera width, from two taps ───────────────────────────────── */
     await expect(session).toHaveAttribute('data-step-id', 'fov-check');
     // Tapped exactly ON two drawn dots, so the fit is the identity. The point of
-    // this run is the protocol and the drag, and a camera error injected here
-    // would move the labels somewhere the drag target below did not predict.
-    // What it changes is `fovSource`, which F2 and F3 both require.
+    // this run is the protocol, the re-anchor and the drag, and a camera error
+    // injected here would move the labels somewhere the drag target did not
+    // predict. What it changes is `fovSource`, which F2 and F3 both require.
+    //
+    // The dots are still a quarter-turn from anything in the picture at this
+    // point, so on site this step would be done on the real sun instead. Here it
+    // is arithmetic: two taps that fit the lens the app already assumed.
     const dots = [...(await summitDots(page))].sort((a, b) => a.cx - b.cx);
     const left = dots[0];
     const right = dots[dots.length - 1];
@@ -319,10 +439,90 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
     );
     await page.getByTestId('field-session-next').click();
 
-    /* ── 3. which way the labels point ────────────────────────────────────── */
-    // Read past, deliberately: the rehearsal grades the pose the sensors gave,
-    // 8° of compass error and all, so nothing here is re-anchored.
+    /* ── 3. which way the labels point: the re-anchor on Deer Point ───────── */
     await expect(session).toHaveAttribute('data-step-id', 'fix-direction');
+
+    // The sun path is unavailable on this photograph. At the recorded instant
+    // the sun is 50.4° right of the optical axis against a 36.87° half-frame, so
+    // it is outside the picture and there is nothing to tap
+    // (docs/IMG-7270-HEADING.md § 4). The summit path is what the field protocol
+    // falls back to, and it is what runs here.
+    const reanchor = page.getByTestId('live-reanchor');
+    await expect(reanchor).toHaveAttribute('data-gross-offset-deg', '0');
+    await holdStillForReanchor(page);
+    await page.getByTestId('live-reanchor-summit').click();
+
+    const picker = page.getByTestId('live-reanchor-summit-name');
+    const offered = await picker
+      .locator('option')
+      .evaluateAll((nodes) =>
+        nodes.map((node) => ({
+          value: (node as HTMLOptionElement).value,
+          text: node.textContent ?? '',
+        })),
+      );
+    const deerOption = offered.find((option) => option.value === anchor.id);
+    expect(
+      deerOption,
+      `the sweep did not offer ${anchor.name} by name; it offered ${offered.length} summits`,
+    ).toBeDefined();
+    await picker.selectOption(anchor.id);
+    await expect(page.getByTestId('live-reanchor-prompt')).toContainText(`Now tap ${anchor.name}`);
+
+    // Tapped where Deer Point's crest really is, less the by-eye slip. Nothing
+    // the app drew enters this: under a 92° error its own Deer Point marker is
+    // off the picture entirely.
+    const TAPPED_PX = {
+      xPx: TARGET_PX.xPx + REANCHOR_TAP_ERROR_PX.xPx,
+      yPx: TARGET_PX.yPx + REANCHOR_TAP_ERROR_PX.yPx,
+    };
+    await tapReanchorAt(page, TAPPED_PX.xPx, TAPPED_PX.yPx);
+
+    // The summit path asks before it turns anything, and says how far by.
+    const confirm = page.getByTestId('live-reanchor-confirm');
+    await expect(confirm).toBeVisible();
+    const promisedMoveDeg = Number(await confirm.getAttribute('data-move-deg'));
+    expect(await reanchor.getAttribute('data-gross-offset-deg')).toBe('0');
+    await page.getByTestId('live-reanchor-confirm-yes').click();
+    await expect(reanchor).toHaveAttribute('data-anchor-source', 'summit');
+
+    /**
+     * What the re-anchor recovered, against what the photograph says was wrong.
+     *
+     * The tap was {@link REANCHOR_TAP_ERROR_PX} off the true apex, which is
+     * 0.64° of heading, so the offset is expected to miss the documented
+     * 92.398° by about that and no more.
+     */
+    const grossOffsetDeg = Number(await reanchor.getAttribute('data-gross-offset-deg'));
+    const TAP_SLIP_DEG =
+      Math.atan(REANCHOR_TAP_ERROR_PX.xPx / (FRAME.widthPx / 2 / Math.tan((VISIBLE_FOV.hFovDeg * DEG) / 2))) /
+      DEG;
+    console.log(
+      `rehearsal re-anchor: compass said ${EXIF_HEADING_DEG.toFixed(3)}°, ` +
+        `the photograph was taken at ${PHOTO_POSE.headingDeg.toFixed(3)}°, ` +
+        `a gross error of +${GROSS_COMPASS_ERROR_DEG.toFixed(3)}°. ` +
+        `One tap on ${anchor.name}, ${REANCHOR_TAP_ERROR_PX.xPx} px right and ` +
+        `${-REANCHOR_TAP_ERROR_PX.yPx} px above its true apex, recorded ` +
+        `${grossOffsetDeg.toFixed(3)}° and promised a ${promisedMoveDeg.toFixed(1)}° turn.`,
+    );
+    expect(
+      Math.abs(grossOffsetDeg - -GROSS_COMPASS_ERROR_DEG),
+      'the re-anchor did not recover the documented compass error',
+    ).toBeLessThan(TAP_SLIP_DEG + 0.2);
+    // And the labels are now pointed at the photograph rather than a quarter
+    // turn away from it. What is left is the by-eye slip, which is the drag's
+    // job.
+    await expect
+      .poll(
+        async () => {
+          const seen = (await drawnPose(page)).headingDeg;
+          return Math.abs(((seen - PHOTO_POSE.headingDeg + 540) % 360) - 180);
+        },
+        { timeout: 15_000 },
+      )
+      .toBeLessThan(TAP_SLIP_DEG + 0.2);
+    const anchoredHeadingDeg = (await drawnPose(page)).headingDeg;
+
     await page.getByTestId('field-session-next').click();
 
     /* ── 4. the fix ───────────────────────────────────────────────────────── */
@@ -336,56 +536,42 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
     await page.getByTestId('field-session-next').click();
 
     /* ── 6. capture raw ───────────────────────────────────────────────────── */
+    // "Raw" means before the drag, not before the re-anchor: § 2.7 puts Fix
+    // direction ahead of the captures, so this frame is taken with the labels
+    // already turned back onto the picture. It is also the south-facing capture
+    // the prereg registers — the anchored heading is 187.9°, which is 8° east of
+    // due south, with Deer Point 2 km out at −4.5° and the sky above it.
     await expect(session).toHaveAttribute('data-step-id', 'capture-raw');
+    expect(
+      Math.abs(anchoredHeadingDeg - 180),
+      'the raw capture is not the south-facing one § 2.7 registers',
+    ).toBeLessThan(15);
     await holdStill(page);
     injected.push({ captureId: 'c1', headingDeg: RAW_HEADING_DEG, pitchDeg: RAW_PITCH_DEG });
     await capture(page, 1);
 
-    /* ── 7. the anchor, chosen by a rule fixed before the run ─────────────── */
+    /* ── 7. the anchor: Deer Point, the summit the protocol names ─────────── */
     await expect(session).toHaveAttribute('data-step-id', 'drag');
     const choices = page.getByTestId('field-session-anchor-choice');
     await expect(choices.first()).toBeVisible({ timeout: 20_000 });
     const drawnIds = await choices.evaluateAll((nodes) =>
       nodes.map((node) => node.getAttribute('data-summit-id') ?? ''),
     );
-    // The rule: of the named summits the documented pose puts in frame, take the
-    // greatest apparent height among those the overlay actually drew, more than
-    // 1 km away — the viewpoint's own summit is underfoot — and near enough to
-    // the frame centre that an F4 pan can still carry it to either edge.
-    const anchor = inFrameCandidates().find(
-      (peak) =>
-        peak.rangeKm > 1 && peak.offsetU <= MAX_ANCHOR_OFFSET_U && drawnIds.includes(peak.id),
-    );
+    const drawnChoiceNames = await choices.allInnerTexts();
+    console.log(`rehearsal anchor choices: ${drawnChoiceNames.join(', ')}`);
+    // The anchor list offers named markers only, so a summit crowded out of the
+    // labels cannot be picked even though its dot is drawn.
+    await expect(labels).toHaveAttribute('data-crowded-out-count', '0');
     expect(
-      anchor,
-      `no drawn summit met the anchor rule; the overlay drew ${drawnIds.length} summits`,
-    ).toBeDefined();
-    if (anchor === undefined) return;
-    console.log(
-      `rehearsal anchor: ${anchor.name} — ${anchor.elevationM} m, ` +
-        `${anchor.rangeKm.toFixed(2)} km, bearing ${anchor.bearingDeg.toFixed(3)}°, ` +
-        `apparent altitude ${anchor.altitudeDeg.toFixed(3)}°, u ${anchor.offsetU.toFixed(3)}`,
-    );
-    await choices.filter({ hasText: anchor.name }).first().click();
-    await expect(page.getByTestId('field-session-anchor-name')).toContainText(anchor.name);
-
-    /**
-     * Where the anchor's apex sits under the photograph's DOCUMENTED pose.
-     *
-     * This is the drag target, and it comes from EXIF's position and heading,
-     * the committed peak coordinate, and this file's own projection. The app's
-     * overlay is drawn 8° and 2° away from it and has no part in computing it.
-     */
-    const TARGET_PX = projectInto(
-      FRAME,
-      { ...PHOTO_POSE, rollDeg: 0, ...VISIBLE_FOV },
-      anchor.bearingDeg,
-      anchor.altitudeDeg,
-    );
-    console.log(
-      `rehearsal drag target (overlay px, documented pose): ` +
-        `${TARGET_PX.xPx.toFixed(1)}, ${TARGET_PX.yPx.toFixed(1)}`,
-    );
+      drawnIds,
+      `the overlay did not draw ${anchor.name}; it drew ${drawnChoiceNames.join(', ')}`,
+    ).toContain(anchor.id);
+    // Picked by id: "Deer Point" is a prefix of "Little Deer Point", and both
+    // are in this frame, so a text match would be ambiguous.
+    await page
+      .locator(`[data-testid="field-session-anchor-choice"][data-summit-id="${anchor.id}"]`)
+      .click();
+    await expect(page.getByTestId('field-session-anchor-name')).toHaveText(anchor.name);
 
     /**
      * Drag the labels until the anchor's marker sits on that pixel.
@@ -400,9 +586,10 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
      *
      * A drag is an angle, not a distance: the gesture turns the labels by
      * `gain · atan(strokePx / focalPx)`, so the stroke that closes a gap of
-     * `n` pixels is `focalPx · tan(Δangle / gain)` and not `n / gain`. At the
-     * 8° this run has to undo, the difference is 333 px against 832 px, which is
-     * an overshoot wider than the picture.
+     * `n` pixels is `focalPx · tan(Δangle / gain)` and not `n / gain`. The gap
+     * left after the re-anchor is under a degree, where the two agree closely,
+     * but the repeats below reset the trim and leave the whole 2° of pitch
+     * error, where they do not.
      */
     const FOCAL_PX = {
       x: FRAME.widthPx / 2 / Math.tan((VISIBLE_FOV.hFovDeg * DEG) / 2),
@@ -472,32 +659,40 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
     /**
      * Turn until the anchor's marker reaches the wanted edge of the picture.
      *
-     * The first guess is arithmetic: the heading that puts the anchor at
-     * u = 0.85 once the drag's trim is allowed for. The loop after it closes on
-     * what the screen reports, which is what the person on site does — the
-     * registered target is a position on the picture, not an angle.
+     * The first guess is arithmetic: the COMPASS reading that puts the anchor at
+     * u = 0.85 once the re-anchor's offset and the drag's trim are both allowed
+     * for. The labels are drawn at `sensed + grossOffset + trim`, and the
+     * compass is 92° wrong, so a guess that ignores the offset aims a quarter
+     * turn away from the edge it wants. The loop after it closes on what the
+     * screen reports, which is what the person on site does — the registered
+     * target is a position on the picture, not an angle.
      */
+    const sensedFor = (drawnHeadingDeg: number): number =>
+      drawnHeadingDeg - grossOffsetDeg - trim.headingDeg;
     const panAnchorTo = async (side: 'left' | 'right'): Promise<number> => {
       const wantDelta = (side === 'left' ? -1 : 1) * (Math.atan(PAN_TARGET_U * halfFieldTan) / DEG);
-      let trueHeading = anchor.bearingDeg - wantDelta - trim.headingDeg;
+      let sensedHeading = sensedFor(anchor.bearingDeg - wantDelta);
       for (let attempt = 0; attempt < 8; attempt += 1) {
-        await aimAndSettle(trueHeading, RAW_PITCH_DEG);
+        await aimAndSettle(sensedHeading, RAW_PITCH_DEG);
         const seen = await anchorOffset(page);
         console.log(
-          `pan ${side} attempt ${attempt}: aimed ${trueHeading.toFixed(2)}°, ` +
+          `pan ${side} attempt ${attempt}: compass at ${sensedHeading.toFixed(2)}°, ` +
             `anchor ${seen === undefined ? 'off picture' : `${seen.side} u=${seen.u.toFixed(3)}`}`,
         );
         if (seen === undefined) {
           // The anchor left the picture: step back toward its own bearing.
-          trueHeading = (trueHeading + anchor.bearingDeg - trim.headingDeg) / 2;
+          sensedHeading = (sensedHeading + sensedFor(anchor.bearingDeg)) / 2;
           continue;
         }
-        if (seen.side === side && seen.u >= 0.8) return trueHeading;
+        if (seen.side === side && seen.u >= 0.8) return sensedHeading;
         const haveDelta = (seen.side === 'left' ? -1 : 1) * (Math.atan(seen.u * halfFieldTan) / DEG);
-        trueHeading += haveDelta - wantDelta;
+        sensedHeading += haveDelta - wantDelta;
       }
       throw new Error(`the anchor never reached the ${side} edge`);
     };
+
+    /** What the drift line said at each pan, for the run notes. */
+    const panDrift: { id: string; gapDeg: number; beyondBand: boolean }[] = [];
 
     type Movement =
       | { readonly id: string; readonly side: 'left' | 'right' }
@@ -517,6 +712,16 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
         const panLine = page.getByTestId('field-session-pan');
         await expect(panLine).toHaveAttribute('data-anchor-side', movement.side);
         await expect(panLine).toHaveAttribute('data-reached', 'true', { timeout: 20_000 });
+        // The drift line measures the compass against where it stood when the
+        // direction was fixed, and § 2.4 asks the person to turn tens of
+        // degrees. It cannot tell a deliberate pan from a compass that
+        // wandered, so it warns on every F4 pan. Recorded, not asserted away.
+        const driftLine = page.getByTestId('live-anchor-drift');
+        panDrift.push({
+          id: movement.id,
+          gapDeg: Number(await driftLine.getAttribute('data-gap-deg')),
+          beyondBand: (await driftLine.getAttribute('data-beyond-band')) === 'true',
+        });
       } else {
         pitchDeg = RAW_PITCH_DEG + movement.tiltDeg;
         await aim(headingDeg, pitchDeg);
@@ -533,8 +738,15 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
     await aim(RAW_HEADING_DEG, RAW_PITCH_DEG);
     for (const repeat of [2, 3]) {
       await expect(session).toHaveAttribute('data-step-id', 'drag');
-      await expect(page.getByTestId('field-session-anchor-name')).toContainText(anchor.name);
+      await expect(page.getByTestId('field-session-anchor-name')).toHaveText(anchor.name);
+      // "Put the labels back" clears the fine trim only. The re-anchor's gross
+      // offset survives it, which is what makes the repeat a repeat of the drag
+      // rather than of the whole recovery.
       await page.getByTestId('field-session-reset-trim').click();
+      expect(Number(await reanchor.getAttribute('data-gross-offset-deg'))).toBeCloseTo(
+        grossOffsetDeg,
+        6,
+      );
       const repeatMissPx = await dragOntoTarget();
       expect(repeatMissPx, `drag ${repeat} never reached the apex`).toBeLessThan(1);
       await page.getByTestId('field-session-next').click();
@@ -592,6 +804,19 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
       expect(item.sweepRadiusKm).toBe(60);
     }
 
+    /* ── the captures taken at the photograph's own pose face south ───────── */
+    // Every one of them records a heading near 188°, not the 280° the compass
+    // read. That is the re-anchor surviving into the bundle: the offset itself
+    // cannot travel yet (`POSE_CARRIES_GROSS_OFFSET` is false, so `POSE_KEYS`
+    // has no field for it), but the pose the labels were drawn at does.
+    for (const item of parsed.value.captures) {
+      if (item.role === 'moved') continue;
+      expect(
+        Math.abs(((item.pose.headingDeg - PHOTO_POSE.headingDeg + 540) % 360) - 180),
+        `${item.captureId} was not taken at the photograph's pose`,
+      ).toBeLessThan(1);
+    }
+
     /* ── nothing forbidden, anywhere in it ────────────────────────────────── */
     expect(findForbiddenBundleContent(bundleDocument)).toEqual([]);
     expect(findForbiddenContent(bundleDocument)).toEqual([]);
@@ -622,17 +847,22 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
 
     /**
      * A SYNTHETIC truth document, so `npm run analyze:field` has something to
-     * chew on. It is the injected pose with the injected errors removed,
+     * chew on. It is where the phone really pointed — the compass reading with
+     * the measured 92.398° error and the injected 2° of pitch taken back off —
      * projected through this file's geometry and straddled by ±2 px. **No
      * annotator looked at a picture, so it is not truth**: it says where the
      * pipeline's own arithmetic puts a summit, not where the summit is. The real
      * truth comes back from `ANNOTATE.md`.
+     *
+     * Deer Point is left out. The pose was solved from Deer Point's crest, the
+     * re-anchor was taken on Deer Point and the drag was aimed at Deer Point, so
+     * a residual measured there is the arithmetic closing on its own input.
      */
     const truthCaptures = parsed.value.captures.map((item) => {
       const at = injected.find((entry) => entry.captureId === item.captureId);
       if (at === undefined) throw new Error(`no injected pose for ${item.captureId}`);
       const pose = {
-        headingDeg: at.headingDeg - COMPASS_ERROR_DEG,
+        headingDeg: at.headingDeg - GROSS_COMPASS_ERROR_DEG,
         pitchDeg: at.pitchDeg - PITCH_ERROR_DEG,
         rollDeg: 0,
         ...VISIBLE_FOV,
@@ -640,6 +870,7 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
       const apexes: { summitId: string; apexPx: { xPx: number; yPx: number } }[] = [];
       const second: { summitId: string; apexPx: { xPx: number; yPx: number } }[] = [];
       for (const summit of item.overlay.drawn) {
+        if (summit.summitId === anchor.id) continue;
         const peak = inFrameCandidates().find((entry) => entry.id === summit.summitId);
         if (peak === undefined) continue;
         const spot = projectInto(CAMERA, pose, peak.bearingDeg, peak.altitudeDeg);
@@ -662,10 +893,14 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
         {
           format: 'mountain-finder/field-apex-truth@2',
           procedure:
-            'SYNTHETIC — NOT INDEPENDENT TRUTH. The injected sensor pose with the injected ' +
-            '8 deg compass and -2 deg pitch errors removed, projected onto the stored frame and ' +
-            'straddled by +/-2 px. No annotator looked at a photograph. It exists to exercise ' +
-            'the grading path; every verdict it produces is about the arithmetic, not the picture.',
+            'SYNTHETIC — NOT INDEPENDENT TRUTH. Where the phone really pointed: the compass ' +
+            `reading less the ${GROSS_COMPASS_ERROR_DEG.toFixed(3)} deg error IMG_7270 measures ` +
+            '(docs/IMG-7270-HEADING.md), and less the 2 deg of pitch this run injects, ' +
+            'projected onto the stored frame and straddled by +/-2 px. Deer Point is left out: ' +
+            'it is the summit the pose was solved from, the re-anchor reference and the drag ' +
+            'anchor, so it cannot be graded against itself. No annotator looked at a ' +
+            'photograph. It exists to exercise the grading path; every verdict it produces is ' +
+            'about the arithmetic, not the picture.',
           captures: truthCaptures,
         },
         null,
@@ -675,15 +910,21 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
 
     writeFileSync(
       resolve(OUT_DIR, 'ANNOTATE.md'),
-      annotationBrief(parsed.value.captures, {
-        anchorName: anchor.name,
-        anchorId: anchor.id,
-        framePx: CAMERA,
-      }),
+      annotationBrief(parsed.value.captures, { anchor, framePx: CAMERA }),
     );
     writeFileSync(
       resolve(OUT_DIR, 'run-notes.md'),
-      runNotes(parsed.value.captures, { sweepMs, labelled, missPx, anchor, target: TARGET_PX }),
+      runNotes(parsed.value.captures, {
+        sweepMs,
+        labelled,
+        missPx,
+        anchor,
+        target: TARGET_PX,
+        grossOffsetDeg,
+        anchoredHeadingDeg,
+        tapSlipDeg: TAP_SLIP_DEG,
+        panDrift,
+      }),
     );
   });
 });
@@ -693,11 +934,21 @@ function drawnNames(item: Capture): readonly string[] {
   return item.overlay.drawn.map((summit) => summit.name);
 }
 
+/** Every summit drawn in any capture, once each, in the order first drawn. */
+function drawnUnion(captures: readonly Capture[]): Capture['overlay']['drawn'][number][] {
+  const seen = new Map<string, Capture['overlay']['drawn'][number]>();
+  for (const item of captures) {
+    for (const summit of item.overlay.drawn) {
+      if (!seen.has(summit.summitId)) seen.set(summit.summitId, summit);
+    }
+  }
+  return [...seen.values()];
+}
+
 function annotationBrief(
   captures: readonly Capture[],
   context: {
-    anchorName: string;
-    anchorId: string;
+    anchor: Candidate;
     framePx: { widthPx: number; heightPx: number };
   },
 ): string {
@@ -730,11 +981,16 @@ function annotationBrief(
     '   - **You cannot tell.** Haze, a crowded ridge line, a foothill you cannot resolve.',
     '     This answer removes the summit from the scoring rather than counting against the',
     '     app either way.',
-    '3. Say which method you worked under, on your own reading:',
-    '   - `bare-frame` — the frame and the summit names, nothing else.',
+    `3. **On ${context.anchor.name}, mark ${DEER_POINT_LANDMARK} — not the tip of the mast.**`,
+    '   That summit carries a cluster of masts and buildings, and the mast tops stand roughly',
+    '   30 px above the ground crest in a frame this size. When you report it, give',
+    `   \`${DEER_POINT_LANDMARK}\` as the landmark.`,
+    '4. Say which method you worked under, on your own reading:',
+    '   - `bare-frame` — the frame and the summit names, nothing else. This is what you have',
+    '     been given, so it is the answer unless you went and found a map.',
     '   - `frame-and-map` — the frame, the summit names, the viewpoint and a topographic',
     '     map. Never the app\'s projection, and never the pose.',
-    '4. Write nothing else about the frame, and do not revise an earlier frame after seeing',
+    '5. Write nothing else about the frame, and do not revise an earlier frame after seeing',
     '   a later one.',
   );
   lines.push('');
@@ -745,12 +1001,17 @@ function annotationBrief(
   lines.push('```json');
   lines.push('{');
   lines.push('  "format": "mountain-finder/field-apex-truth@2",');
-  lines.push('  "procedure": "two independent annotators, bare frames, labelled pixel grid",');
+  lines.push(
+    '  "procedure": "two independent annotators, bare frames, no overlay and no pose",',
+  );
   lines.push('  "captures": [');
   lines.push('    { "captureId": "c1", "readings": [');
   lines.push('      { "annotatorId": "you", "method": "bare-frame", "apexes": [');
   lines.push('        { "summitId": "<the id printed beside the name>", "apexPx": { "xPx": 0, "yPx": 0 } },');
-  lines.push('        { "summitId": "<one taken off a feature>", "apexPx": { "xPx": 0, "yPx": 0 }, "landmark": "the crest under the tallest mast" },');
+  lines.push(
+    `        { "summitId": "<one taken off a feature>", "apexPx": { "xPx": 0, "yPx": 0 }, ` +
+      `"landmark": "${DEER_POINT_LANDMARK}" },`,
+  );
   lines.push('        { "summitId": "<one that is not there>", "absent": true, "reason": "clear-sky" },');
   lines.push('        { "summitId": "<one you cannot tell>", "cannotIdentify": true }');
   lines.push('      ] }');
@@ -767,13 +1028,28 @@ function annotationBrief(
   lines.push('## What is known about the frames');
   lines.push('');
   lines.push(
-    '- All eight frames are the SAME photograph. The camera in this rehearsal is a file, so',
-    '  it could not move. The captures differ in where the app pointed its overlay, not in',
-    '  what the picture shows. Answer each frame on its own anyway: identical answers across',
-    '  the eight are the expected result and are worth having on the record.',
-    `- The overlay's anchor summit was ${context.anchorName} (\`${context.anchorId}\`).`,
+    `- All ${captures.length} frames are the SAME photograph. The camera in this rehearsal is a`,
+    '  file, so it could not move. The captures differ in where the app pointed its overlay,',
+    '  not in what the picture shows. Answer each frame on its own anyway: identical answers',
+    `  across the ${captures.length} are the expected result and are worth having on the`,
+    '  record.',
+    '- The picture faces south from a ridge, and the nearest summit in it is about 2 km away',
+    '  and below the horizon line rather than on it.',
+    `- The overlay was anchored on ${context.anchor.name} (\`${context.anchor.id}\`). Its`,
+    '  reading is reported on its own and is not scored against the app, because the app was',
+    '  aimed at it by hand. Report it anyway: it is what ties one frame to the next.',
     '- Nothing about the app\'s predicted positions is in this file, on purpose.',
   );
+  lines.push('');
+  lines.push('## Every summit named across the frames');
+  lines.push('');
+  lines.push('The union of the per-frame lists below, so you know the whole cast before you');
+  lines.push('start. A name here is a claim by the app, not a fact about the picture.');
+  lines.push('');
+  for (const summit of drawnUnion(captures)) {
+    const note = summit.summitId === context.anchor.id ? ' — the anchor' : '';
+    lines.push(`- ${summit.name} — \`${summit.summitId}\`, ${summit.elevationM} m${note}`);
+  }
   lines.push('');
   lines.push('## The frames, and the summits to look for in each');
   lines.push('');
@@ -781,7 +1057,8 @@ function annotationBrief(
     lines.push(`### frames/${item.framePath}`);
     lines.push('');
     for (const summit of item.overlay.drawn) {
-      lines.push(`- ${summit.name} — \`${summit.summitId}\`, ${summit.elevationM} m`);
+      const note = summit.summitId === context.anchor.id ? ' — the anchor' : '';
+      lines.push(`- ${summit.name} — \`${summit.summitId}\`, ${summit.elevationM} m${note}`);
     }
     if (item.overlay.drawn.length === 0) lines.push('- (the overlay drew no summit in this frame)');
     lines.push('');
@@ -797,6 +1074,10 @@ function runNotes(
     missPx: number;
     anchor: Candidate;
     target: { xPx: number; yPx: number };
+    grossOffsetDeg: number;
+    anchoredHeadingDeg: number;
+    tapSlipDeg: number;
+    panDrift: readonly { id: string; gapDeg: number; beyondBand: boolean }[];
   },
 ): string {
   const lines: string[] = [];
@@ -806,7 +1087,8 @@ function runNotes(
   lines.push('');
   lines.push(`- Sweep: 720 of 720 rays to 60 km in **${context.sweepMs.toFixed(0)} ms** in Chromium.`);
   lines.push(
-    `- At the raw pose the overlay labelled **${context.labelled.labelled}** summits, ` +
+    `- At the compass's own pose, before the direction was fixed, the overlay labelled ` +
+      `**${context.labelled.labelled}** summits, ` +
       `held ${context.labelled.offFrame} off frame and crowded out ${context.labelled.crowdedOut}.`,
   );
   lines.push(
@@ -815,13 +1097,61 @@ function runNotes(
       `apparent altitude ${context.anchor.altitudeDeg.toFixed(3)}°.`,
   );
   lines.push(
-    `- Drag target, from the documented pose alone: ` +
-      `${context.target.xPx.toFixed(1)}, ${context.target.yPx.toFixed(1)} overlay px ` +
-      `(${(context.target.xPx * FRAME_SCALE).toFixed(1)}, ` +
-      `${(context.target.yPx * FRAME_SCALE).toFixed(1)} frame px). ` +
+    `- Drag target, from the solved pose alone: ` +
+      `${context.target.xPx.toFixed(2)}, ${context.target.yPx.toFixed(2)} overlay px ` +
+      `(${(context.target.xPx * FRAME_SCALE).toFixed(2)}, ` +
+      `${(context.target.yPx * FRAME_SCALE).toFixed(2)} frame px), against the annotated ` +
+      `${DEER_POINT_ANNOTATED_PX.xPx}, ${DEER_POINT_ANNOTATED_PX.yPx}. ` +
       `The drag closed to ${context.missPx.toFixed(2)} px.`,
   );
-  lines.push(`- Injected error: compass +${COMPASS_ERROR_DEG}°, pitch ${PITCH_ERROR_DEG}°.`);
+  lines.push('');
+  lines.push('## The gross compass error, and the re-anchor that undid it');
+  lines.push('');
+  lines.push(
+    `- The photograph's pose is solved, not recorded: **${PHOTO_POSE.headingDeg}° true, ` +
+      `${PHOTO_POSE.pitchDeg}°**, from \`docs/IMG-7270-HEADING.md\` § 3.`,
+    `- The phone's compass reported **${EXIF_HEADING_DEG.toFixed(3)}°**, so the sensors start ` +
+      `**+${GROSS_COMPASS_ERROR_DEG.toFixed(3)}°** wrong. The fine drag reaches ±30°, so none ` +
+      'of that is draggable.',
+    '- The sun path is unusable here: at the recorded instant the sun is 50.4° right of the',
+    '  optical axis against a 36.87° half-frame, outside the picture (§ 4). The run uses the',
+    `  summit path instead — ${context.anchor.name}, picked by name and tapped.`,
+    `- The tap was placed ${REANCHOR_TAP_ERROR_PX.xPx} px right and ` +
+      `${-REANCHOR_TAP_ERROR_PX.yPx} px above the true apex, a by-eye slip worth ` +
+      `${context.tapSlipDeg.toFixed(2)}°.`,
+    `- Recorded gross heading offset: **${context.grossOffsetDeg.toFixed(3)}°**, against the ` +
+      `${(-GROSS_COMPASS_ERROR_DEG).toFixed(3)}° the photograph measures — a residual of ` +
+      `${Math.abs(context.grossOffsetDeg + GROSS_COMPASS_ERROR_DEG).toFixed(3)}°.`,
+    `- The labels then sat at ${context.anchoredHeadingDeg.toFixed(3)}°, and the fine drag ` +
+      'closed the rest.',
+    '- The offset itself does not travel in the bundle: `POSE_CARRIES_GROSS_OFFSET` is false,',
+    '  so `POSE_KEYS` has no field for it. What travels is the pose the labels were drawn at.',
+  );
+  lines.push(`- Injected pitch error: ${PITCH_ERROR_DEG}°. EXIF records no pitch.`);
+  lines.push('');
+  lines.push('## The drift line during the F4 pans');
+  lines.push('');
+  lines.push(
+    '`anchorDrift` compares the compass now with the compass when the direction was fixed.',
+    '§ 2.4 asks the person to turn tens of degrees, so it fires on every pan. It cannot tell a',
+    'deliberate turn from a compass that wandered.',
+  );
+  lines.push('');
+  for (const entry of context.panDrift) {
+    lines.push(
+      `- **${entry.id}**: gap ${entry.gapDeg.toFixed(1)}°, ` +
+        `${entry.beyondBand ? 'beyond the band it claims' : 'inside the band it claims'}.`,
+    );
+  }
+  lines.push('');
+  lines.push('## The south-facing capture § 2.7 registers');
+  lines.push('');
+  lines.push(
+    `The anchored heading is ${context.anchoredHeadingDeg.toFixed(1)}°, which faces south, and`,
+    `${context.anchor.name} sits ${context.anchor.rangeKm.toFixed(2)} km out at`,
+    `${context.anchor.altitudeDeg.toFixed(2)}° with the sky above it. Every capture taken at`,
+    'the photograph\'s own pose is therefore the registered south-facing capture.',
+  );
   lines.push('');
   lines.push('## Summits drawn per capture');
   lines.push('');

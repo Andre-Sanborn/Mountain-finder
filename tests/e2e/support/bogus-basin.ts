@@ -19,15 +19,14 @@
  * `fixtures/photos/real/hdr-gainmap-7270.heic` carries a position, a heading and
  * a 35 mm-equivalent focal length in its EXIF, read by `src/exif/heif.ts` and
  * asserted in `src/exif/heif.test.ts`. The position and the lens are sound. The
- * heading is not: the file records 280.336° T and the camera faced 188° ± 1°,
- * solved from Deer Point's summit in the frame and confirmed by the sun
- * (`docs/REAL-PHOTO-POSE.md` § IMG_7270, finding X-10). `PHOTO_POSE` below still
- * carries the EXIF value, so a rehearsal driven from it points the screen 92.3°
- * away from what the photograph shows.
+ * heading is not.
  *
- * EXIF carries **no pitch**, because it has no field for one. Bogus Basin's own
- * pitch solves to about −4.9° from the masts in the frame; `PHOTO_POSE.pitchDeg`
- * is zero, which is what `npm run annotate` defaults to.
+ * {@link PHOTO_POSE} is the SOLVED pose — where the camera actually pointed —
+ * derived in [`docs/IMG-7270-HEADING.md`](../../../docs/IMG-7270-HEADING.md) § 3
+ * and printed by `scripts/probes/img-7270-heading/geometry.ts`. The EXIF tag is
+ * {@link EXIF_HEADING_DEG}, and it lives on as what the phone's COMPASS says,
+ * which is the failure the rehearsal injects rather than a pose anything is
+ * driven from.
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
@@ -60,24 +59,54 @@ export const SITE_PACKAGE_MANIFEST = resolve(
 export const PHOTO_PATH = 'fixtures/photos/real/hdr-gainmap-7270.heic';
 
 /**
- * IMG_7270's EXIF pose, and where it disagrees with the photograph.
+ * The pose IMG_7270 was taken at: where the camera stood and where it pointed.
  *
- * Position, heading and the 24 mm-equivalent lens are the file's own bytes
- * (`src/exif/heif.test.ts` asserts the heading and the focal length against
- * them). `pitchDeg` is not: EXIF records no pitch, and zero is what the rest of
- * this repository assumes in its absence.
+ * Position and the 24 mm-equivalent lens are the file's own bytes
+ * (`src/exif/heif.test.ts` asserts the focal length against them). The heading
+ * and the pitch are SOLVED, not recorded: `docs/IMG-7270-HEADING.md` § 3 runs
+ * Newton on the projection until Deer Point's annotated crest re-projects to
+ * {@link DEER_POINT_ANNOTATED_PX}, and gets 187.938° true and −4.939°. The
+ * budget in § 5 puts those at ±0.87° and ±0.26°.
  *
- * `headingDeg` is the EXIF tag, and the tag is 92.3° off the true heading of
- * 188° ± 1° (finding X-10). Whatever reads this is pointing at ground the
- * photograph does not cover.
+ * Three decimals is 0.001°, which is 0.01 px at this lens and frame. Carrying
+ * the document's printed figures rather than re-solving here keeps the solve in
+ * one place, and `rehearsal.spec.ts` re-projects Deer Point through this file's
+ * own geometry and checks it lands on the annotated pixel.
  */
 export const PHOTO_POSE = {
   lat: 43.77148,
   lon: -116.08862,
-  headingDeg: 280.33596801190254,
-  pitchDeg: 0,
+  headingDeg: 187.938,
+  pitchDeg: -4.939,
   focalLength35mm: 24,
 } as const;
+
+/**
+ * What the phone's compass reported: `GPSImgDirection`, true-referenced.
+ *
+ * This is a sensor reading, not a pose. It is 92.398° from where the camera
+ * pointed (`docs/IMG-7270-HEADING.md` § 7, finding X-10), and the rehearsal
+ * feeds it to the screen as the compass error a person on site has to recover
+ * from.
+ */
+export const EXIF_HEADING_DEG = 280.33596801190254;
+
+/** How far the compass was wrong, degrees, signed as compass minus truth. */
+export const GROSS_COMPASS_ERROR_DEG = EXIF_HEADING_DEG - PHOTO_POSE.headingDeg;
+
+/** The summit the pose was solved from, and the summit the field protocol anchors on. */
+export const DEER_POINT_NAME = 'Deer Point';
+
+/**
+ * Where two annotators put Deer Point's crest, in the 1920 × 1080 working frame.
+ *
+ * What they marked is the ground crest under the mast cluster, not a mast top
+ * (`docs/IMG-7270-HEADING.md` § 1). The read precision is ±5 px.
+ */
+export const DEER_POINT_ANNOTATED_PX = { xPx: 1335, yPx: 535 } as const;
+
+/** The landmark instruction that pixel carries, for the annotation brief. */
+export const DEER_POINT_LANDMARK = 'the crest under the tallest mast';
 
 /**
  * SRTM's reading at the photograph's own coordinate, `docs/REAL-PHOTO-POSE.md`.

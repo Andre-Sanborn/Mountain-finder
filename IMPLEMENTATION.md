@@ -1504,3 +1504,30 @@ two located summits.
 On the aligned fixture the compass sits 4.077° from the solved heading, inside an 8.700° band.
 The limit: errors in the peak data or the observer fix move sensed and solved together, so F3
 and F4 catch those instead.
+
+## The rehearsal re-run at the solved pose
+
+The rehearsal now uses the solved pose, 187.938° and −4.939° (`docs/IMG-7270-HEADING.md` §3).
+The sensors are fed the EXIF compass, 280.336°, which injects the real +92.398° gross error,
+plus 2° of pitch error. The sun is 50.4° right of axis, outside the 36.87° half-frame, so the
+run uses the summit re-anchor on Deer Point: picked by id, tapped with a deliberate 6/−4 px
+slip, 0.54°.
+
+**Results:**
+- The recorded gross offset was −92.839°, a residual of 0.441°, inside the slip.
+- The fine drag closed the rest to 0.16 px.
+- Deer Point is the anchor and is excluded from grading. Doe Point, Little Deer Point and about
+  20 further summits are graded.
+- Deer Point re-projects at the solved pose 0.071 px from the annotated (1335, 535), an
+  independent cross-check of the Newton solve.
+- The 60 km sweep took 3 234 ms. There were 8 labels at the compass pose and 25 after the
+  re-anchor.
+- The viewport is 960 × 540, frame scale exactly 2.
+
+**Found:**
+- At 800 px, label crowding dropped Deer Point's name, so the anchor could not be picked. On a
+  phone the anchor picker must offer crowded-out summits.
+- `anchorDrift` warns on every deliberate F4 pan (48.9° and −16.1°), because it cannot tell a
+  turn from compass drift.
+
+The frames are still a still image, so F4 tests arithmetic only.
