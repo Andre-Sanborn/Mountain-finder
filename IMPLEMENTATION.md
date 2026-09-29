@@ -708,3 +708,36 @@ coordinate literals, so it cannot trip the gate it tests.
 - Editing a cleared file breaks its hash, so it needs one `--approve` per edit.
 - If `src/exif/testing/generate.ts` is not byte-deterministic, regenerating the synthetic
   JPEGs needs re-approval.
+
+## The field pose is landscape, decided 2026-09-29
+
+Held upright in portrait, the iPhone's compass reference edge, the portrait top edge, points at
+the sky, and no public source measures what `webkitCompassHeading` reports then. Held upright in
+landscape, that edge is horizontal. Under the documented hypothesis, the camera bearing is the
+reading ±90°, with the sign to be settled by the recording. Under the undocumented one, it is
+the reading itself. Either way, landscape needs no stored alpha offset, so the web AR screen is
+built for landscape. The offset hold is built only if the recording shows the compass route
+unusable in landscape.
+
+**Why this is safe to drop from the critical path.** The offset hold has four known failure
+modes, all found in the strategy review, and so is not built unless needed:
+- relative alpha drifts with handling. Full-Tilt issue #3 records this, and Apple's DocC says
+  the plain reference frame drifts.
+- `CLHeading` is filtered and lags attitude, so sampling during a raise biases the offset
+- the offset silently outlives an alpha re-base on tab suspend or reload
+- a user who opens the app already upright never gets a sample
+
+**The home-session protocol gains two discriminating poses.** For pure pitch the top edge and
+the camera axis share an azimuth, so a portrait-upright recording cannot tell the hypotheses
+apart. Two poses can:
+- landscape-upright on a known bearing, where the hypotheses differ by exactly 90°
+- tipping past vertical, where the documented hypothesis flips 180° and the other stays
+  continuous
+
+The session also adds a 3 to 5 minute still capture followed by 1 minute of handling, to put a
+number on alpha drift.
+
+**Native fallback.** `expo-location` also reads a bare `CLHeading` with no `headingOrientation`
+(`DeviceHeadingStreamer.swift`), so switching to Expo would not remove the question. But
+`expo-sensors` starts device motion in `.xMagneticNorthZVertical` (`SensorsUtils.swift`), an
+earth-referenced yaw at any pose. If the web compass fails in the field, that is the fallback.

@@ -21,12 +21,13 @@ after its self-check has run and passed here. The checks are in
 - [x] Build the repository privacy check: no EXIF GPS or coordinate pairs in new files; wire into check
 - [x] Build the web sensor adapter as a pure function of raw Safari and Chromium events
 - [ ] Settle webkitCompassHeading's reference axis for an upright phone from the home recording
-- [ ] Maintain the iOS alpha offset in the live loop: sample it while tilted, hold it while upright
+- [ ] Build a recording schema and `analyze:recording` that scores the compass hypotheses automatically
+- [ ] Only if landscape fails: the iOS alpha-offset hold, re-anchored continuously, invalidated on re-base
 - [ ] Settle the device-roll to screen-roll sign from the home recording
 - [ ] Give suggestPoseTrim tests a timeout that holds under parallel load (1.8 s alone, >5 s at load 13)
 - [ ] Build the Bogus Basin site package at 60 km radius, with seam and coverage tests
 - [ ] Run a 360° annotateScene at location fix; measure its time under CPU throttling
-- [ ] Build the web AR screen: single-lens camera, live loop, drag, band, sun marker, offline worker
+- [ ] Build the web AR screen in landscape: single-lens camera, live loop, drag, band, sun marker, offline worker
 - [ ] Build the capture bundle and `analyze:field`; bundles never enter the repository
 - [ ] Write the error budget and pre-register the field pass criteria
 - [ ] Run the headless dress rehearsal on IMG_7270 and railroad-ridge-48mm with injected errors
