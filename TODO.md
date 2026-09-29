@@ -101,7 +101,7 @@ after its self-check has run and passed here. The checks are in
 - [x] Pre-register the site's near-band limit, the south direction's bands, and the apex rules
 - [x] Add the optional `rule` field to the @2 truth format and split the report by rule-bound/free
 - [x] Register two north-east captures with a `turned` role that F2 reads and F3/F4 do not
-- [ ] Refresh the rehearsal spec for the 19-step session and the new drift line, then re-run it
+- [x] Refresh the rehearsal spec for the 19-step session and the new drift line, then re-run it
 - [x] Charge the field budget's drag anchor at the registered 2 km anchor, and regenerate §2.3's limits
 - [x] Enforce the registered apex rule texts in the truth parser, keyed by summit
 - [x] Qualify the north-east direction's Sun claim by season, in the pre-registration and the field guide

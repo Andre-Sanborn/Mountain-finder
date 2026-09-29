@@ -1767,3 +1767,18 @@ draws each summit's error independently in every capture, about ±10 px, which a
 not do; the paired change turns two such draws into 0.73° and 0.81° against 0.60°. The fixture's
 noise model failed, not the criterion.
 
+## The rehearsal walks the 19-step session
+
+`tests/e2e/rehearsal.spec.ts` now produces all 10 captures. The last two are the `turned` pair:
+the spec aims the sensors at a true 45°, a sensed 137.4° under the injected 92.398° compass
+error, and captures with no anchor. The fake camera is a still file, so both frames show the
+same south-facing photograph. They are excluded from the synthetic truth and from
+`ANNOTATE.md`, which says they are not to be annotated. Capture ids c1 to c8 keep their roles,
+so both committed truth files still apply. Both grade 4 passed, 0 failed, 13 without a sample.
+
+The drift line records compass change, phone turn and drift per pan: pan-left 48.9°, 48.9°,
+0.0°; pan-right −16.1°, −16.1°, 0.0°; the turn to the north-east 142.9° of phone turn, 0.0°
+drift. Other figures from the run: 720 of 720 rays to 60 km in 2496 ms, re-anchor −92.839°
+against −92.398°, drag closed to 0.16 px. The spec no longer requires zero crowded-out summits;
+it keeps the 960 px viewport for the exact 16:9 match the grader's residual scaling needs.
+

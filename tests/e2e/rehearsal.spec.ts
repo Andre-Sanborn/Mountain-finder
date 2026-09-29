@@ -96,6 +96,14 @@ import {
  *    with the photograph.** Only the captures taken at the photograph's own pose
  *    — the raw one and the three after-drag ones — can be compared with the
  *    picture at all.
+ *
+ *    The same limit bites hardest on the two `turned` captures § 2.7 ends with.
+ *    The sensors really do turn to the north-east for them, so the overlay is
+ *    drawn on the north-eastern skyline, while the picture behind it is still
+ *    the south-facing photograph. **Nothing either one draws can be compared
+ *    with its frame**, so they are recorded as what they are: a second
+ *    registered direction, captured with no anchor and nothing dragged. They
+ *    are left out of the annotation brief and out of the synthetic truth.
  * 2. **Nobody has annotated these frames.** `out/rehearsal/ANNOTATE.md` is the
  *    brief that asks two people to, and until they answer there is no truth to
  *    grade against. The truth document this spec writes is SYNTHETIC — it is the
@@ -129,14 +137,13 @@ import {
  * the stored frame's width, and every horizontal residual would be scaled by
  * 2 where the truth is 1.5 about a shifted centre.
  *
- * 960 px of width is also what gets Deer Point a name rather than a bare dot.
- * The label budget is `floor(usableWidth / meanLabelWidth)` columns of slots, so
- * it grows with the viewport. At 800 px this frame held 25 summits and could
- * name 21, and the four it dropped were the near low ones — Deer Point, Doe
- * Point and Little Deer Point among them. The field session's anchor list only
- * offers NAMED markers, so at 800 px the protocol's own anchor summit could not
- * be picked. At 960 px, which is nearer a landscape phone than 800 was, all 25
- * are named and none is crowded out.
+ * 960 px is also nearer a landscape phone than 800 px is, and it is wide enough
+ * for the label budget — `floor(usableWidth / meanLabelWidth)` columns of slots
+ * — to write all 25 of this frame's summits rather than leaving the near low
+ * ones as bare dots. That no longer decides whether the protocol can run: the
+ * anchor list offers a crowded-out summit on the same footing as a labelled one
+ * (`anchor-choices.ts`), so Deer Point is pickable either way. The run records
+ * the crowded-out count rather than requiring it to be zero.
  *
  * ── HOW IT IS GATED ────────────────────────────────────────────────────────
  * `data/sites/bogus-basin/` is gitignored and built by `npm run site:package`.
@@ -559,9 +566,6 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
     );
     const drawnChoiceNames = await choices.allInnerTexts();
     console.log(`rehearsal anchor choices: ${drawnChoiceNames.join(', ')}`);
-    // The anchor list offers named markers only, so a summit crowded out of the
-    // labels cannot be picked even though its dot is drawn.
-    await expect(labels).toHaveAttribute('data-crowded-out-count', '0');
     expect(
       drawnIds,
       `the overlay did not draw ${anchor.name}; it drew ${drawnChoiceNames.join(', ')}`,
@@ -692,7 +696,13 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
     };
 
     /** What the drift line said at each pan, for the run notes. */
-    const panDrift: { id: string; gapDeg: number; beyondBand: boolean }[] = [];
+    const panDrift: {
+      id: string;
+      gapDeg: number;
+      turnDeg: number;
+      driftDeg: number;
+      beyondBand: boolean;
+    }[] = [];
 
     type Movement =
       | { readonly id: string; readonly side: 'left' | 'right' }
@@ -712,14 +722,17 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
         const panLine = page.getByTestId('field-session-pan');
         await expect(panLine).toHaveAttribute('data-anchor-side', movement.side);
         await expect(panLine).toHaveAttribute('data-reached', 'true', { timeout: 20_000 });
-        // The drift line measures the compass against where it stood when the
-        // direction was fixed, and § 2.4 asks the person to turn tens of
-        // degrees. It cannot tell a deliberate pan from a compass that
-        // wandered, so it warns on every F4 pan. Recorded, not asserted away.
+        // The drift line measures the compass against the phone's own turn, so
+        // a deliberate pan of tens of degrees moves both together and leaves
+        // nothing to warn about. The pump turns the relative alpha with the
+        // magnetometer's, which is what a real turn does. Recorded rather than
+        // asserted: what this run measures is how far the two disagree.
         const driftLine = page.getByTestId('live-anchor-drift');
         panDrift.push({
           id: movement.id,
           gapDeg: Number(await driftLine.getAttribute('data-gap-deg')),
+          turnDeg: Number(await driftLine.getAttribute('data-turn-deg')),
+          driftDeg: Number(await driftLine.getAttribute('data-drift-deg')),
           beyondBand: (await driftLine.getAttribute('data-beyond-band')) === 'true',
         });
       } else {
@@ -757,6 +770,45 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
       await capture(page, repeat + 5);
     }
 
+    /* ── 11. the second registered direction, to the north-east ───────────── */
+    // The phone really is turned to the north-east here, so the overlay is
+    // drawn on the north-eastern skyline. The camera is a file and cannot
+    // follow, so the picture behind it is still the south-facing photograph.
+    // These two captures therefore say what the app does in a second direction
+    // under the first direction's trim, and nothing about where a summit is.
+    await expect(session).toHaveAttribute('data-step-id', 'face-north-east');
+    const NORTH_EAST_HEADING_DEG = 45;
+    // The compass is still 92.398° wrong, so the reading that lands the labels
+    // on the north-east is that error the other way round.
+    const turnedSensedHeadingDeg = NORTH_EAST_HEADING_DEG + GROSS_COMPASS_ERROR_DEG;
+    await aimAndSettle(turnedSensedHeadingDeg, RAW_PITCH_DEG);
+    // The turn has to finish before the capture step opens, or the hold begins
+    // mid-turn and the capture is taken before the phone is still.
+    await expect
+      .poll(
+        async () => {
+          const seen = (await drawnPose(page)).headingDeg;
+          return Math.abs(((seen - NORTH_EAST_HEADING_DEG + 540) % 360) - 180);
+        },
+        { timeout: 25_000 },
+      )
+      .toBeLessThan(1.5);
+    const turnedDrift = page.getByTestId('live-anchor-drift');
+    const turnedDriftDeg = Number(await turnedDrift.getAttribute('data-drift-deg'));
+    const turnedTurnDeg = Number(await turnedDrift.getAttribute('data-turn-deg'));
+    await page.getByTestId('field-session-next').click();
+
+    for (const [index, stepId] of ['capture-north-east', 'capture-north-east-again'].entries()) {
+      await expect(session).toHaveAttribute('data-step-id', stepId);
+      await holdStill(page);
+      injected.push({
+        captureId: `c${index + 9}`,
+        headingDeg: turnedSensedHeadingDeg,
+        pitchDeg: RAW_PITCH_DEG,
+      });
+      await capture(page, index + 9);
+    }
+
     /* ── the finished bundle, on the device ───────────────────────────────── */
     await expect(session).toHaveAttribute('data-phase', 'finished', { timeout: 30_000 });
     const parseNote = page.getByTestId('field-session-parse');
@@ -775,7 +827,7 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
     const shared = await sharedBundleFiles(page);
     expect(shared.map((file) => file.name)).toEqual([
       'mountain-finder-field-bundle.json',
-      ...Array.from({ length: 8 }, (_, index) => `c${index + 1}.jpg`),
+      ...Array.from({ length: 10 }, (_, index) => `c${index + 1}.jpg`),
     ]);
     const bundleFile = shared[0];
     expect(bundleFile).toBeDefined();
@@ -794,7 +846,15 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
       'moved',
       'after-drag',
       'after-drag',
+      'turned',
+      'turned',
     ]);
+    // A turned capture faces a second direction and nothing was dragged in it,
+    // so it names no anchor and no capture it moved from.
+    for (const item of parsed.value.captures.filter((entry) => entry.role === 'turned')) {
+      expect(item.dragAnchorSummitId).toBeUndefined();
+      expect(item.movedFromCaptureId).toBeUndefined();
+    }
     for (const item of parsed.value.captures) {
       expect(item.framePx.widthPx).toBe(CAMERA.widthPx);
       expect(item.framePx.heightPx).toBe(CAMERA.heightPx);
@@ -806,15 +866,26 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
 
     /* ── the captures taken at the photograph's own pose face south ───────── */
     // Every one of them records a heading near 188°, not the 280° the compass
-    // read. That is the re-anchor surviving into the bundle: the offset itself
-    // cannot travel yet (`POSE_CARRIES_GROSS_OFFSET` is false, so `POSE_KEYS`
-    // has no field for it), but the pose the labels were drawn at does.
+    // read. That is the re-anchor surviving into the bundle, and the offset
+    // itself travels with it, so the grader can read the raw compass back out.
     for (const item of parsed.value.captures) {
-      if (item.role === 'moved') continue;
+      if (item.role === 'moved' || item.role === 'turned') continue;
       expect(
         Math.abs(((item.pose.headingDeg - PHOTO_POSE.headingDeg + 540) % 360) - 180),
         `${item.captureId} was not taken at the photograph's pose`,
       ).toBeLessThan(1);
+      expect(
+        Math.abs(item.pose.grossHeadingOffsetDeg + GROSS_COMPASS_ERROR_DEG),
+        `${item.captureId} did not carry the re-anchor's offset`,
+      ).toBeLessThan(TAP_SLIP_DEG + 0.2);
+    }
+    // The two turned captures face the north-east instead, under the same
+    // offset and the trim the first direction left behind.
+    for (const item of parsed.value.captures.filter((entry) => entry.role === 'turned')) {
+      expect(
+        Math.abs(((item.pose.headingDeg - NORTH_EAST_HEADING_DEG + 540) % 360) - 180),
+        `${item.captureId} was not taken facing the north-east`,
+      ).toBeLessThan(1.5);
     }
 
     /* ── nothing forbidden, anywhere in it ────────────────────────────────── */
@@ -857,8 +928,13 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
      * Deer Point is left out. The pose was solved from Deer Point's crest, the
      * re-anchor was taken on Deer Point and the drag was aimed at Deer Point, so
      * a residual measured there is the arithmetic closing on its own input.
+     *
+     * The two turned captures are left out whole. Their overlay is drawn on the
+     * north-eastern skyline and their frame is the south-facing photograph, so
+     * there is no pixel on the picture any of those summits could be at.
      */
-    const truthCaptures = parsed.value.captures.map((item) => {
+    const gradeableCaptures = parsed.value.captures.filter((item) => item.role !== 'turned');
+    const truthCaptures = gradeableCaptures.map((item) => {
       const at = injected.find((entry) => entry.captureId === item.captureId);
       if (at === undefined) throw new Error(`no injected pose for ${item.captureId}`);
       const pose = {
@@ -898,7 +974,9 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
             '(docs/IMG-7270-HEADING.md), and less the 2 deg of pitch this run injects, ' +
             'projected onto the stored frame and straddled by +/-2 px. Deer Point is left out: ' +
             'it is the summit the pose was solved from, the re-anchor reference and the drag ' +
-            'anchor, so it cannot be graded against itself. No annotator looked at a ' +
+            'anchor, so it cannot be graded against itself. The two north-east captures are ' +
+            'left out whole: their overlay faces the north-east and their frame is the ' +
+            'south-facing photograph. No annotator looked at a ' +
             'photograph. It exists to exercise the grading path; every verdict it produces is ' +
             'about the arithmetic, not the picture.',
           captures: truthCaptures,
@@ -910,7 +988,11 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
 
     writeFileSync(
       resolve(OUT_DIR, 'ANNOTATE.md'),
-      annotationBrief(parsed.value.captures, { anchor, framePx: CAMERA }),
+      annotationBrief(gradeableCaptures, {
+        anchor,
+        framePx: CAMERA,
+        turned: parsed.value.captures.filter((item) => item.role === 'turned'),
+      }),
     );
     writeFileSync(
       resolve(OUT_DIR, 'run-notes.md'),
@@ -924,6 +1006,9 @@ test.describe('the field session, rehearsed at Bogus Basin on IMG_7270', () => {
         anchoredHeadingDeg,
         tapSlipDeg: TAP_SLIP_DEG,
         panDrift,
+        turnedHeadingDeg: NORTH_EAST_HEADING_DEG,
+        turnedTurnDeg,
+        turnedDriftDeg,
       }),
     );
   });
@@ -950,6 +1035,8 @@ function annotationBrief(
   context: {
     anchor: Candidate;
     framePx: { widthPx: number; heightPx: number };
+    /** The north-east captures, which are named but not put up for annotation. */
+    turned: readonly Capture[];
   },
 ): string {
   const lines: string[] = [];
@@ -1040,6 +1127,16 @@ function annotationBrief(
     '  aimed at it by hand. Report it anyway: it is what ties one frame to the next.',
     '- Nothing about the app\'s predicted positions is in this file, on purpose.',
   );
+  if (context.turned.length > 0) {
+    lines.push(
+      `- ${context.turned.length} further frames — ` +
+        `${context.turned.map((item) => `\`frames/${item.framePath}\``).join(' and ')} — are not`,
+      '  listed below and are not to be annotated. The phone was turned to the north-east for',
+      '  them, so the app drew the north-eastern skyline, while the camera is a file and went',
+      '  on showing the same south-facing picture. No summit the app named in those two frames',
+      '  is in the picture at all.',
+    );
+  }
   lines.push('');
   lines.push('## Every summit named across the frames');
   lines.push('');
@@ -1077,7 +1174,16 @@ function runNotes(
     grossOffsetDeg: number;
     anchoredHeadingDeg: number;
     tapSlipDeg: number;
-    panDrift: readonly { id: string; gapDeg: number; beyondBand: boolean }[];
+    panDrift: readonly {
+      id: string;
+      gapDeg: number;
+      turnDeg: number;
+      driftDeg: number;
+      beyondBand: boolean;
+    }[];
+    turnedHeadingDeg: number;
+    turnedTurnDeg: number;
+    turnedDriftDeg: number;
   },
 ): string {
   const lines: string[] = [];
@@ -1124,25 +1230,40 @@ function runNotes(
       `${Math.abs(context.grossOffsetDeg + GROSS_COMPASS_ERROR_DEG).toFixed(3)}°.`,
     `- The labels then sat at ${context.anchoredHeadingDeg.toFixed(3)}°, and the fine drag ` +
       'closed the rest.',
-    '- The offset itself does not travel in the bundle: `POSE_CARRIES_GROSS_OFFSET` is false,',
-    '  so `POSE_KEYS` has no field for it. What travels is the pose the labels were drawn at.',
+    '- The offset travels in the bundle beside the pose the labels were drawn at, so the',
+    '  grader can subtract it and read back what the compass alone said.',
   );
   lines.push(`- Injected pitch error: ${PITCH_ERROR_DEG}°. EXIF records no pitch.`);
   lines.push('');
   lines.push('## The drift line during the F4 pans');
   lines.push('');
   lines.push(
-    '`anchorDrift` compares the compass now with the compass when the direction was fixed.',
-    '§ 2.4 asks the person to turn tens of degrees, so it fires on every pan. It cannot tell a',
-    'deliberate turn from a compass that wandered.',
+    '`anchorDrift` compares how far the compass has moved since the direction was fixed with',
+    'how far the phone itself has turned over the same stretch, and only the difference is',
+    'measured against the band. § 2.4 asks the person to turn tens of degrees, and a',
+    'deliberate turn moves both together.',
   );
   lines.push('');
   for (const entry of context.panDrift) {
     lines.push(
-      `- **${entry.id}**: gap ${entry.gapDeg.toFixed(1)}°, ` +
+      `- **${entry.id}**: compass ${entry.gapDeg.toFixed(1)}°, phone turned ` +
+        `${entry.turnDeg.toFixed(1)}°, drift ${entry.driftDeg.toFixed(1)}° — ` +
         `${entry.beyondBand ? 'beyond the band it claims' : 'inside the band it claims'}.`,
     );
   }
+  lines.push('');
+  lines.push('## The two north-east captures');
+  lines.push('');
+  lines.push(
+    `The labels were turned to ${context.turnedHeadingDeg}° for the last two captures. The drift`,
+    `line read that as a ${Math.abs(context.turnedTurnDeg).toFixed(1)}° turn of the phone with`,
+    `${Math.abs(context.turnedDriftDeg).toFixed(1)}° of drift, so a turn of that size raises no`,
+    'warning. The overlay was therefore drawn on the north-eastern skyline, while the camera is',
+    'a still file and could not follow: both frames are the same south-facing photograph as the',
+    'other eight. The two captures record what the app does in a second registered direction,',
+    'with no anchor and nothing dragged. Nothing they draw can be compared with their own frame,',
+    'so they are left out of both the annotation brief and the synthetic truth.',
+  );
   lines.push('');
   lines.push('## The south-facing capture § 2.7 registers');
   lines.push('');
