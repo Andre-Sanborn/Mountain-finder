@@ -44,6 +44,7 @@ import {
   type HomeSessionRecording,
   type KnownBearing,
   type PoseLabel,
+  type RecordedDragTrial,
   type RecordedSegment,
   type RecordedSensorEvent,
   type RecordedTrackSettings,
@@ -96,6 +97,8 @@ export interface BuildRecordingInput {
   /** `navigator.userAgent`, verbatim. */
   readonly device: string;
   readonly knownBearing: KnownBearing;
+  /** The repeated-drag attempts, which happen after the last pose. */
+  readonly dragTrials?: readonly RecordedDragTrial[];
   readonly note?: string;
 }
 
@@ -280,6 +283,9 @@ export class HomeSessionRecorder implements RawEventSink {
       device: input.device,
       knownBearing: input.knownBearing,
       segments: [...this.segments],
+      ...(input.dragTrials === undefined || input.dragTrials.length === 0
+        ? {}
+        : { dragTrials: [...input.dragTrials] }),
       ...(input.note === undefined ? {} : { note: input.note }),
     };
   }

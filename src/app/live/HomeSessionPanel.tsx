@@ -33,18 +33,17 @@
  * all three. What it returns is three numbers; the position and the instant
  * behind them never reach this component.
  *
- * ── THE REPEATED-DRAG TRIALS, AND WHY THEY ARE NOT IN THE FILE ─────────────
+ * ── THE REPEATED-DRAG TRIALS ───────────────────────────────────────────────
  * After the last recorded pose the session runs six drag attempts — three at
  * normal gain, three fine — and keeps each one's final offset and the spread of
  * the phone's roll while it was held. That is the measurement the field-test
  * budget's largest term is waiting for (`drag-trial.ts`).
  *
- * They are held in memory and shown on screen, and they are NOT written into the
- * recording. `src/live/recording.ts` accepts exactly the keys its whitelists
- * name and exactly the poses `POSE_LABELS` lists, so a trial has nowhere to go
- * in the current format and a sidecar object would be refused by the parser
- * rather than tolerated. IMPLEMENTATION.md carries the schema addition this
- * needs; until it lands, the numbers are read off the screen.
+ * They go into the file, under `dragTrials`, beside the segments rather than
+ * inside one: they are run when no `PoseLabel` describes what the person is
+ * doing. Every number in a trial is relative to the start of its own gesture, so
+ * the file still carries no position. The privacy statement says so before the
+ * first step, because consent given afterwards is not consent.
  */
 
 import {
@@ -62,6 +61,7 @@ import {
   parseRecording,
   type HomeSessionRecording,
   type KnownBearing,
+  type RecordedDragTrial,
   type RecordingAnalysis,
   type RecordingProblem,
 } from '../../live/recording';
@@ -75,7 +75,7 @@ import {
   type CompletedDrag,
   type DragTrial,
 } from './drag-trial';
-import type { DragMode } from './fine-drag';
+import { dragGain, type DragMode } from './fine-drag';
 import {
   MAX_TAP_DISTANCE_PX,
   calibrationFromFit,
@@ -182,6 +182,12 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
 
   const finish = useCallback(() => {
     const bearing = bearingRef.current ?? computeKnownBearing();
+    // The gain is stated per attempt rather than derived on the far side: a
+    // reader of the file must not have to know which mode is the slow one.
+    const recorded: readonly RecordedDragTrial[] = trials.map((trial) => ({
+      ...trial,
+      gain: dragGain(trial.mode),
+    }));
     recorder.endSegment();
     setPhase('finished');
     if (bearing === undefined) {
@@ -191,7 +197,7 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
       setFinished(undefined);
       return;
     }
-    const recording = recorder.build({ device, knownBearing: bearing });
+    const recording = recorder.build({ device, knownBearing: bearing, dragTrials: recorded });
     const json = `${JSON.stringify(recording, null, 2)}\n`;
     // Parsed from the TEXT, not from the object, because the text is what gets
     // shared and what the analyzer on the other end will read.
@@ -202,7 +208,7 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
       problems: parsed.ok ? [] : parsed.problems,
       analysis: parsed.ok ? analyseRecording(parsed.value) : undefined,
     });
-  }, [recorder, computeKnownBearing, device]);
+  }, [recorder, computeKnownBearing, device, trials]);
 
   /**
    * Leave the recorded poses and start the drag trials.
@@ -491,7 +497,8 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
             </p>
             <p data-testid="home-session-trial-count" data-count={trials.length}>
               {trials.length} of {DRAG_TRIAL_PLAN.length} recorded. Each attempt keeps how far you
-              dragged and how steady the phone was — no picture and no position.
+              dragged, measured from where your finger started, and how steady the phone was. No
+              picture and no position.
             </p>
             <button
               type="button"
@@ -512,7 +519,8 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
               <div data-testid="home-session-trial-summary" data-trial-count={trials.length}>
                 <p>
                   Lining-up practice: {trials.length} attempt
-                  {trials.length === 1 ? '' : 's'}. These stay on screen and are not in the file.
+                  {trials.length === 1 ? '' : 's'}. These go in the file as offsets from where each
+                  drag started.
                 </p>
                 {(['normal', 'fine'] as const).map((mode) => (
                   <p key={mode} data-testid={`home-session-trial-${mode}`}>

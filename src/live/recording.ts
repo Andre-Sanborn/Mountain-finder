@@ -71,6 +71,9 @@ import {
   type Observation,
   type Vector3,
 } from './calibration.js';
+// The one figure the drag trials exist to replace. Imported rather than
+// transcribed, so the verdict cannot be scored against a stale copy of it.
+import { BUDGET_TERMS } from './field-analysis.js';
 import {
   detectMotionGravityConvention,
   gravityFromOrientation,
@@ -250,6 +253,38 @@ export type KnownBearing =
       readonly declinationDeg?: number;
     };
 
+/** The two drag gains the session runs its trials at. */
+export const RECORDED_DRAG_MODES = ['normal', 'fine'] as const;
+export type RecordedDragMode = (typeof RECORDED_DRAG_MODES)[number];
+
+/**
+ * One repeated-drag attempt: how far the finger went, what it did to the
+ * overlay, and how steady the phone was under it.
+ *
+ * Everything here is RELATIVE to the start of the gesture. An offset from where
+ * a finger went down says nothing about where the phone was pointed, which is
+ * why the trials can be written into a file that carries no position.
+ *
+ * The trials sit beside the segments rather than inside one. They are run after
+ * the last pose, when no `PoseLabel` describes what the person is doing, and
+ * filing them under whichever pose happened to be open would misname them.
+ */
+export interface RecordedDragTrial {
+  /** 0-based position in the session's own trial plan. */
+  readonly index: number;
+  readonly mode: RecordedDragMode;
+  /** Where the finger finished, relative to where it went down. CSS pixels. */
+  readonly offsetPx: { readonly dx: number; readonly dy: number };
+  /** What that did to the nudge, degrees, relative to the nudge before it. */
+  readonly offsetDeg: { readonly headingDeg: number; readonly pitchDeg: number };
+  /** Max minus min of the phone's roll while the attempt was open, degrees. */
+  readonly rollSpreadDeg: number;
+  readonly rollSampleCount: number;
+  readonly durationMs: number;
+  /** The multiplier the drag ran at: 1 for normal, 0.25 for fine. */
+  readonly gain: number;
+}
+
 /** A whole home-session recording. */
 export interface HomeSessionRecording {
   readonly format: typeof RECORDING_FORMAT;
@@ -258,6 +293,8 @@ export interface HomeSessionRecording {
   readonly device: string;
   readonly knownBearing: KnownBearing;
   readonly segments: readonly RecordedSegment[];
+  /** The repeated-drag attempts, in the order they were made. */
+  readonly dragTrials?: readonly RecordedDragTrial[];
   readonly note?: string;
 }
 
@@ -544,7 +581,27 @@ const TRACK_SETTINGS_KEYS = [
   'focusDistance',
 ] as const;
 const SEGMENT_KEYS = ['pose', 'startMs', 'endMs', 'note', 'events', 'trackSettings'] as const;
-const RECORDING_KEYS = ['format', 'timestampBasis', 'device', 'knownBearing', 'segments', 'note'] as const;
+const RECORDING_KEYS = [
+  'format',
+  'timestampBasis',
+  'device',
+  'knownBearing',
+  'segments',
+  'dragTrials',
+  'note',
+] as const;
+const DRAG_TRIAL_KEYS = [
+  'index',
+  'mode',
+  'offsetPx',
+  'offsetDeg',
+  'rollSpreadDeg',
+  'rollSampleCount',
+  'durationMs',
+  'gain',
+] as const;
+const OFFSET_PX_KEYS = ['dx', 'dy'] as const;
+const OFFSET_DEG_KEYS = ['headingDeg', 'pitchDeg'] as const;
 
 /**
  * Widest angle accepted for beta and gamma. The specification narrows gamma to
@@ -730,6 +787,54 @@ function parseSegment(p: Problems, path: string, value: unknown): RecordedSegmen
   };
 }
 
+/** Widest drag offset accepted, CSS pixels. No phone screen is this big. */
+const MAX_DRAG_OFFSET_PX = 10_000;
+
+function parseDragTrial(p: Problems, path: string, value: unknown): RecordedDragTrial | undefined {
+  const obj = asRecord(p, path, value);
+  if (!obj) return undefined;
+  checkKeys(p, path, obj, DRAG_TRIAL_KEYS);
+
+  const index = asNumber(p, `${path}.index`, obj.index, { min: 0, max: 999 });
+  const mode = asMember(p, `${path}.mode`, obj.mode, RECORDED_DRAG_MODES);
+  const rollSpreadDeg = asNumber(p, `${path}.rollSpreadDeg`, obj.rollSpreadDeg, { min: 0, max: 360 });
+  const rollSampleCount = asNumber(p, `${path}.rollSampleCount`, obj.rollSampleCount, { min: 0 });
+  const durationMs = asNumber(p, `${path}.durationMs`, obj.durationMs, { min: 0, max: MAX_RECORDING_MS });
+  const gain = asNumber(p, `${path}.gain`, obj.gain, { min: 0, max: 100 });
+
+  const pxObj = asRecord(p, `${path}.offsetPx`, obj.offsetPx);
+  let offsetPx: { readonly dx: number; readonly dy: number } | undefined;
+  if (pxObj) {
+    checkKeys(p, `${path}.offsetPx`, pxObj, OFFSET_PX_KEYS);
+    const dx = asNumber(p, `${path}.offsetPx.dx`, pxObj.dx, { min: -MAX_DRAG_OFFSET_PX, max: MAX_DRAG_OFFSET_PX });
+    const dy = asNumber(p, `${path}.offsetPx.dy`, pxObj.dy, { min: -MAX_DRAG_OFFSET_PX, max: MAX_DRAG_OFFSET_PX });
+    if (dx !== undefined && dy !== undefined) offsetPx = { dx, dy };
+  }
+
+  const degObj = asRecord(p, `${path}.offsetDeg`, obj.offsetDeg);
+  let offsetDeg: { readonly headingDeg: number; readonly pitchDeg: number } | undefined;
+  if (degObj) {
+    checkKeys(p, `${path}.offsetDeg`, degObj, OFFSET_DEG_KEYS);
+    const headingDeg = asNumber(p, `${path}.offsetDeg.headingDeg`, degObj.headingDeg, { min: -180, max: 180 });
+    const pitchDeg = asNumber(p, `${path}.offsetDeg.pitchDeg`, degObj.pitchDeg, { min: -90, max: 90 });
+    if (headingDeg !== undefined && pitchDeg !== undefined) offsetDeg = { headingDeg, pitchDeg };
+  }
+
+  if (
+    index === undefined ||
+    mode === undefined ||
+    offsetPx === undefined ||
+    offsetDeg === undefined ||
+    rollSpreadDeg === undefined ||
+    rollSampleCount === undefined ||
+    durationMs === undefined ||
+    gain === undefined
+  ) {
+    return undefined;
+  }
+  return { index, mode, offsetPx, offsetDeg, rollSpreadDeg, rollSampleCount, durationMs, gain };
+}
+
 /** How far the stored magnetic bearing may sit from true − declination. */
 export const BEARING_CONSISTENCY_TOLERANCE_DEG = 0.05;
 
@@ -827,6 +932,26 @@ export function parseRecording(raw: unknown): ParseResult {
     });
   }
 
+  // Optional, so every recording written before the trials existed still parses.
+  let dragTrials: RecordedDragTrial[] | undefined;
+  if ('dragTrials' in obj) {
+    const rawTrials = asArray(p, 'dragTrials', obj.dragTrials);
+    if (rawTrials !== undefined) {
+      dragTrials = [];
+      const seen = new Set<number>();
+      rawTrials.forEach((raw, index) => {
+        const trial = parseDragTrial(p, `dragTrials[${index}]`, raw);
+        if (!trial) return;
+        if (seen.has(trial.index)) {
+          p.add(`dragTrials[${index}].index`, `${trial.index} is used twice`);
+          return;
+        }
+        seen.add(trial.index);
+        dragTrials?.push(trial);
+      });
+    }
+  }
+
   if (p.list.length > 0) return { ok: false, problems: p.list };
   if (device === undefined || knownBearing === undefined) {
     return { ok: false, problems: [{ path: '', message: 'incomplete recording' }] };
@@ -839,6 +964,7 @@ export function parseRecording(raw: unknown): ParseResult {
       device,
       knownBearing,
       segments,
+      ...(dragTrials !== undefined ? { dragTrials } : {}),
       ...(note !== undefined ? { note } : {}),
     },
   };
@@ -2129,6 +2255,117 @@ function driftVerdict(
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
+ * SECTION 7b — The repeated-drag trials
+ * ══════════════════════════════════════════════════════════════════════════
+ * The field-test budget's largest term is drag precision, 0.543° at 1σ, and
+ * that figure is an assumption about a hand rather than a measurement of one
+ * (docs/FIELD-TEST-PREREGISTRATION.md, term 9). These trials replace it.
+ *
+ * The SCATTER is the term, not the mean. A person who is consistently 2° off
+ * has a bias that the drag exists to remove; what limits the result is how far
+ * apart their repeated attempts land. The sample standard deviation (n − 1) is
+ * used because three attempts are a sample of a hand, not the whole of it.
+ */
+
+/** Fewest attempts in one mode before its scatter is worth stating. */
+export const MIN_DRAG_TRIALS_PER_MODE = 3;
+
+/** Mean, and the sample standard deviation (n − 1), of a run of numbers. */
+export function meanAndSampleSd(values: readonly number[]): {
+  readonly mean: number;
+  readonly sd: number;
+} {
+  if (values.length === 0) return { mean: 0, sd: 0 };
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+  if (values.length < 2) return { mean, sd: 0 };
+  const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (values.length - 1);
+  return { mean, sd: Math.sqrt(variance) };
+}
+
+export interface DragModeScatter {
+  readonly mode: RecordedDragMode;
+  readonly count: number;
+  /** Sample sd of the signed heading offset, degrees. This is the budget term. */
+  readonly headingSdDeg: number;
+  readonly headingMeanDeg: number;
+  /** Sample sd of the signed horizontal finger offset, CSS pixels. */
+  readonly pxSdPx: number;
+  /** Mean and sample sd of the per-attempt roll spread, degrees. */
+  readonly rollSpreadMeanDeg: number;
+  readonly rollSpreadSdDeg: number;
+  readonly rollSampleCount: number;
+}
+
+/** One mode's attempts, reduced to the statistics the budget wants. */
+export function dragModeScatter(
+  trials: readonly RecordedDragTrial[],
+  mode: RecordedDragMode,
+): DragModeScatter {
+  const mine = trials.filter((trial) => trial.mode === mode);
+  const heading = meanAndSampleSd(mine.map((trial) => trial.offsetDeg.headingDeg));
+  const px = meanAndSampleSd(mine.map((trial) => trial.offsetPx.dx));
+  const roll = meanAndSampleSd(mine.map((trial) => trial.rollSpreadDeg));
+  return {
+    mode,
+    count: mine.length,
+    headingSdDeg: heading.sd,
+    headingMeanDeg: heading.mean,
+    pxSdPx: px.sd,
+    rollSpreadMeanDeg: roll.mean,
+    rollSpreadSdDeg: roll.sd,
+    rollSampleCount: mine.reduce((sum, trial) => sum + trial.rollSampleCount, 0),
+  };
+}
+
+function dragScatterVerdict(recording: HomeSessionRecording): Verdict {
+  const question =
+    'How repeatable is the drag, and how steady was the roll under it?';
+  const trials = recording.dragTrials ?? [];
+  if (trials.length === 0) {
+    return inconclusive('drag-scatter', question, ['no drag trials in the recording']);
+  }
+
+  const scatters = RECORDED_DRAG_MODES.map((mode) => dragModeScatter(trials, mode));
+  const evidence = scatters.map((s) =>
+    s.count === 0
+      ? `${s.mode}: no attempts`
+      : `${s.mode}: ${s.count} attempt(s), heading scatter ${s.headingSdDeg.toFixed(3)}° ` +
+        `(mean ${s.headingMeanDeg >= 0 ? '+' : '−'}${Math.abs(s.headingMeanDeg).toFixed(3)}°, ` +
+        `${s.pxSdPx.toFixed(1)} px), ` +
+        `roll spread ${s.rollSpreadMeanDeg.toFixed(2)}° ± ${s.rollSpreadSdDeg.toFixed(2)}° ` +
+        `over ${s.rollSampleCount} roll sample(s)`,
+  );
+  evidence.push(
+    `the budget assumes ${BUDGET_TERMS.dragDeg}° at 1σ for this term, both axes`,
+  );
+
+  const measured = scatters.filter((s) => s.count >= MIN_DRAG_TRIALS_PER_MODE);
+  if (measured.length === 0) {
+    return verdict(
+      'drag-scatter',
+      question,
+      `fewer than ${MIN_DRAG_TRIALS_PER_MODE} attempts in either mode, so the scatter is reported and not relied on`,
+      'low',
+      evidence,
+    );
+  }
+
+  const best = measured.reduce((a, b) => (b.headingSdDeg < a.headingSdDeg ? b : a));
+  const against = best.headingSdDeg <= BUDGET_TERMS.dragDeg ? 'under' : 'over';
+  return verdict(
+    'drag-scatter',
+    question,
+    `${best.mode} drag scatters ${best.headingSdDeg.toFixed(3)}° at 1σ, ${against} the ` +
+      `${BUDGET_TERMS.dragDeg}° the budget assumed; the roll held to ` +
+      `${best.rollSpreadMeanDeg.toFixed(2)}° over each attempt`,
+    // Both modes measured is two independent samples of the same hand, which is
+    // what separates a gain effect from one person's steady day.
+    measured.length === RECORDED_DRAG_MODES.length ? 'moderate' : 'low',
+    evidence,
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
  * SECTION 8 — The whole analysis
  * ══════════════════════════════════════════════════════════════════════════ */
 
@@ -2209,6 +2446,7 @@ export function analyseRecording(recording: HomeSessionRecording): RecordingAnal
   verdicts.push(eventRateVerdict(recording));
   verdicts.push(driftVerdict(recording, 'still-drift', compassReference.verdict));
   verdicts.push(driftVerdict(recording, 'handling', compassReference.verdict));
+  verdicts.push(dragScatterVerdict(recording));
 
   return { device: recording.device, compassReference, verdicts, missingPoses };
 }

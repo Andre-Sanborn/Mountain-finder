@@ -39,7 +39,10 @@ after its self-check has run and passed here. The checks are in
 - [x] Build field-of-view calibration from taps on the sun or a landmark, stored against track settings
 - [ ] Prove the automatic advance on the three-minute stillness step on a real device
 - [x] Build the capture bundle schema and `analyze:field`; bundles never enter the repository
-- [ ] Have the live screen emit a field bundle in the field-bundle@1 shape (no bearings, no wall clock)
+- [x] Have the live screen emit a field bundle in the field-bundle@1 shape (no bearings, no wall clock)
+- [ ] Register the stored frame's geometry: the grader compares 16:9 frames against the 956x440 viewport
+- [ ] Decide from the home session's drag scatter whether the field session drags in fine mode
+- [ ] Trim the field bundle: overlay.withheld repeats ~940 unmeasured summits per capture (2.4 MB for 8)
 - [x] Write the error budget and pre-register the field pass criteria
 - [ ] Run the headless dress rehearsal on IMG_7270 and railroad-ridge-48mm with injected errors
 - [ ] Write the home-session steps; run the home session with the human
@@ -52,9 +55,9 @@ after its self-check has run and passed here. The checks are in
 - [x] Measure the 60 km live sweep in Chromium under 4-6x CPU throttling; precondition of the field session
 - [ ] Measure the live start on the phone: iOS Cache Storage read of 42.55 MB, permissions, fix, first paint
 - [x] Fine-drag mode (4x slow) on the live screen; home session measures drag and roll spread on screen
-- [ ] Add `dragTrials` to the recording schema and parser, then write the trials into the shared file
+- [x] Add `dragTrials` to the recording schema and parser, then write the trials into the shared file
 - [x] Prereg: gate F3/F4 at one 2σ exceedance and no 3σ; F4 pan to frame edge; accuracy confidence; text fixes
-- [ ] Emit horizontalAccuracyM and accuracyConvention from the live screen into the capture bundle
+- [x] Emit horizontalAccuracyM and accuracyConvention from the live screen into the capture bundle
 - [ ] Re-derive the drag and roll terms from the home-session measurements; record in the prereg revision history
 - [x] Make the privacy gate's position-fix message say which key set tripped it; prose 'accuracy' trips it now
 

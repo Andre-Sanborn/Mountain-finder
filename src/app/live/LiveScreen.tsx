@@ -86,6 +86,13 @@ import type { CompletedDrag } from './drag-trial';
 import { HomeSessionPanel } from './HomeSessionPanel';
 import type { CalibrationFrame, CalibrationReference, FovFit } from './fov-calibration';
 import { calibrationFromFit } from './fov-calibration';
+import { FieldSessionPanel, type CapturedFrame } from './FieldSessionPanel';
+import {
+  isFieldSessionRequested,
+  type FieldCaptureContext,
+  type UnmeasuredSummit,
+} from './field-session';
+import { browserBundleShareTarget } from './field-share';
 import { isHomeSessionRequested, sunKnownBearing } from './home-session';
 import { HomeSessionRecorder } from './home-session-recorder';
 import { browserShareTarget } from './home-session-share';
@@ -120,6 +127,18 @@ const REDRAW_INTERVAL_MS = 50;
 /** Standing eye height, the same figure the still app assumes. */
 const EYE_HEIGHT_M = 1.6;
 
+/**
+ * JPEG quality the stored field frame is encoded at.
+ *
+ * High, because truth is a pixel two people pick out of this frame by eye
+ * (docs/FIELD-TEST-PREREGISTRATION.md § 2.0). Compression artefacts around a
+ * summit ridge cost annotation precision directly.
+ */
+const FRAME_QUALITY = 0.92;
+
+/** How much of the overlay's tick history is kept, milliseconds. */
+const TICK_MEMORY_MS = 4000;
+
 export interface LiveScreenProps {
   /** Builds the one 360° scene. Injected so the screen has no data source of its own. */
   readonly buildScene: (
@@ -133,6 +152,17 @@ export interface LiveScreenProps {
    * so `live-main.tsx` needs no knowledge of this mode.
    */
   readonly homeSession?: boolean;
+  /**
+   * Run the guided field session. Defaults to whether the address asks for it,
+   * so `live-main.tsx` needs no knowledge of this mode either.
+   */
+  readonly fieldSession?: boolean;
+  /**
+   * Which committed peak regions this build serves, by name. A field bundle
+   * records them, so a grader can say which data the labels came from. They are
+   * public identifiers; nothing about them names a viewpoint.
+   */
+  readonly peakRegions?: readonly string[];
   /**
    * Where the terrain index is served. Defaults to this build's own base, which
    * is what the offline strip needs to name the grid it would download.
@@ -219,6 +249,8 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
   const dragSerialRef = useRef(0);
   /** The pose's roll, readable without a re-render, for the drag trials. */
   const rollRef = useRef<number | undefined>(undefined);
+  /** When the overlay was last re-projected, newest last. Bounded by age. */
+  const tickTimesRef = useRef<number[]>([]);
 
   const landscape = isLandscapeViewport(viewport.widthPx, viewport.heightPx);
 
@@ -226,6 +258,9 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
   const homeSession =
     props.homeSession ??
     (typeof window === 'undefined' ? false : isHomeSessionRequested(window.location.search));
+  const fieldSession =
+    props.fieldSession ??
+    (typeof window === 'undefined' ? false : isFieldSessionRequested(window.location.search));
   // One recorder for the life of the screen. `performance.now()` is monotonic and
   // carries no wall clock, which is what the recording's timestamps need.
   const recorderRef = useRef<HomeSessionRecorder>();
@@ -270,7 +305,16 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
   /* ── the redraw timer ───────────────────────────────────────────────────── */
   useEffect(() => {
     if (phase !== 'running') return undefined;
-    const handle = window.setInterval(() => setTick((value) => value + 1), REDRAW_INTERVAL_MS);
+    const handle = window.setInterval(() => {
+      // Each tick is one overlay re-projection, which is what F1's frame-rate
+      // floor is measured on. The times go into a ref rather than state: a
+      // capture reads them, nothing draws them.
+      const at = performance.now();
+      const times = tickTimesRef.current;
+      times.push(at);
+      while ((times[0] ?? at) < at - TICK_MEMORY_MS) times.shift();
+      setTick((value) => value + 1);
+    }, REDRAW_INTERVAL_MS);
     return () => window.clearInterval(handle);
   }, [phase]);
 
@@ -750,6 +794,101 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
   rollRef.current = pose?.rollDeg;
   const readRollDeg = useCallback(() => rollRef.current, []);
 
+  /* ── the field session's three seams ────────────────────────────────────── */
+  /**
+   * Encode the camera frame at the video track's OWN size, not the viewport's.
+   *
+   * The pre-registration stores each capture at the track's full width, at least
+   * 1920 px, because truth is a pixel two people pick out of the frame by eye
+   * (§ 2.0). Drawing the viewport instead would throw away half the precision
+   * the verdicts are read at. The overlay is not drawn onto it: an annotator
+   * works from the bare frame and must not see what the app claimed.
+   */
+  const captureCameraFrame = useCallback(async (): Promise<CapturedFrame | undefined> => {
+    const video = videoRef.current;
+    if (video === null || video.videoWidth === 0 || video.videoHeight === 0) return undefined;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const drawing = canvas.getContext('2d');
+    if (drawing === null) return undefined;
+    drawing.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const bytes = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, 'image/jpeg', FRAME_QUALITY);
+    });
+    if (bytes === null) return undefined;
+    return { widthPx: canvas.width, heightPx: canvas.height, bytes };
+  }, []);
+
+  const readTickTimesMs = useCallback((): readonly number[] => tickTimesRef.current, []);
+  const readNowMs = useCallback(() => performance.now(), []);
+  const resetTrim = useCallback(() => setTrim(NO_TRIM), []);
+
+  const bundleShareTarget = useMemo(
+    () =>
+      browserBundleShareTarget(
+        typeof navigator === 'undefined' ? undefined : navigator,
+        typeof document === 'undefined' ? undefined : document,
+      ),
+    [],
+  );
+
+  /**
+   * Everything a field capture records, as one value.
+   *
+   * Every field is named rather than an upstream object being handed over: the
+   * overlay's peaks carry `bearingDeg` and the camera track carries `deviceId`,
+   * and the bundle parser refuses both.
+   */
+  const fieldContext: FieldCaptureContext | undefined = useMemo(() => {
+    if (
+      poseResult?.ok !== true ||
+      pose === undefined ||
+      layout === undefined ||
+      band === undefined ||
+      scene === undefined ||
+      fov === undefined ||
+      framePx.widthPx === 0
+    ) {
+      return undefined;
+    }
+    const unmeasured: readonly UnmeasuredSummit[] = scene.unmeasured.map((peak) => ({
+      id: peak.id,
+      name: peak.name,
+      distanceKm: peak.distanceKm,
+    }));
+    return {
+      pose,
+      headingBasis: poseResult.value.heading.basis,
+      trim: { headingDeg: trim.headingDeg, pitchDeg: trim.pitchDeg },
+      overlayPx: { widthPx: framePx.widthPx, heightPx: framePx.heightPx },
+      band,
+      layout,
+      unmeasured,
+      track: trackSettings,
+      fovSource: fov.source,
+      sweepRadiusKm: scene.config.sweep.maxRangeKm,
+      ...(fix?.accuracyM === undefined ? {} : { horizontalAccuracyM: fix.accuracyM }),
+      ...(sensorStatus?.compassAccuracyDeg === undefined
+        ? {}
+        : { compassAccuracyDeg: sensorStatus.compassAccuracyDeg }),
+    };
+  }, [
+    poseResult,
+    pose,
+    layout,
+    band,
+    scene,
+    fov,
+    trim.headingDeg,
+    trim.pitchDeg,
+    framePx.widthPx,
+    framePx.heightPx,
+    trackSettings,
+    fix?.accuracyM,
+    sensorStatus?.compassAccuracyDeg,
+  ]);
+
   const manifestUrl =
     props.terrainManifestUrl ??
     resolveFromBase(import.meta.env.BASE_URL, DEFAULT_TERRAIN_MANIFEST_URL);
@@ -918,6 +1057,25 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
             dragMode={dragMode}
             setDragMode={setDragMode}
             readRollDeg={readRollDeg}
+          />
+        )}
+
+        {fieldSession && (
+          <FieldSessionPanel
+            ready={phase === 'running'}
+            device={typeof navigator === 'undefined' ? 'unknown browser' : navigator.userAgent}
+            context={fieldContext}
+            peakRegions={props.peakRegions ?? []}
+            captureFrame={captureCameraFrame}
+            nowMs={readNowMs}
+            tickTimesMs={readTickTimesMs}
+            shareTarget={bundleShareTarget}
+            calibrationReferences={calibrationReferences}
+            calibrationFrame={calibrationFrame}
+            onCalibrated={applyFovFit}
+            dragMode={dragMode}
+            setDragMode={setDragMode}
+            resetTrim={resetTrim}
           />
         )}
 

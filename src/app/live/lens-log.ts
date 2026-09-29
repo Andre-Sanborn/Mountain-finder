@@ -38,6 +38,10 @@ export interface TrackSettingsLike {
   readonly height?: number | undefined;
   readonly frameRate?: number | undefined;
   readonly aspectRatio?: number | undefined;
+  /** Geometry the field bundle records. Not watched for a lens switch. */
+  readonly facingMode?: string | undefined;
+  readonly resizeMode?: string | undefined;
+  readonly zoom?: number | undefined;
 }
 
 /** One second's reading. `tMs` is relative to the start of the session. */

@@ -270,6 +270,39 @@ describe('HomeSessionRecorder', () => {
     const numbers = [...text.matchAll(/-?\d+(\.\d+)?/g)].map((match) => Math.abs(Number(match[0])));
     expect(Math.max(...numbers)).toBeLessThan(EPOCH_FLOOR);
   });
+
+  it('writes the drag trials it was handed, and omits the key when there are none', () => {
+    const clock = fakeClock();
+    const recorder = new HomeSessionRecorder(clock.now);
+    recorder.beginSegment('sun-capture');
+    clock.advance(50);
+    recorder.onRawEvent(orientationEvent(9));
+
+    const trial = {
+      index: 0,
+      mode: 'fine' as const,
+      offsetPx: { dx: 12, dy: -5 },
+      offsetDeg: { headingDeg: 0.27, pitchDeg: 0.11 },
+      rollSpreadDeg: 0.4,
+      rollSampleCount: 18,
+      durationMs: 1400,
+      gain: 0.25,
+    };
+    const withTrials = recorder.build({
+      device: 'test-agent',
+      knownBearing: BEARING,
+      dragTrials: [trial],
+    });
+    const parsed = parseRecording(JSON.parse(JSON.stringify(withTrials)) as unknown);
+    expect(parsed.ok ? [] : parsed.problems).toEqual([]);
+    if (!parsed.ok) return;
+    expect(parsed.value.dragTrials).toEqual([trial]);
+
+    // An empty run leaves the key out entirely, so a session that skipped the
+    // practice does not claim a measurement of zero attempts.
+    const without = recorder.build({ device: 'test-agent', knownBearing: BEARING, dragTrials: [] });
+    expect('dragTrials' in without).toBe(false);
+  });
 });
 
 /**

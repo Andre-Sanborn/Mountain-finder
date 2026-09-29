@@ -1180,8 +1180,7 @@ of 0.05° were rejected, because one pixel is 0.0899°.
 
 **The drag trials.** The home session ends with 3 normal and 3 fine attempts at putting a label
 on its feature. Each attempt records its offset and its roll spread, and the scatter (sample sd)
-is the measurement. The trials are shown on screen but not yet written to the file: the parser
-whitelists exact keys, so `dragTrials` needs a schema addition.
+is the measurement. They are written into the shared file under `dragTrials`; see below.
 
 **The offline strip** shows cached page and terrain files and the storage estimate. It also
 shows "Download <grid> for offline use (NN MB)", naming the grid `selectTerrainGrid` would pick
@@ -1213,3 +1212,41 @@ field mode lands.
 **The privacy gate's position-fix finding now names each key and its line**, and says that prose
 counts. That rule is the only one judged over the whole file. Replacing the line number with a
 constant fails 2 tests.
+
+## Drag trials in the recording, and the field session
+
+**`dragTrials`.** `HomeSessionRecording` gains an optional, exact-key-whitelisted array beside
+`segments`. Each trial holds its index, mode, pixel offset, degree offset, roll spread, sample
+count, duration and gain. It is relative to its own gesture, so it carries no position. The
+analyzer's `drag-scatter` verdict reports the sample sd per mode against the budget's 0.543°,
+which it imports from `BUDGET_TERMS`. Four mutations are caught.
+
+**The field session, `live.html?session=field`,** is prereg §2.7 on the AR screen. The run is:
+stand near the site, check the FOV with two taps, wait for a fix under 30 m, brace, capture raw,
+drag one named summit in fine mode and capture, then four movements: the anchor to the left
+edge, the anchor to the right edge, +10° and −10°. Two more drag captures follow, eight captures
+in all. The pan target is u ≥ 0.8, and the screen shows the progress toward it.
+
+Frames are stored at the video track's own width, at least 1920 px, and never drawn over. Every
+field in the bundle is named explicitly, so no bearing and no `deviceId` can slip in. The bundle
+and its frames are shared in one Web Share call. A partial save counts as a failure, because
+truth lives in the frames. The privacy statement leads with the fact that photographs show
+where they were taken.
+
+The e2e runs the whole sequence against a 1920 × 1080 fake camera, and checks that:
+- the bundle parses
+- it holds no coordinate near the fix
+- the frames correlate 0.923 with the video. That is a correlation, because Chromium
+  colour-manages video and JPEG differently.
+
+`analyze:field` on that bundle, with truth from the injected pose, passes F2, F3.far and F4.far,
+with the residual 0.134° from the test's own 4 px drag. The other bands are `no-sample`, as
+pre-declared. Four mutations are caught, two of them on privacy.
+
+**Found:**
+- The grader flags the 16:9 stored frame as 18.2 % off the registered 956 × 440 viewport. The
+  registration should name the stored-frame geometry.
+- The bundle is 2.4 MB for 8 captures, because `overlay.withheld` repeats about 940 unmeasured
+  summits per capture.
+
+The Playwright harness moved to `tests/e2e/support/gornergrat.ts`.

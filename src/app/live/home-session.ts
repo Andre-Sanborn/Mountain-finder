@@ -214,7 +214,7 @@ export const HOME_SESSION_PRIVACY_STATEMENT: readonly string[] = [
   'It does not record where you are, what time it is, or any pictures. No photograph and no video is saved.',
   'One number is worked out from your location and the clock: the compass direction of the sun from where you stand. Your position and the time are used for that and then thrown away.',
   'The file stays on this phone until you send it. Nothing is uploaded. At the end you get a Share button, and the file goes only where you send it.',
-  'At the end there is some lining-up practice: you drag a label onto the thing it names, six times. How far you dragged stays on the screen and is not put in the file.',
+  'At the end there is some lining-up practice: you drag a label onto the thing it names, six times. The file keeps how far each drag went and how steady the phone was — measured from where your finger started, so it still says nothing about where you are or which way you were pointing.',
 ];
 
 /** The file the Share button offers. No date in the name — a date is a wall clock. */

@@ -83,6 +83,7 @@ createRoot(root).render(
       buildScene={(observer: LiveObserver, signal: AbortSignal) =>
         buildLiveScene(observer, { terrain, peaks, signal })
       }
+      peakRegions={peaks.regionNames}
     />
   </StrictMode>,
 );

@@ -144,7 +144,15 @@ export async function openRearCamera(media: MediaDevices): Promise<OpenedCamera>
   }
 }
 
-/** Read the fields the lens log watches, with nothing else copied. */
+/**
+ * Read the geometry, with nothing else copied.
+ *
+ * Every field is named rather than the object being spread, so a platform that
+ * adds an identifier to `getSettings()` does not add it to a recording or a
+ * field bundle by itself. `label` and `groupId` identify one handset and are
+ * refused by both parsers; `deviceId` is kept here because the lens log watches
+ * it for a switch, and the recorder drops it before anything is written.
+ */
 export function readTrackSettings(track: MediaStreamTrack): TrackSettingsLike {
   const settings = track.getSettings();
   return {
@@ -153,5 +161,13 @@ export function readTrackSettings(track: MediaStreamTrack): TrackSettingsLike {
     height: settings.height,
     frameRate: settings.frameRate,
     aspectRatio: settings.aspectRatio,
+    facingMode: settings.facingMode,
+    // `resizeMode` and `zoom` are optional in the platform API and absent from
+    // the DOM typings on this toolchain, so they are read by name off the
+    // settings object rather than through it.
+    ...('resizeMode' in settings
+      ? { resizeMode: (settings as { resizeMode?: string }).resizeMode }
+      : {}),
+    ...('zoom' in settings ? { zoom: (settings as { zoom?: number }).zoom } : {}),
   };
 }

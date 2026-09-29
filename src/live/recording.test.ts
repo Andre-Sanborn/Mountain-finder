@@ -33,9 +33,11 @@ import { CALIBRATION_HOLDS } from './calibration.js';
 import {
   alphaForCameraAzimuth,
   analyseRecording,
+  dragModeScatter,
   expectedGravity,
   expectedTopEdgeMinusCameraDeg,
   fold360,
+  meanAndSampleSd,
   parseRecording,
   protocolSegments,
   signedDeltaDeg,
@@ -674,6 +676,196 @@ describe('the known bearing', () => {
   });
 });
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * The repeated-drag trials
+ * ══════════════════════════════════════════════════════════════════════════
+ * WHERE THE EXPECTATIONS COME FROM
+ * The six attempts below are chosen so every statistic is an exact decimal,
+ * worked out by hand before the analyzer runs:
+ *
+ *   normal heading offsets 1.0, 1.6, 2.2 → mean 1.6; deviations ∓0.6, 0, ±0.6;
+ *     Σd² = 0.72; sample variance 0.72/2 = 0.36; sd = 0.6
+ *   fine   heading offsets 0.10, 0.14, 0.18 → mean 0.14; Σd² = 0.0032;
+ *     sample variance 0.0016; sd = 0.04
+ *   normal dx 10, 16, 22 → sd 6;   fine dx 2, 3, 4 → sd 1
+ *   normal roll spreads 0.2, 0.3, 0.4 → mean 0.3, sd 0.1
+ *   fine   roll spreads 0.1, 0.1, 0.1 → mean 0.1, sd 0
+ *
+ * 0.6° is deliberately ABOVE the budget's assumed 0.543° and 0.04° below it, so
+ * the verdict's comparison is exercised in both directions in one recording.
+ */
+
+const TRIAL_SPECS = [
+  { index: 0, mode: 'normal', headingDeg: 1.0, dx: 10, rollSpreadDeg: 0.2 },
+  { index: 1, mode: 'normal', headingDeg: 1.6, dx: 16, rollSpreadDeg: 0.3 },
+  { index: 2, mode: 'normal', headingDeg: 2.2, dx: 22, rollSpreadDeg: 0.4 },
+  { index: 3, mode: 'fine', headingDeg: 0.1, dx: 2, rollSpreadDeg: 0.1 },
+  { index: 4, mode: 'fine', headingDeg: 0.14, dx: 3, rollSpreadDeg: 0.1 },
+  { index: 5, mode: 'fine', headingDeg: 0.18, dx: 4, rollSpreadDeg: 0.1 },
+] as const;
+
+function trialDocuments(): Record<string, unknown>[] {
+  return TRIAL_SPECS.map((t) => ({
+    index: t.index,
+    mode: t.mode,
+    offsetPx: { dx: t.dx, dy: -4 },
+    offsetDeg: { headingDeg: t.headingDeg, pitchDeg: 0.05 },
+    rollSpreadDeg: t.rollSpreadDeg,
+    rollSampleCount: 20,
+    durationMs: 1800,
+    gain: t.mode === 'fine' ? 0.25 : 1,
+  }));
+}
+
+/** A sound recording with the six attempts appended. */
+function withTrials(trials: unknown = trialDocuments()): Record<string, unknown> {
+  const document = throughJson(synthesiseRecording(spec())) as Record<string, unknown>;
+  document.dragTrials = trials;
+  return document;
+}
+
+describe('the drag trials in the recording', () => {
+  it('accepts the six attempts and keeps every field', () => {
+    const result = parseRecording(withTrials());
+    expect(result.ok ? [] : result.problems).toEqual([]);
+    if (!result.ok) return;
+    expect(result.value.dragTrials).toHaveLength(6);
+    const first = result.value.dragTrials?.[0];
+    expect(first).toEqual({
+      index: 0,
+      mode: 'normal',
+      offsetPx: { dx: 10, dy: -4 },
+      offsetDeg: { headingDeg: 1.0, pitchDeg: 0.05 },
+      rollSpreadDeg: 0.2,
+      rollSampleCount: 20,
+      durationMs: 1800,
+      gain: 1,
+    });
+  });
+
+  it('parses a recording that carries no trials at all', () => {
+    const document = throughJson(synthesiseRecording(spec())) as Record<string, unknown>;
+    expect('dragTrials' in document).toBe(false);
+    const result = parseRecording(document);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.dragTrials).toBeUndefined();
+  });
+
+  it('refuses a key the whitelist does not name', () => {
+    const trials = trialDocuments();
+    const first = trials[0];
+    expect(first).toBeDefined();
+    if (!first) return;
+    first.startedAtMs = 4000;
+    expect(problemsOf(withTrials(trials)).join('\n')).toContain('dragTrials[0].startedAtMs');
+  });
+
+  it('refuses a coordinate smuggled into a trial', () => {
+    const trials = trialDocuments();
+    const first = trials[0];
+    if (!first) return;
+    first.latitude = 45.98;
+    const problems = problemsOf(withTrials(trials)).join('\n');
+    expect(problems).toContain('forbidden key: a coordinate');
+  });
+
+  it('refuses a wall clock on a trial, whatever it is called', () => {
+    const trials = trialDocuments();
+    const first = trials[0];
+    if (!first) return;
+    first.capturedAt = 1_762_000_000_000;
+    const problems = problemsOf(withTrials(trials)).join('\n');
+    expect(problems).toContain('forbidden key shape: a wall-clock instant');
+    expect(problems).toContain('absolute epoch timestamp');
+  });
+
+  it('refuses a gain that is not one of the two modes', () => {
+    const trials = trialDocuments();
+    const first = trials[0];
+    if (!first) return;
+    first.mode = 'coarse';
+    expect(problemsOf(withTrials(trials)).join('\n')).toContain('dragTrials[0].mode');
+  });
+
+  it('refuses the same attempt index twice', () => {
+    const trials = trialDocuments();
+    const second = trials[1];
+    if (!second) return;
+    second.index = 0;
+    expect(problemsOf(withTrials(trials)).join('\n')).toContain('0 is used twice');
+  });
+
+  it('reduces each mode to the statistics worked out by hand', () => {
+    const result = parseRecording(withTrials());
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const trials = result.value.dragTrials ?? [];
+
+    const normal = dragModeScatter(trials, 'normal');
+    expect(normal.count).toBe(3);
+    expect(normal.headingMeanDeg).toBeCloseTo(1.6, 12);
+    expect(normal.headingSdDeg).toBeCloseTo(0.6, 12);
+    expect(normal.pxSdPx).toBeCloseTo(6, 12);
+    expect(normal.rollSpreadMeanDeg).toBeCloseTo(0.3, 12);
+    expect(normal.rollSpreadSdDeg).toBeCloseTo(0.1, 12);
+    expect(normal.rollSampleCount).toBe(60);
+
+    const fine = dragModeScatter(trials, 'fine');
+    expect(fine.headingMeanDeg).toBeCloseTo(0.14, 12);
+    expect(fine.headingSdDeg).toBeCloseTo(0.04, 12);
+    expect(fine.pxSdPx).toBeCloseTo(1, 12);
+    expect(fine.rollSpreadMeanDeg).toBeCloseTo(0.1, 12);
+    expect(fine.rollSpreadSdDeg).toBeCloseTo(0, 12);
+  });
+
+  it('reports the scatter per mode and the roll spread as one verdict', () => {
+    const result = parseRecording(withTrials());
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const found = analyseRecording(result.value).verdicts.find((v) => v.id === 'drag-scatter');
+    expect(found).toBeDefined();
+    if (!found) return;
+    expect(found.inconclusive).toBe(false);
+    expect(found.confidence).toBe('moderate');
+    // The winner is the smaller scatter, and it is under the budget's 0.543°.
+    expect(found.answer).toContain('fine drag scatters 0.040°');
+    expect(found.answer).toContain('under the 0.543°');
+    expect(found.answer).toContain('0.10°');
+    const evidence = found.evidence.join('\n');
+    expect(evidence).toContain('normal: 3 attempt(s), heading scatter 0.600° (mean +1.600°, 6.0 px)');
+    expect(evidence).toContain('roll spread 0.30° ± 0.10° over 60 roll sample(s)');
+    expect(evidence).toContain('fine: 3 attempt(s), heading scatter 0.040°');
+  });
+
+  it('says so, and stays low confidence, when a mode has too few attempts', () => {
+    const result = parseRecording(withTrials(trialDocuments().slice(0, 4)));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const found = analyseRecording(result.value).verdicts.find((v) => v.id === 'drag-scatter');
+    expect(found?.confidence).toBe('low');
+    expect(found?.answer).toContain('normal drag scatters 0.600°');
+    expect(found?.answer).toContain('over the 0.543°');
+  });
+
+  it('is inconclusive rather than silent when there are no trials', () => {
+    const result = parseRecording(withTrials([]));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const found = analyseRecording(result.value).verdicts.find((v) => v.id === 'drag-scatter');
+    expect(found?.inconclusive).toBe(true);
+    expect(found?.evidence.join('\n')).toContain('no drag trials');
+  });
+
+  it('computes a sample standard deviation, not a population one', () => {
+    // Two draws 1 apart: the sample sd is 1/√2 = 0.70710678…, the population
+    // sd 0.5. Worked out by hand, and the two differ by 41 %.
+    expect(meanAndSampleSd([0, 1]).sd).toBeCloseTo(Math.SQRT1_2, 12);
+    expect(meanAndSampleSd([7]).sd).toBe(0);
+    expect(meanAndSampleSd([]).mean).toBe(0);
+  });
+});
+
 describe('the committed fixtures', () => {
   // The two recordings in fixtures/sensors/web/ are what scripts/analyze-recording.ts
   // is demonstrated on, so a change that breaks them breaks the self-check too.
@@ -690,7 +882,16 @@ describe('the committed fixtures', () => {
       if (!result.ok) return;
       const analysis = analyseRecording(result.value);
       expect(analysis.compassReference.verdict).toBe(expected);
-      expect(analysis.verdicts.filter((v) => v.inconclusive)).toHaveLength(expected === 'device-top-edge' ? 0 : 1);
+      // Neither fixture carries drag trials — they are recordings of the sensor
+      // protocol alone — so `drag-scatter` is inconclusive on both, and it is
+      // named here rather than counted so a new inconclusive verdict shows up.
+      const unresolved = analysis.verdicts.filter((v) => v.inconclusive).map((v) => v.id);
+      expect(unresolved).toEqual(
+        expected === 'device-top-edge'
+          ? ['drag-scatter']
+          : ['landscape-sign', 'drag-scatter'],
+      );
+      expect(result.value.dragTrials).toBeUndefined();
     });
   }
 });
