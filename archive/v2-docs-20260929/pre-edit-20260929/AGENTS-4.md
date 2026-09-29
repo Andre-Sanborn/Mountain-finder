@@ -231,16 +231,17 @@ work with an agent when they need one, for instance during a field session.
 
 **The procedure.**
 
-1. The human watches the percentages and says when usage is getting high. When they do, start no
-   new agent and no heavy job; finish and commit what is running, and wait for their word.
-2. `allowed_warning` is not the reserve line. On 2026-09-29 the weekly limit showed
-   `allowed_warning` while the human's usage page read 44 %. So the warning is a prompt to ask,
-   not a stop: the first time a session sees `status` change, ask the human for the current
-   session and weekly percentages, then carry on unless they say otherwise.
-3. Read `rate_limit_info` at the start of every session and before launching a batch of agents
-   or a heavy job, so a change of `status` is noticed.
-4. If `status` shows a refusal, or `isUsingOverage` is ever `true`, stop all agent work and tell
-   the human at once.
+1. Read `rate_limit_info` before launching any agent, any batch of agents, or any heavy job, and
+   at the start of every session.
+2. While `status` is `allowed`, work normally.
+3. While `status` is `allowed_warning`, treat the reserve as reached. Start no new agent and no
+   heavy job. Finish and commit what is already running, then stop and tell the human, with the
+   limit name and its reset time in Denver time. Single orchestrator turns that answer the
+   human, and the nightly review, still run.
+4. If `isUsingOverage` is ever `true`, stop all agent work and tell the human at once.
+5. The warning threshold is not published. Until the human reads the actual percentage off the
+   Claude usage page at a moment the warning shows, it is assumed to fire at or before 90 %.
+   Record that reading here when it is made.
 
 **Cost awareness.** Most usage is agents re-reading context. Brief agents narrowly, prefer one
 agent doing sequential passes over several agents re-reading the same files, and do small
