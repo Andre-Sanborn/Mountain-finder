@@ -16,9 +16,10 @@
  *
  *     x = 0.5 + tan(B − heading) / (2 · tan(hFov/2))
  *
- * A portrait phone frame has a vertical field of view around 108°, where
- * `fov/px` under-reads the true scale by 46 %: the overlay lags the finger by
- * almost half. Inverting the equation properly costs one `atan`:
+ * A phone held upright has a vertical field of view around 69° on its main
+ * camera and around 108° on its ultrawide. At 69° the `fov/px` scale
+ * under-reads the true scale at frame centre by 12 %, at 108° by 32 %: the
+ * overlay lags the finger. Inverting the equation properly costs one `atan`:
  *
  *     angle = atan( (dPx / extentPx) · 2 · tan(fov/2) )
  *

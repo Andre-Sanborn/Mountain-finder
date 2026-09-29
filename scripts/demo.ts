@@ -522,6 +522,9 @@ async function terrainFor(caseId: string, useWindow: boolean) {
 function demoCamera(testCase: GroundTruthCase, options: Options): CameraPose {
   const headingDeg = options.headingDeg ?? testCase.view.bearingDeg;
   if (options.hFovDeg === undefined) {
+    // Orients itself by the frame: the 36 mm-gate angle goes to the longer of
+    // `--width` and `--height`, so a portrait demo frame gets it vertically.
+    // A `--h-fov` override is horizontal by definition, hence the other branch.
     return cameraPoseFromFocalLength({
       headingDeg,
       focalLength35mm: DEMO_FOCAL_35MM,

@@ -29,31 +29,92 @@
  * ## Field of view
  *
  * Focal lengths are quoted as 35 mm equivalents, meaning the focal length that
- * would give the same framing on a 36 × 24 mm frame. Only the 36 mm width is
- * needed: hFOV = 2·atan(36 / (2·f₃₅)). The vertical FOV then comes from the
- * *actual* image aspect ratio, since a phone shooting 4:3 and a camera
- * shooting 3:2 at the same equivalent focal length share an hFOV but not a
- * vFOV.
+ * would give the same framing on a 36 × 24 mm gate. One number, two frame
+ * dimensions — so turning it into a pair of angles needs a stated rule.
+ *
+ * The rule here: the 36 mm angle, 2·atan(36 / (2·f₃₅)), belongs to the LONGER
+ * displayed axis of the frame, and the shorter axis follows through the
+ * rectilinear tangent relation. {@link fovDegFromFocalLength35mm} is the only
+ * implementation of it in the repository; `src/exif/fov.ts` re-exports this
+ * one rather than keeping a second copy, because the two once disagreed about
+ * portrait frames and the disagreement was invisible on landscape photographs.
  */
 
-import { toDegrees, toRadians } from './geodesy';
+import { toRadians } from './geodesy';
 import type { CameraPose, ImagePoint } from './types';
+
+const DEG_PER_RAD = 180 / Math.PI;
+const RAD_PER_DEG = Math.PI / 180;
 
 /** Width of a 35 mm film frame in millimetres — the reference for "35 mm equivalent". */
 export const FULL_FRAME_WIDTH_MM = 36;
 
+/** Short side of the same gate. Present so the gate's shape is stated. */
+export const FULL_FRAME_HEIGHT_MM = 24;
+
 /**
- * Horizontal field of view for a 35 mm-equivalent focal length.
+ * The angle a 35 mm-equivalent focal length spans across the LONG side of the
+ * frame — the 36 mm dimension of the gate.
  *
- *     hFOV = 2 · atan( 36 mm / (2 · f₃₅) )
+ *     2 · atan( 36 mm / (2 · f₃₅) )
  *
  * Sanity anchors: 24 mm → 73.7°, 50 mm → 39.6°, 28 mm → 65.5°.
+ *
+ * Which physical dimension of the gate f₃₅ was matched against is a
+ * convention, not a fact in the file. This repository matches the 36 mm side.
+ * Apple's own figures suggest Apple matches the DIAGONAL instead: it quotes
+ * "13 mm, 120°" for the ultrawide, and 2·atan(43.267/26) = 118.0° across the
+ * diagonal against 2·atan(36/26) = 108.3° across the long side. On a 4:3 frame
+ * the two conventions differ by about 2° of long-side angle, some 3 % of
+ * tangent scale. Which one the phones mean is unresolved and is to be settled
+ * against the solved Railroad Ridge pose, where a measured field of view will
+ * separate them. Until then the long side stands, because the tag names the
+ * 35 mm FILM FORMAT whose gate is 36 × 24, and because the sensor diagonal the
+ * other convention needs is not recorded anywhere in the photograph.
  */
-export function hFovDegFromFocalLength35mm(focalLength35mm: number): number {
+export function longSideFovDegFromFocalLength35mm(focalLength35mm: number): number {
   if (!(focalLength35mm > 0)) {
     throw new RangeError(`focalLength35mm must be > 0, received ${focalLength35mm}`);
   }
-  return 2 * toDegrees(Math.atan(FULL_FRAME_WIDTH_MM / (2 * focalLength35mm)));
+  return 2 * Math.atan(FULL_FRAME_WIDTH_MM / (2 * focalLength35mm)) * DEG_PER_RAD;
+}
+
+/**
+ * The field of view across the frame's other axis.
+ *
+ * On a flat sensor the half-frame *dimensions* scale with the aspect ratio, and
+ * dimensions are proportional to the tangent of the half-angle — so it is the
+ * tangents that scale, never the angles:
+ *
+ *     tan(otherFov/2) = tan(fov/2) · otherAxisPx / thisAxisPx
+ *
+ * Every field-of-view pair in the repository comes through here, so a 4:3 phone
+ * frame and a 3:2 camera frame at the same equivalent focal length share their
+ * long-side angle and differ on the short one.
+ *
+ * @throws RangeError on a fov outside (0, 180) or a non-positive extent.
+ */
+export function otherAxisFovDeg(fovDeg: number, thisAxisPx: number, otherAxisPx: number): number {
+  if (!(fovDeg > 0) || fovDeg >= 180) {
+    throw new RangeError(`fovDeg must be in (0, 180), received ${fovDeg}`);
+  }
+  if (!(thisAxisPx > 0) || !(otherAxisPx > 0)) {
+    throw new RangeError(`frame extents must be > 0, received ${thisAxisPx} and ${otherAxisPx}`);
+  }
+  const halfTangent = Math.tan((fovDeg * RAD_PER_DEG) / 2);
+  return 2 * Math.atan(halfTangent * (otherAxisPx / thisAxisPx)) * DEG_PER_RAD;
+}
+
+/**
+ * The 36 mm-gate angle under its horizontal name, for callers that have a
+ * focal length and no pixel dimensions to orient by.
+ *
+ * It is an hFOV only on a landscape frame. With dimensions in hand, call
+ * {@link fovDegFromFocalLength35mm} — on a portrait frame this function
+ * returns the angle across the picture's HEIGHT.
+ */
+export function hFovDegFromFocalLength35mm(focalLength35mm: number): number {
+  return longSideFovDegFromFocalLength35mm(focalLength35mm);
 }
 
 /**
@@ -68,13 +129,12 @@ export function focalLength35mmFromHFovDeg(hFovDeg: number): number {
 }
 
 /**
- * Vertical field of view implied by a horizontal one and the image shape.
- *
- * On a flat sensor the half-frame *dimensions* scale with the aspect ratio,
- * and dimensions are proportional to the tangent of the half-angle — so it is
- * the tangents that divide, never the angles:
+ * Vertical field of view implied by a horizontal one and the image shape, for
+ * callers holding a ratio rather than two pixel counts.
  *
  *     tan(vFOV/2) = tan(hFOV/2) / (width / height)
+ *
+ * See {@link otherAxisFovDeg}, which does the arithmetic.
  *
  * @param aspectRatio image width ÷ height (1.333 for 4:3, 1.5 for 3:2).
  */
@@ -85,7 +145,52 @@ export function vFovDegFromHFovDeg(hFovDeg: number, aspectRatio: number): number
   if (!(aspectRatio > 0)) {
     throw new RangeError(`aspectRatio must be > 0, received ${aspectRatio}`);
   }
-  return 2 * toDegrees(Math.atan(Math.tan(toRadians(hFovDeg) / 2) / aspectRatio));
+  return otherAxisFovDeg(hFovDeg, aspectRatio, 1);
+}
+
+/** Both fields of view of one frame. */
+export interface FieldOfViewDeg {
+  readonly hFovDeg: number;
+  readonly vFovDeg: number;
+}
+
+/**
+ * Both fields of view from a 35 mm-equivalent focal length and the frame's
+ * DISPLAYED pixel dimensions. The single implementation of the long-axis rule.
+ *
+ * The 36 mm-gate angle goes to whichever displayed axis is longer and the
+ * other axis follows through the tangent relation. A square frame is not a
+ * special case: both sides are "the longer one" and the angles come out equal.
+ *
+ * "Displayed" is load-bearing, in two ways. A phone held upright stores its
+ * sensor's landscape frame and sets EXIF Orientation 6, so a caller reading a
+ * file must apply Orientation before calling this (`photoExifFromTags` does).
+ * A live preview must pass the dimensions of the view it is drawing into, not
+ * the sensor's.
+ *
+ * @throws RangeError on a non-positive focal length or non-positive dimensions.
+ */
+export function fovDegFromFocalLength35mm(
+  focalLength35mm: number,
+  displayedWidthPx: number,
+  displayedHeightPx: number,
+): FieldOfViewDeg {
+  const longSideDeg = longSideFovDegFromFocalLength35mm(focalLength35mm);
+  if (!(displayedWidthPx > 0) || !(displayedHeightPx > 0)) {
+    throw new RangeError(
+      `image dimensions must be > 0, received ${displayedWidthPx}×${displayedHeightPx}`,
+    );
+  }
+  if (displayedWidthPx >= displayedHeightPx) {
+    return {
+      hFovDeg: longSideDeg,
+      vFovDeg: otherAxisFovDeg(longSideDeg, displayedWidthPx, displayedHeightPx),
+    };
+  }
+  return {
+    hFovDeg: otherAxisFovDeg(longSideDeg, displayedHeightPx, displayedWidthPx),
+    vFovDeg: longSideDeg,
+  };
 }
 
 /** Everything needed to derive a {@link CameraPose} from photo metadata. */
@@ -105,20 +210,23 @@ export interface CameraPoseInput {
  *
  * Pitch and roll default to zero because EXIF rarely carries them; the app's
  * trim sliders adjust them afterwards.
+ *
+ * The two fields of view come from {@link fovDegFromFocalLength35mm}, so a
+ * portrait frame gets the 36 mm angle on its height. Pass the dimensions of
+ * the picture as displayed, not as stored.
  */
 export function cameraPoseFromFocalLength(input: CameraPoseInput): CameraPose {
-  if (!(input.imageWidthPx > 0) || !(input.imageHeightPx > 0)) {
-    throw new RangeError(
-      `image dimensions must be > 0, received ${input.imageWidthPx}×${input.imageHeightPx}`,
-    );
-  }
-  const hFovDeg = hFovDegFromFocalLength35mm(input.focalLength35mm);
+  const fov = fovDegFromFocalLength35mm(
+    input.focalLength35mm,
+    input.imageWidthPx,
+    input.imageHeightPx,
+  );
   return {
     headingDeg: input.headingDeg,
     pitchDeg: input.pitchDeg ?? 0,
     rollDeg: input.rollDeg ?? 0,
-    hFovDeg,
-    vFovDeg: vFovDegFromHFovDeg(hFovDeg, input.imageWidthPx / input.imageHeightPx),
+    hFovDeg: fov.hFovDeg,
+    vFovDeg: fov.vFovDeg,
   };
 }
 

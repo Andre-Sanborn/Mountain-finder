@@ -159,10 +159,17 @@ must stay on the real horizon behind it.** If pitch or roll carries the wrong
 sign, the line pulls away — tilt left and it tilts right. That is a convention
 error you can read at a glance and that no test here can catch.
 
-The lens selector is an assumption, not a measurement: Expo Go cannot ask the
-hardware which camera is active. It scales how far the line spreads across the
-frame; it does not change which way the line tilts, which is what the screen is
-for.
+Pick the phone model, then the lens. Both figures come from the maker's spec
+sheet and are an assumption, not a measurement: Expo Go cannot ask the hardware
+which camera is active or what it is doing. The choice scales how far the line
+spreads across the frame; it does not change which way the line tilts, which is
+what the screen is for. The overlay's field of view is to become a calibrated
+value measured against a solved pose, and these numbers are where it starts.
+
+The preview is aspect-fill, so the field of view is derived from the screen's
+own width and height: the 36 mm-gate angle spans the long side and the short
+side follows as `2·atan(tan(long/2) · short / long)`. On a 393 x 852 pt portrait
+layout the 24 mm main camera gives 73.7° down the screen and 38.2° across it.
 
 **Drag the overlay to line it up.** This is D9's interaction, the one the web
 app gives you as sliders: push the horizon with a finger until it sits on the
@@ -171,8 +178,9 @@ stops at the same limits (±30° across, ±20° up), and the panel reports how f
 you nudged it. Nothing is ever corrected behind your back.
 
 The drag geometry inverts the projection properly rather than assuming degrees
-are linear in pixels — a portrait frame's vertical field is around 108°, where
-the naive `fov ÷ pixels` scale lags your finger by 46%. See
+are linear in pixels. A phone held upright shows about 69° vertically on its
+main camera and about 108° on its ultrawide, where the naive `fov ÷ pixels`
+scale lags your finger by 12% and 32% respectively. See
 `src/live/drag-trim.ts`.
 
 ### True north, magnetic north, and why the line still draws

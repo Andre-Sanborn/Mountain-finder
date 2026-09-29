@@ -24,10 +24,12 @@
  *
  * A magnetic heading answers no to the first and yes to the second. It is
  * wrong by the local declination: a bounded, named, *systematic* quantity, not
- * an unknown one — under 5° across most of the contiguous US and Europe,
- * reaching ~25° in Alaska and worse at high latitudes. That is well inside the
- * ±30° heading trim the user already has, which is precisely what makes
- * dragging a fix rather than a workaround.
+ * an unknown one. In the contiguous US it runs from about 13° east on the west
+ * coast to about 16° west in Maine, passing through zero somewhere near the
+ * Mississippi; central Idaho, where this project's ground truth was
+ * photographed, is near +12.8° east. Alaska reaches ~25° and high latitudes are
+ * worse. Those magnitudes still sit inside the ±30° heading trim the user
+ * already has, which is what makes dragging a fix rather than a workaround.
  *
  * What must never happen is the number reaching the user's eye *labelled* as
  * true north. Hence `basis`, which every caller has to look at to get the

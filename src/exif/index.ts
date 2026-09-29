@@ -26,6 +26,7 @@ export {
   vFovDegFromHFov,
   type FieldOfViewDeg,
 } from './fov';
+export { cameraPoseFromPhotoExif, type PhotoPoseOverrides } from './photo-pose';
 export {
   findHeifExif,
   heifBrands,

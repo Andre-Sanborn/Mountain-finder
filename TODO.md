@@ -6,7 +6,8 @@ after its self-check has run and passed here. The checks are in
 
 ## Route to the field test
 
-- [ ] Fix the portrait FOV axis in core, the phone shell and annotate-photo; re-derive the drag-trim test
+- [x] Fix the portrait FOV axis in core, the phone shell and annotate-photo; re-derive the drag-trim test
+- [ ] Settle long-side vs CIPA-diagonal 35 mm equivalence against the solved Railroad Ridge pose (~2°, 3% scale)
 - [x] Build WMM2025 declination in src/core; reproduce NOAA's test values to 0.05°; cross-check a second source
 - [ ] Wire src/core/declination into the live heading policy, labelled "true (model)"
 - [ ] Build sun and moon position in src/core against Meeus worked examples

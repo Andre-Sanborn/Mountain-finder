@@ -25,9 +25,11 @@
  * showing labels over never-swept terrain would be the fabrication this
  * repository exists to prevent.
  *
- * Pure throughout: scene in, overlay scene or refusal out. The React Native
- * shell's render loop calls `liveOverlayScene` per sensor tick and
- * `layoutOverlay` (src/render) on the result, both side-effect-free.
+ * Pure throughout: scene in, overlay scene or refusal out. Both this function
+ * and `layoutOverlay` (src/render) are side-effect-free, so a render loop can
+ * call them per sensor tick. Nothing calls it yet: the React Native shell draws
+ * the horizon line from `projectToImage` directly and has no terrain on the
+ * phone to sweep, which is D7's open question.
  */
 
 import type { CameraPose } from '../core/types.js';

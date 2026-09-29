@@ -45,9 +45,9 @@ import { decode as decodeJpeg } from 'jpeg-js';
 import { isHeif } from '../src/exif/heif.js';
 
 import { interpolateHorizonAltitudeDeg, nearFieldHorizons } from '../src/core/horizon.js';
-import { cameraPoseFromFocalLength } from '../src/core/projection.js';
 import type { CameraPose } from '../src/core/types.js';
 import { extractPhotoExif } from '../src/exif/extract.js';
+import { cameraPoseFromPhotoExif } from '../src/exif/photo-pose.js';
 import type { PhotoExif } from '../src/exif/types.js';
 import { annotateScene } from '../src/pipeline/annotate.js';
 import type { AnnotatedScene, PeakSource } from '../src/pipeline/types.js';
@@ -207,13 +207,13 @@ function poseFrom(exif: PhotoExif, options: Options, sourceLabel: string): Camer
     line('           wrong by the local declination until one is.');
   }
 
-  return cameraPoseFromFocalLength({
-    headingDeg: heading ?? 0,
-    pitchDeg: options.pitchDeg ?? 0,
-    rollDeg: options.rollDeg ?? 0,
-    focalLength35mm: exif.focalLength35mmMm ?? 0,
-    imageWidthPx: exif.imageWidthPx ?? 0,
-    imageHeightPx: exif.imageHeightPx ?? 0,
+  // `cameraPoseFromPhotoExif` prefers the fields of view the extractor already
+  // derived, and gives the 36 mm-gate angle to the frame's longer displayed
+  // axis — so a portrait photograph gets it on its height.
+  return cameraPoseFromPhotoExif(exif, {
+    ...(heading === undefined ? {} : { headingDeg: heading }),
+    ...(options.pitchDeg === undefined ? {} : { pitchDeg: options.pitchDeg }),
+    ...(options.rollDeg === undefined ? {} : { rollDeg: options.rollDeg }),
   });
 }
 

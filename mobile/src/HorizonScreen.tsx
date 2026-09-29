@@ -54,17 +54,35 @@ import { colors, styles } from './theme';
 import type { DeviceSensors } from './useDeviceSensors';
 
 /**
- * 35 mm-equivalent focal lengths for the common phone rear cameras. The app
- * cannot ask the hardware what it is currently using through Expo Go, so this
- * is a stated assumption the user can correct — never a silent default. A
- * wrong choice scales the horizon's spread across the frame; it does NOT
- * change which way the line tilts, which is what this screen is really for.
+ * 35 mm-equivalent focal lengths of the rear cameras, by phone model, as the
+ * maker's spec sheet states them.
+ *
+ * These are INITIAL GUESSES, not measurements. Expo Go cannot ask the hardware
+ * which camera is active or what it is doing, so the user picks — a stated
+ * assumption they can correct, never a silent default. A wrong pick scales how
+ * far the horizon spreads across the frame; it does NOT change which way the
+ * line tilts, which is what this screen is for. The overlay's field of view is
+ * to become a calibrated value measured against a solved pose, and these
+ * numbers are what it starts from.
+ *
+ * Two details worth knowing when comparing a number here with a photograph's
+ * EXIF. The "13 mm" ultrawide writes `FocalLengthIn35mmFormat` 14. And the
+ * 17 Pro Max also frames an 8x, 200 mm-equivalent view by cropping its 100 mm
+ * sensor; it is left out here because the four entries already span the range
+ * the horizon check needs.
  */
-const LENS_PRESETS: readonly { label: string; focalLength35mm: number }[] = [
-  { label: '13 mm', focalLength35mm: 13 },
-  { label: '26 mm', focalLength35mm: 26 },
-  { label: '77 mm', focalLength35mm: 77 },
+interface PhoneLenses {
+  readonly model: string;
+  readonly focalLengths35mm: readonly number[];
+}
+
+const PHONE_LENSES: readonly PhoneLenses[] = [
+  { model: 'iPhone 17 Pro Max', focalLengths35mm: [13, 24, 48, 100] },
+  { model: 'iPhone 15 Pro Max', focalLengths35mm: [13, 24, 48, 120] },
 ];
+
+/** The main camera, which is where both models' second entry sits. */
+const DEFAULT_LENS_INDEX = 1;
 
 /** Bearings marked along the horizon, degrees. */
 const TICK_STEP_DEG = 15;
@@ -132,7 +150,8 @@ function answerText(answer: SensorAnswer): string {
 
 export function HorizonScreen({ sensors }: { sensors: DeviceSensors }) {
   const [permission, requestPermission] = useCameraPermissions();
-  const [lensIndex, setLensIndex] = useState(1);
+  const [modelIndex, setModelIndex] = useState(0);
+  const [lensIndex, setLensIndex] = useState(DEFAULT_LENS_INDEX);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [trim, setTrim] = useState<TrimState>(NO_TRIM);
 
@@ -141,7 +160,10 @@ export function HorizonScreen({ sensors }: { sensors: DeviceSensors }) {
   const trimAtGestureStart = useRef<TrimState>(NO_TRIM);
   const trimRef = useRef<TrimState>(NO_TRIM);
   const frameRef = useRef({ widthPx: 0, heightPx: 0 });
-  const fovRef = useRef({ hFovDeg: 60, vFovDeg: 90 });
+  // Zero until the first layout, which `dragAngleDeg` reads as "no frame yet"
+  // and answers with no movement. Seeding a plausible-looking field of view
+  // instead would scale the first gesture by a number belonging to no lens.
+  const fovRef = useRef({ hFovDeg: 0, vFovDeg: 0 });
   trimRef.current = trim;
 
   const panResponder = useMemo(
@@ -175,8 +197,10 @@ export function HorizonScreen({ sensors }: { sensors: DeviceSensors }) {
     frameRef.current = { widthPx: width, heightPx: height };
   };
 
-  const lens = LENS_PRESETS[lensIndex] ?? LENS_PRESETS[1];
-  const ready = size.width > 0 && size.height > 0 && lens !== undefined;
+  const phone = PHONE_LENSES[modelIndex] ?? PHONE_LENSES[0];
+  const focalLength35mm =
+    phone?.focalLengths35mm[lensIndex] ?? phone?.focalLengths35mm[DEFAULT_LENS_INDEX];
+  const ready = size.width > 0 && size.height > 0 && focalLength35mm !== undefined;
 
   // The heading is resolved through the policy module, which prefers true
   // north, converts with a declination when one exists, and only then falls
@@ -188,10 +212,22 @@ export function HorizonScreen({ sensors }: { sensors: DeviceSensors }) {
   );
 
   let pose: CameraPose | undefined;
-  if (ready && lens && headingDecision.ok) {
+  if (ready && focalLength35mm !== undefined && headingDecision.ok) {
+    // The layout's own width and height, not the sensor's, because the preview
+    // is ASPECT-FILL: the camera frame is scaled until it covers the view and
+    // whatever overhangs is cropped away. A phone's screen is more elongated
+    // than its 4:3 sensor, so the crop is across the short axis and the long
+    // axis survives whole — the 36 mm-gate angle spans the screen's long side,
+    // and the short side follows as
+    //
+    //     visible hFov = 2·atan( tan(vFov/2) · width / height )
+    //
+    // which is exactly what `cameraPoseFromFocalLength` computes from these
+    // dimensions. If the preview ever becomes aspect-FIT (letterboxed), this
+    // stops being true: the sensor's own aspect ratio would then govern.
     const base = cameraPoseFromFocalLength({
       headingDeg: headingDecision.heading.headingDeg,
-      focalLength35mm: lens.focalLength35mm,
+      focalLength35mm,
       imageWidthPx: size.width,
       imageHeightPx: size.height,
     });
@@ -299,16 +335,41 @@ export function HorizonScreen({ sensors }: { sensors: DeviceSensors }) {
         </View>
 
         <View style={styles.row}>
-          {LENS_PRESETS.map((preset, index) => (
+          {PHONE_LENSES.map((entry, index) => (
             <Pressable
-              key={preset.label}
-              style={[styles.buttonGhost, index === lensIndex ? { borderColor: colors.accent } : null]}
-              onPress={() => setLensIndex(index)}
+              key={entry.model}
+              style={[
+                styles.buttonGhost,
+                index === modelIndex ? { borderColor: colors.accent } : null,
+              ]}
+              onPress={() => {
+                setModelIndex(index);
+                // Models differ in how many cameras they list; the main one is
+                // at the same index on both, so fall back there.
+                if (lensIndex >= entry.focalLengths35mm.length) setLensIndex(DEFAULT_LENS_INDEX);
+              }}
             >
-              <Text style={[styles.buttonGhostText, { fontSize: 11 }]}>{preset.label}</Text>
+              <Text style={[styles.buttonGhostText, { fontSize: 11 }]}>{entry.model}</Text>
             </Pressable>
           ))}
         </View>
+
+        <View style={styles.row}>
+          {(phone?.focalLengths35mm ?? []).map((mm, index) => (
+            <Pressable
+              key={mm}
+              style={[styles.buttonGhost, index === lensIndex ? { borderColor: colors.accent } : null]}
+              onPress={() => setLensIndex(index)}
+            >
+              <Text style={[styles.buttonGhostText, { fontSize: 11 }]}>{mm} mm</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <Text style={{ color: colors.dim, fontSize: 11, lineHeight: 16 }}>
+          Lens figures are the spec sheet's, not a measurement — they set how far the line
+          spreads, never which way it tilts.
+        </Text>
       </View>
     </View>
   );

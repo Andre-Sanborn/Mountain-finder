@@ -5,7 +5,9 @@ import {
   FULL_FRAME_WIDTH_MM,
   cameraPoseFromFocalLength,
   focalLength35mmFromHFovDeg,
+  fovDegFromFocalLength35mm,
   hFovDegFromFocalLength35mm,
+  longSideFovDegFromFocalLength35mm,
   projectToImage,
   vFovDegFromHFovDeg,
 } from './projection';
@@ -101,6 +103,104 @@ describe('vFovDegFromHFovDeg', () => {
     expect(() => vFovDegFromHFovDeg(200, 1.5)).toThrow(RangeError);
     expect(() => vFovDegFromHFovDeg(60, 0)).toThrow(RangeError);
     expect(() => vFovDegFromHFovDeg(60, -1)).toThrow(RangeError);
+  });
+});
+
+/**
+ * Which axis gets the 36 mm-gate angle.
+ *
+ * Every expectation below is the closed form evaluated by hand, never this
+ * code's output. The gate's long side is 36 mm, so its half-side is 18 mm and
+ *
+ *     long-side angle = 2·atan(18 / f35)
+ *     short axis      = 2·atan( tan(long/2) · shortPx / longPx )
+ *
+ * with the second line reading straight off a flat sensor: half-frame
+ * dimensions are proportional to half-angle tangents.
+ *
+ *   f35 = 24 -> 2·atan(18/24) = 2·atan(0.75)          = 73.739795°
+ *   f35 = 26 -> 2·atan(18/26) = 2·atan(9/13)          = 69.390307°
+ *
+ * A phone screen 393 x 852 pt (the iPhone portrait layout) and the 4:3 sensor
+ * frames both follow:
+ *
+ *   26 mm, 393 x 852 portrait
+ *     vFov = 69.390307°,  tan(vFov/2) = 9/13
+ *     tan(hFov/2) = (9/13)·(393/852) = 0.319287…
+ *     hFov = 2·atan(0.319287…)                        = 35.420632°
+ *   24 mm, 393 x 852 portrait
+ *     vFov = 73.739795°,  tan(vFov/2) = 0.75
+ *     tan(hFov/2) = 0.75·(393/852) = 0.345950…
+ *     hFov = 2·atan(0.345950…)                        = 38.166195°
+ *   26 mm, 3 x 4 portrait: tan(hFov/2) = (9/13)·0.75  -> 54.879456°
+ *   24 mm, 3 x 4 portrait: tan(hFov/2) = 0.75·0.75    -> 58.715507°
+ *
+ * 852 x 393 and 4 x 3 are the same numbers with the two angles swapped.
+ */
+describe('fovDegFromFocalLength35mm — the long-axis rule', () => {
+  it('gives the gate angle to the height of a portrait phone frame', () => {
+    const at26 = fovDegFromFocalLength35mm(26, 393, 852);
+    expect(at26.vFovDeg).toBeCloseTo(69.390307, 6);
+    expect(at26.hFovDeg).toBeCloseTo(35.420632, 6);
+
+    const at24 = fovDegFromFocalLength35mm(24, 393, 852);
+    expect(at24.vFovDeg).toBeCloseTo(73.739795, 6);
+    expect(at24.hFovDeg).toBeCloseTo(38.166195, 6);
+  });
+
+  it('gives it to the width of the same frame rotated', () => {
+    const at26 = fovDegFromFocalLength35mm(26, 852, 393);
+    expect(at26.hFovDeg).toBeCloseTo(69.390307, 6);
+    expect(at26.vFovDeg).toBeCloseTo(35.420632, 6);
+
+    const at24 = fovDegFromFocalLength35mm(24, 852, 393);
+    expect(at24.hFovDeg).toBeCloseTo(73.739795, 6);
+    expect(at24.vFovDeg).toBeCloseTo(38.166195, 6);
+  });
+
+  it('does the same for the 4:3 frames a phone actually stores', () => {
+    const portrait26 = fovDegFromFocalLength35mm(26, 3024, 4032);
+    expect(portrait26.vFovDeg).toBeCloseTo(69.390307, 6);
+    expect(portrait26.hFovDeg).toBeCloseTo(54.879456, 6);
+
+    const landscape24 = fovDegFromFocalLength35mm(24, 4032, 3024);
+    expect(landscape24.hFovDeg).toBeCloseTo(73.739795, 6);
+    expect(landscape24.vFovDeg).toBeCloseTo(58.715507, 6);
+  });
+
+  it('is the long-side angle on whichever axis is longer, and only there', () => {
+    for (const f35 of [13, 24, 26, 48, 100, 120]) {
+      const longSide = longSideFovDegFromFocalLength35mm(f35);
+      expect(fovDegFromFocalLength35mm(f35, 852, 393).hFovDeg).toBe(longSide);
+      expect(fovDegFromFocalLength35mm(f35, 393, 852).vFovDeg).toBe(longSide);
+      expect(fovDegFromFocalLength35mm(f35, 393, 852).hFovDeg).toBeLessThan(longSide);
+    }
+  });
+
+  it('gives a square frame two equal angles', () => {
+    const fov = fovDegFromFocalLength35mm(50, 1000, 1000);
+    expect(fov.hFovDeg).toBeCloseTo(fov.vFovDeg, 12);
+    expect(fov.hFovDeg).toBeCloseTo(39.597753, 6);
+  });
+
+  it('rejects impossible inputs rather than assuming a shape', () => {
+    expect(() => fovDegFromFocalLength35mm(0, 800, 600)).toThrow(RangeError);
+    expect(() => fovDegFromFocalLength35mm(26, 0, 600)).toThrow(RangeError);
+    expect(() => fovDegFromFocalLength35mm(26, 800, Number.NaN)).toThrow(RangeError);
+  });
+});
+
+describe('cameraPoseFromFocalLength — portrait frames', () => {
+  it('carries the long-axis rule into the pose', () => {
+    const pose = cameraPoseFromFocalLength({
+      headingDeg: 12,
+      focalLength35mm: 26,
+      imageWidthPx: 393,
+      imageHeightPx: 852,
+    });
+    expect(pose.vFovDeg).toBeCloseTo(69.390307, 6);
+    expect(pose.hFovDeg).toBeCloseTo(35.420632, 6);
+    expect(pose.vFovDeg).toBeGreaterThan(pose.hFovDeg);
   });
 });
 

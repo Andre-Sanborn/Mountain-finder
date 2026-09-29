@@ -11,7 +11,7 @@
  * *through the real `projectToImage`* — which is both the specification of
  * what a drag means and the assertion no sign error can survive. They also
  * caught the first version of this module, which used `fov/px` and lagged the
- * finger by 46 % on a portrait frame's 108° vertical field.
+ * finger by 12 % on a portrait frame's 69° vertical field.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -35,11 +35,14 @@ describe('dragAngleDeg', () => {
   });
 
   it('is NOT the naive fov/px, and diverges most where phones actually live', () => {
-    // A portrait frame's vertical field is around 108°. Over a tenth of the
-    // frame the naive scale is already several per cent out, and the gap grows
-    // with the drag — the bug this module was rewritten to fix.
+    // An ultrawide held upright shows about 108° vertically. Over a tenth of
+    // the frame the naive scale is already several per cent out, and the gap
+    // grows with the drag — the bug this module was rewritten to fix.
+    //   naive  = 0.1 · 108                       = 10.8°
+    //   actual = atan(0.1 · 2·tan54°)            = atan(0.2752763…) = 15.390972°
     const naive = (80 / 800) * 108;
     const actual = dragAngleDeg(80, 800, 108);
+    expect(actual).toBeCloseTo(15.390972, 6);
     expect(actual).toBeGreaterThan(naive);
     expect(actual / naive).toBeGreaterThan(1.2);
   });
@@ -147,7 +150,8 @@ describe('through the real projection', () => {
     expect(before.y).toBeCloseTo(0.5, 10);
 
     // Kept inside the ±20° pitch limit, which on this frame is reached at
-    // 105.1 px — past that the clamp is the answer, not the geometry.
+    // 800·tan20°/(2·9/13) = 210.3 px — past that the clamp is the answer, not
+    // the geometry.
     for (const dyPx of [10, 40, 90, -75]) {
       const trimmed = applyTrim(pose, trimFromDrag(NO_TRIM, { dx: 0, dy: dyPx }, FRAME, fov));
       const after = projectToImage(trimmed, pose.headingDeg, 0);
@@ -157,14 +161,22 @@ describe('through the real projection', () => {
   });
 
   it('is what the naive scale would have got wrong', () => {
-    // Same drag, scored under the fov/px rule the first version used. The
-    // portrait frame's vertical field is ~108°, so the feature would have
-    // followed the finger less than two thirds of the way.
+    // Same drag, scored under the fov/px rule the first version used. This
+    // 400×800 frame at 26 mm has vFov = 2·atan(18/26) = 69.390307°, so
+    // tan(vFov/2) = 9/13 exactly and the whole expectation closes:
+    //
+    //   naive pitch = (120/800)·69.390307°      = 10.408546°
+    //   y offset    = tan(10.408546°)/(2·9/13)  = 0.13266394 of the frame
+    //   movedPx     = 800 · 0.13266394          = 106.1312 px
+    //
+    // The correct trim for 120 px is atan(0.15·2·9/13) = 11.733084°, so the
+    // naive rule leaves the overlay 13.9 px behind the finger — 11.6 % short.
     const dyPx = 120;
     const naiveTrim = { headingDeg: 0, pitchDeg: (dyPx / FRAME.heightPx) * fov.vFovDeg, hFovDeg: 0 };
     const before = projectToImage(pose, pose.headingDeg, 0);
     const after = projectToImage(applyTrim(pose, naiveTrim), pose.headingDeg, 0);
     const movedPx = (after.y - before.y) * FRAME.heightPx;
-    expect(movedPx).toBeLessThan(dyPx * 0.75);
+    expect(movedPx).toBeCloseTo(106.1312, 3);
+    expect(movedPx).toBeLessThan(dyPx);
   });
 });

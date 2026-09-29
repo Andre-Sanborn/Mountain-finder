@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  cameraPoseFromFocalLength,
+  fovDegFromFocalLength35mm as coreFovDegFromFocalLength35mm,
+} from '../core/projection';
+
+import {
   fovDegFromFocalLength35mm,
   hFovDegFromFocalLength35mm,
   longSideFovDegFromFocalLength35mm,
@@ -150,5 +155,53 @@ describe('fovDegFromFocalLength35mm — which axis gets the 36 mm angle', () => 
     expect(() => fovDegFromFocalLength35mm(0, 800, 600)).toThrow(RangeError);
     expect(() => fovDegFromFocalLength35mm(50, 0, 600)).toThrow(RangeError);
     expect(() => fovDegFromFocalLength35mm(50, 800, Number.NaN)).toThrow(RangeError);
+  });
+});
+
+/**
+ * The still path and the live path must agree.
+ *
+ * `cameraPoseFromFocalLength` (core, used by the phone screen, the demo script
+ * and the CV tests) and `fovDegFromFocalLength35mm` (this module, used by the
+ * extractor and the web app) once disagreed on portrait frames: core gave the
+ * 36 mm-gate angle to the width whatever the orientation. Landscape
+ * photographs hid it completely, which is why the agreement is asserted on both
+ * orientations and to the last bit rather than to six places.
+ */
+describe('agreement with the core pose builder', () => {
+  it('is literally the same function, so the two cannot drift apart', () => {
+    expect(fovDegFromFocalLength35mm).toBe(coreFovDegFromFocalLength35mm);
+  });
+
+  it('matches on portrait and landscape frames, exactly', () => {
+    const frames = [
+      [393, 852],
+      [852, 393],
+      [3024, 4032],
+      [4032, 3024],
+      [600, 800],
+      [800, 600],
+      [1000, 1000],
+    ] as const;
+    for (const f35 of [13, 24, 26, 48, 77, 100, 120]) {
+      for (const [widthPx, heightPx] of frames) {
+        const still = fovDegFromFocalLength35mm(f35, widthPx, heightPx);
+        const pose = cameraPoseFromFocalLength({
+          headingDeg: 0,
+          focalLength35mm: f35,
+          imageWidthPx: widthPx,
+          imageHeightPx: heightPx,
+        });
+        expect(pose.hFovDeg).toBe(still.hFovDeg);
+        expect(pose.vFovDeg).toBe(still.vFovDeg);
+      }
+    }
+  });
+
+  it('puts the wider angle on the longer displayed axis, both ways round', () => {
+    const portrait = fovDegFromFocalLength35mm(26, 393, 852);
+    expect(portrait.vFovDeg).toBeGreaterThan(portrait.hFovDeg);
+    const landscape = fovDegFromFocalLength35mm(26, 852, 393);
+    expect(landscape.hFovDeg).toBeGreaterThan(landscape.vFovDeg);
   });
 });

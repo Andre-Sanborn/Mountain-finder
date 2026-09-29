@@ -529,3 +529,25 @@ may lack. So that step continues on error and prints the manual steps in the job
 **Limit: Pages has no `gzip_static`.** The `.gz` siblings may never be served, and a phone may
 download the full 25.93 MB tile. Measure what reaches the phone before budgeting on the
 gzipped size.
+
+### The fix: one rule for focal length to field of view
+
+`fovDegFromFocalLength35mm` in `src/core/projection.ts` is now the only implementation of
+"35 mm-equivalent focal length plus displayed width and height gives hFOV and vFOV". It gives the
+36 mm gate angle to the longer displayed axis and derives the other through `otherAxisFovDeg`.
+`src/exif/fov.ts` re-exports it, and a test asserts the two exports are the same function object,
+so a second copy cannot reappear silently. `scripts/annotate-photo.ts` builds its pose through
+the new `cameraPoseFromPhotoExif`, which prefers the extractor's field of view and refuses rather
+than defaults. The phone's lens presets are per-model spec-sheet guesses: 17 Pro Max 13/24/48/100
+mm, 15 Pro Max 13/24/48/120 mm.
+
+The merged code keeps the EXIF module's arithmetic spelling, so the recorded acceptance figures
+stay bit-identical. They are asserted with `Object.is`: 58.71550708558255 at 24 mm and
+31.417275658031485 at 48 mm. Reverting the long-axis rule fails 11 tests across 5 files. Giving
+the EXIF module back a private copy fails 5. The re-derived drag test expects 106.1312 px for a
+120 px drag under the naive rule, 11.6 % short.
+
+**Still open: which 35 mm convention Apple uses.** Apple quotes "13 mm, 120°" for the ultrawide.
+That matches the CIPA diagonal convention (118.0°), not the long side (108.3°). On a 4:3 frame the
+two conventions differ by about 2°, or 3 % of scale. This is to be settled against the solved
+Railroad Ridge pose, and the convention is unchanged until then.
