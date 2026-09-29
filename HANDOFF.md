@@ -12,6 +12,13 @@ and self-checks in [IMPLEMENTATION.md](IMPLEMENTATION.md), open work in [TODO.md
   blocked; the default until answered is that they stay. Options given: keep; make the repo
   private (Pages would then need another host); or rewrite history (overrides "nothing is
   deleted", needs their explicit word). Repeat this ask in every reply until answered.
+- **An action only they can take: turn on GitHub Pages (about 2 minutes, not urgent).** The
+  Pages workflow builds and passes its gates, but the deploy step fails with 404 "Ensure GitHub
+  Pages has been enabled" (run 36514664919). The repository's default branch is the retired
+  `claude/topographic-peak-identifier-EV4ZN`, and a Pages environment normally deploys only from
+  the default branch. The steps given: make `claude/gifted-lamport-3tyh5g` the default branch,
+  then set Pages Source to GitHub Actions. Agents re-run the workflow afterwards. Blocked until
+  then: the public HTTPS address the phone will open. Nothing else.
 - **Recorded, not asked: how "archive all of our work" was read.** Snapshot the state, archive
   the governance documents, keep the code and build on it. The human can say if they meant a
   whole-tree archive and rebuild.
