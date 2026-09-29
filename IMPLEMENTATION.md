@@ -655,6 +655,20 @@ The adapter has 53 tests. Six single sign or ordering mutations each fail betwee
 them. Every expectation comes from the specs, WebKit's or Chromium's own arithmetic, or the
 calibration vectors, so the suite proves the reading of the specs, not the hardware.
 
-**The home recording's ten questions** are listed in the adapter's module header. The first is
-what `webkitCompassHeading` bears when the phone is upright, and it decides the iOS heading
-path.
+**What the home session's 10-second Safari recording must settle**, in order:
+1. What `webkitCompassHeading` bears when the phone is upright, with the rear camera on a known
+   bearing or the sun. This decides between the two hypotheses and the whole iOS heading path.
+2. Whether `webkitCompassAccuracy` widens as the phone rises from flat to upright. If it does,
+   the `1/|cos β|` inflation double-counts.
+3. Whether the heading moves when the phone rolls about the camera axis. This is an
+   independent discriminator for item 1.
+4. Whether rotating to landscape changes the heading, `beta` or `gamma`. If it does, the
+   "carried, not applied" handling of the screen angle is wrong.
+5. The sign of the mapping from device roll to screen roll in landscape.
+6. Whether `event.absolute` exists on iOS. If it does, and is true, relative alpha would be
+   mistaken for absolute.
+7. The sign of `accelerationIncludingGravity` flat and face up. WebKit's source says −9.8.
+8. Whether `acceleration` is ever exactly (0, 0, 0), which marks the no-gyroscope fallback.
+9. The four calibration holds as raw events. The verdict must be `matches-convention`.
+10. The event rate and timestamp jitter, and whether the motion-permission grant survives a
+    reload and airplane mode.
