@@ -53,7 +53,7 @@ The reviewer ran on `claude-fable-5-1`, not the pinned Opus 5.5 (transcript reco
 5. Accepted, in the same fix.
 6. Deferred below the field test (TODO); the app cannot produce the shape.
 7. Accepted as a note: the aligned fixture is a parser fixture, not budget evidence. The
-   allowance schedule has its own injected-exceedance tests (`field-budget-simulation.test.ts`).
+   allowance schedule has its own injected-exceedance tests (`src/live/field-analysis.test.ts`).
 
 ---
 
