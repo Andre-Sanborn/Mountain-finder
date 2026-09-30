@@ -12,23 +12,33 @@
  * module is what computes it from one tap.
  *
  * ── THE ARITHMETIC ─────────────────────────────────────────────────────────
- * A rectilinear frame puts a direction at
+ * The overlay is drawn by `projectToImage` (`src/core/projection.ts`), and this
+ * inverts it exactly. With `f = (widthPx / 2) / tan(hFov / 2)` in overlay pixels
+ * and square pixels, the tapped pixel is the camera-frame ray
  *
- *     x − c_x = f · tan(azimuth − heading)
- *     y − c_y = f · tan(pitch − altitude)      (screen y grows downward)
+ *     (right, up, forward) = ((x − c_x) / f, −(y − c_y) / f, 1)
  *
- * with `f = (widthPx / 2) / tan(hFov / 2)` in overlay pixels. The person taps
- * the REAL thing, so the two equations are solved for the pose instead of for
- * the pixel:
+ * Undoing the roll puts it on the level camera's axes: `a` along the level right
+ * axis, which is horizontal, and `b` along the level up axis. At heading 0 and
+ * pitch P that ray points at
  *
- *     heading = azimuth  − atan((x − c_x) / f)
- *     pitch   = altitude + atan((y − c_y) / f)
+ *     (east, north, up) = (a, cos P − b · sin P, sin P + b · cos P)
  *
- * The two axes are solved independently, which is exact on the frame's centre
- * lines and first-order elsewhere: the cross term is the roll and the pitch's
- * own foreshortening, worth a fraction of a degree across a phone frame. That
- * is three orders below the 92° this exists to remove, and the fine trim is
- * what closes the rest.
+ * whose length is √(1 + a² + b²). Heading only turns it about the vertical, so
+ * the pitch alone must put its elevation on the reference's altitude:
+ *
+ *     sin P + b · cos P = sin(altitude) · √(1 + a² + b²)
+ *     P = asin( sin(altitude) · √(1 + a² + b²) / √(1 + b²) ) − atan(b)
+ *
+ * and the heading then turns its azimuth onto the reference's:
+ *
+ *     heading = azimuth − atan2(a, cos P − b · sin P)
+ *
+ * Both are closed forms, so nothing iterates. On the frame's vertical centre
+ * line with no roll they reduce to `pitch = altitude + atan((y − c_y) / f)`, and
+ * at zero altitude on the horizontal one to `heading = azimuth − atan((x − c_x)
+ * / f)`. Anywhere else those two separate formulas are wrong by the pitch's
+ * foreshortening: 4.3° of heading for the Sun 30° up and 30° off axis.
  *
  * ── WHY IT IS NOT `pickReference` ──────────────────────────────────────────
  * `fov-calibration.ts` attributes a tap to the nearest DRAWN mark within 160 px.
@@ -50,7 +60,7 @@
 import { normaliseBearingDeg } from '../../core/geodesy';
 import { TRIM_LIMIT_DEG } from '../trim';
 
-import type { PointPx } from './fov-calibration';
+import { MAX_TAP_DISTANCE_PX, type CalibrationReference, type PointPx } from './fov-calibration';
 
 const RAD_PER_DEG = Math.PI / 180;
 const DEG_PER_RAD = 180 / Math.PI;
@@ -112,8 +122,15 @@ export interface ReanchorInput {
   readonly reference: ReanchorReference;
   /** Where the person tapped the real thing, in overlay pixels. */
   readonly tappedPx: PointPx;
-  /** The pose the sensors report, before any trim or offset. */
-  readonly sensedPose: { readonly headingDeg: number; readonly pitchDeg: number };
+  /**
+   * The pose the sensors report, before any trim or offset. The roll is also
+   * the one the overlay is drawn at, because no trim changes it.
+   */
+  readonly sensedPose: {
+    readonly headingDeg: number;
+    readonly pitchDeg: number;
+    readonly rollDeg: number;
+  };
   /** The heading the overlay is drawn at now — sensed, trimmed and offset. */
   readonly drawnHeadingDeg: number;
   readonly framePx: { readonly widthPx: number; readonly heightPx: number };
@@ -140,7 +157,7 @@ export interface Reanchor {
   readonly sentence: string;
 }
 
-export type ReanchorRefusal = 'no-frame' | 'tap-outside-frame';
+export type ReanchorRefusal = 'no-frame' | 'tap-outside-frame' | 'no-pose';
 
 export type ReanchorResult =
   | { readonly ok: true; readonly value: Reanchor }
@@ -183,13 +200,33 @@ export function reanchorFromTap(input: ReanchorInput): ReanchorResult {
   }
 
   const focalPx = widthPx / 2 / Math.tan((input.visibleHFovDeg * RAD_PER_DEG) / 2);
-  const dxPx = input.tappedPx.xPx - input.principalPointPx.xPx;
-  const dyPx = input.tappedPx.yPx - input.principalPointPx.yPx;
+  const rightRay = (input.tappedPx.xPx - input.principalPointPx.xPx) / focalPx;
+  const upRay = -(input.tappedPx.yPx - input.principalPointPx.yPx) / focalPx;
 
+  // `cameraAxes` rolls right = R·cos − U·sin and up = R·sin + U·cos, so the ray's
+  // components on the level axes R and U are these.
+  const roll = input.sensedPose.rollDeg * RAD_PER_DEG;
+  const a = rightRay * Math.cos(roll) + upRay * Math.sin(roll);
+  const b = -rightRay * Math.sin(roll) + upRay * Math.cos(roll);
+
+  const sinPlusPhi =
+    (Math.sin(input.reference.altitudeDeg * RAD_PER_DEG) * Math.sqrt(1 + a * a + b * b)) /
+    Math.sqrt(1 + b * b);
+  if (!(Math.abs(sinPlusPhi) <= 1)) {
+    return {
+      ok: false,
+      refusal: 'no-pose',
+      detail:
+        `No way of holding the phone puts ${input.reference.name} where you tapped. ` +
+        'Put it near the middle of the picture and tap again.',
+    };
+  }
+  const pitch = Math.asin(sinPlusPhi) - Math.atan(b);
+  const wantedPitchDeg = pitch * DEG_PER_RAD;
   const anchoredHeadingDeg = normaliseBearingDeg(
-    input.reference.azimuthDeg - Math.atan(dxPx / focalPx) * DEG_PER_RAD,
+    input.reference.azimuthDeg -
+      Math.atan2(a, Math.cos(pitch) - b * Math.sin(pitch)) * DEG_PER_RAD,
   );
-  const wantedPitchDeg = input.reference.altitudeDeg + Math.atan(dyPx / focalPx) * DEG_PER_RAD;
 
   const pitchOffsetDeg = wantedPitchDeg - input.sensedPose.pitchDeg;
   const pitchTrimDeg = clamp(pitchOffsetDeg, TRIM_LIMIT_DEG.pitchDeg);
@@ -237,6 +274,28 @@ export function grossHeadingWarning(
   return (
     `The compass looks ${offDeg.toFixed(0)}° off — tap the sun (or a summit you know) to fix it.`
   );
+}
+
+/**
+ * Whether a tap on the picture is read as a tap on the real Sun, for the gross
+ * heading check.
+ *
+ * A tap claimed by the Sun's own mark is one, and so is a tap nothing claimed.
+ * A tap claimed by another mark counts only when that mark is more than
+ * {@link MAX_TAP_DISTANCE_PX} away: the home session attributes a tap to the
+ * nearest mark however far off it is, so under a gross compass error a summit
+ * dot across the picture claims the tap the step asked to be on the Sun.
+ */
+export function readsAsSunTap(
+  tappedPx: PointPx,
+  reference: CalibrationReference | undefined,
+): boolean {
+  if (reference === undefined || reference.kind === 'sun') return true;
+  const distancePx = Math.hypot(
+    tappedPx.xPx - reference.drawnPx.xPx,
+    tappedPx.yPx - reference.drawnPx.yPx,
+  );
+  return distancePx > MAX_TAP_DISTANCE_PX;
 }
 
 /** Whether the compass has drifted away from the anchor, and by how much. */

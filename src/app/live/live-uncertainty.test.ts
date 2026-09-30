@@ -316,9 +316,46 @@ describe('a tilt zero point that does not qualify to gate the up/down axis', () 
     const band = bandWith(TAPS);
     const term = band.terms.find((entry) => entry.label.includes('Tilt zero point'));
     expect(term?.basis.kind).toBe('measured');
-    // 0.003 of wobble, plus 0.4 of bias and 0.38 of tap disagreement.
-    expect(band.measuredDeg.vertical).toBeCloseTo(0.783, 12);
+    // 0.003 of wobble, plus 0.4 of bias, plus the tap disagreement: 0.38 as
+    // reported, lifted to the two-tap floor 0.543 / √2 = 0.383959…
+    expect(band.measuredDeg.vertical).toBeCloseTo(0.003 + 0.4 + 0.543 / Math.SQRT2, 12);
     expect(band.hasUnquantified).toBe(false);
+  });
+
+  it('charges a spread above the floor as reported', () => {
+    // 0.9 is past 0.543 / √2, so the floor does nothing: 0.003 + 0.4 + 0.9.
+    const band = bandWith({ ...TAPS, spreadDeg: 0.9 });
+    expect(band.measuredDeg.vertical).toBeCloseTo(1.303, 12);
+    expect(
+      band.terms.find((entry) => entry.label.includes('Tilt zero point'))?.basis.note,
+    ).not.toContain('charged at');
+  });
+
+  it('charges two taps that agree exactly at the floor, not at zero', () => {
+    // A spread of 0 is one degree of freedom landing on its luckiest value. The
+    // term is 0.4 + 0.543 / √2 = 0.783959…, stated as 0.38° on screen.
+    const band = bandWith({ ...TAPS, spreadDeg: 0 });
+    const term = band.terms.find((entry) => entry.label.includes('Tilt zero point'));
+    expect(term?.basis.kind === 'measured' ? term.basis.deg : NaN).toBeCloseTo(
+      0.4 + 0.543 / Math.SQRT2,
+      12,
+    );
+    expect(term?.basis.note).toContain('charged at 0.38°');
+  });
+
+  it('floors four taps at 0.543 / √4 = 0.2715°', () => {
+    const band = bandWith({ ...TAPS, segmentCount: 4, spreadDeg: 0.1 });
+    const term = band.terms.find((entry) => entry.label.includes('Tilt zero point'));
+    expect(term?.basis.kind === 'measured' ? term.basis.deg : NaN).toBeCloseTo(0.6715, 12);
+  });
+
+  it('charges aiming steps at their own spread, since they are re-aims rather than taps', () => {
+    const band = bandWith({ ...PITCH_BIAS, source: 'sun-aiming-steps', segmentCount: 3, spreadDeg: 0.05 });
+    const term = band.terms.find((entry) => entry.label.includes('Tilt zero point'));
+    expect(term?.basis.kind === 'measured' ? term.basis.deg : NaN).toBeCloseTo(
+      Math.abs(PITCH_BIAS.biasDeg) + 0.05,
+      12,
+    );
   });
 
   it('gates a pair sitting exactly on the 1.0° spread ceiling', () => {

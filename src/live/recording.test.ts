@@ -48,6 +48,7 @@ import {
   MOTION_HEADING_FAULT_DEG,
   parseRecording,
   protocolSegments,
+  chargedTiltSpreadDeg,
   qualifiesToGateVertical,
   PROTOCOL_SUN_ALTITUDE_DEG,
   signedDeltaDeg,
@@ -1479,6 +1480,16 @@ describe('qualifying to gate the vertical axis', () => {
     expect(MAX_QUALIFYING_TILT_SPREAD_DEG).toBe(1);
     expect(qualifiesToGateVertical({ ...TAPS, spreadDeg: 1 })).toBe(true);
     expect(qualifiesToGateVertical({ ...TAPS, spreadDeg: 1.000001 })).toBe(false);
+  });
+
+  it('floors a tap spread at 0.543° / √taps and leaves an aiming spread alone', () => {
+    // Two taps: 0.543 / √2 = 0.383959…; nine taps: 0.543 / 3 = 0.181.
+    expect(chargedTiltSpreadDeg({ ...TAPS, spreadDeg: 0 })).toBeCloseTo(0.543 / Math.SQRT2, 12);
+    expect(chargedTiltSpreadDeg({ ...TAPS, spreadDeg: 0.5 })).toBe(0.5);
+    expect(chargedTiltSpreadDeg({ ...TAPS, sampleCount: 9, spreadDeg: 0.1 })).toBeCloseTo(0.181, 12);
+    expect(
+      chargedTiltSpreadDeg({ ...TAPS, source: 'sun-aiming-steps', sampleCount: 3, spreadDeg: 0 }),
+    ).toBe(0);
   });
 
   it('refuses a bias past the credible ceiling, which is a missed aim', () => {

@@ -1365,8 +1365,8 @@ re-anchor would snap back on the first drag. The strategy review's recommendatio
 1. **Split the trim.** A gross heading offset is set only by a re-anchor and is unclamped. The
    fine trim stays clamped at ±30°. `applyTrim` adds both. A test: re-anchor 92°, then drag
    1 px, and the heading moves about 0.09°, not −62°.
-2. **The sun is the one-tap re-anchor:** `reanchorFromTap` inverts the projection exactly, with
-   the calibrated f and the sensed roll. A summit re-anchor is a fallback: pick it by name, tap it, and confirm a
+2. **The sun is the one-tap re-anchor:** heading = sun azimuth − atan((x−c)/f), with the
+   calibrated f. A summit re-anchor is a fallback: pick it by name, tap it, and confirm a
    sentence stating the size of the move. Both are live only after 10 s of stillness. After a
    re-anchor, the screen shows the live gap between sensed heading and anchor, and warns when it
    drifts beyond the band, which catches a transient error baked in. `pickReference`'s 160 px
@@ -1408,9 +1408,8 @@ Once the FOV is calibrated, the vertical band used to carry only the tilt scatte
   - The band charges `|bias| + spread`, because the pose is not corrected by the bias.
 
 A bias over 15° is refused as a missed aim. The measurement is stored on the phone
-(`pitch-bias.ts`) under the field-of-view calibration's key, `deviceId|WxH`. It is measured
-through one lens's optical axis and one stream's crop, and neither is guaranteed to match between
-sessions: the resolution is only `ideal`, and the lens can fall back. The session's own on-device analysis supplies it.
+(`pitch-bias.ts`), keyed by the user agent rather than the camera track, since it describes the
+accelerometer. The session's own on-device analysis supplies it.
 
 The analyzer also reports the compass heading's bias against the Sun's magnetic azimuth, beside
 the accuracy the phone claimed. It withholds that figure while the reference hypothesis is
@@ -1526,9 +1525,8 @@ phone's vertical unquantified term. Eight mutations are caught.
 `TrimState`, so a number that is not in that type cannot be clamped. Re-anchor 92° and then drag
 1 px, and the heading moves 0.0899°. With the old clamped trim, the same drag snapped back 62°.
 
-**`reanchorFromTap`** (`src/app/live/reanchor.ts`) is pure and inverts `projectToImage`
-exactly. It uses the drawn f and the video box's principal point; see "The re-anchor inverts the
-projection" below.
+**`reanchorFromTap`** (`src/app/live/reanchor.ts`) is pure: heading = azimuth − atan((x−c)/f),
+and pitch = altitude + atan((y−c)/f). It uses the drawn f and video-box's principal point.
 - **Sun:** one tap.
 - **Summit:** picked by name from the full 360° scene, tapped, then confirmed against a sentence
   such as "This turns the labels 92° to the right".
@@ -1914,26 +1912,3 @@ until the offset comes from the picture.
 The field session reads its minimum stored-frame width from `REGISTERED_STORED_FRAME.minWidthPx`,
 the grader's registration, so the two cannot diverge.
 
-## The re-anchor inverts the projection
-
-`reanchorFromTap` un-rolls the tap's camera ray ((x − cx)/f, −(y − cy)/f, 1) onto the level axes
-as a (horizontal) and b (level-up). Pitch is P = asin(sin(alt)·√(1+a²+b²)/√(1+b²)) − atan(b) and
-heading is az − atan2(a, cos P − b·sin P), both closed forms. The earlier separate-axes solve
-ignored foreshortening: 1.35° of heading error at a Sun 30° up and 10° off axis, 4.29° at
-30°/30°, 11.2° at 50°/30° (night-2 review, 2026-09-30). A forward-projection grid (altitude −5° to
-50°, ±35° off axis, roll −15° to 8°) now recovers heading and pitch within 0.05°. A tap no pitch
-can explain is refused as `no-pose`. When the pitch trim reaches its ±20° clamp, the heading is
-still the unclamped solution's. The guides ask for the Sun near the middle before tapping.
-
-A tap spread is charged at max(spread, 0.543°/√taps) (`chargedTiltSpreadDeg`), 0.384° for two
-taps: one degree of freedom makes the spread noisy, and an error both taps share leaves no
-residual. Aiming-step spreads are charged as measured. Under the 1.0° ceiling the floor changes
-what the band charges, not which measurements qualify.
-
-A Sun or Moon mark above or below the frame counts as a calibration candidate (`isTappableMark`),
-because a tilt error larger than half the vertical field puts it there. Marks off either side,
-behind the camera or below the horizon are excluded: a sideways miss is a heading error for the
-re-anchor, and fitting a scale to it would store a bent field of view. For the gross-heading
-warning, a tap reads as a sun tap unless a non-sun mark within 160 px claimed it (`readsAsSunTap`).
-Before this, a distant summit dot could claim the sun tap and hide the warning, so the e2e test
-for it failed at `ee65a8f` depending on the Sun's position at run time.

@@ -52,7 +52,7 @@
 
 import type { CameraPose } from '../../core/types';
 import { MODEL_DECLINATION_RMS_DEG, type DrawableHeading } from '../../live/heading-policy';
-import { qualifiesToGateVertical } from '../../live/recording';
+import { chargedTiltSpreadDeg, qualifiesToGateVertical } from '../../live/recording';
 import {
   frameFractionOf,
   pixelsPerDegreeAtCentre,
@@ -165,7 +165,7 @@ function headingTerms(input: LiveUncertaintyInput): readonly UncertaintyTerm[] {
  * The measured figure charges the bias and its spread together. The app does
  * not subtract the bias from the pose — it reports it — so the band has to
  * carry the whole of it, and the re-aim spread is how well the bias itself is
- * known.
+ * known. A tap spread is floored by `chargedTiltSpreadDeg` first.
  *
  * A stored measurement whose readings disagree too widely, or that pooled too
  * few of them, is not a zero point. `qualifiesToGateVertical` decides, and a
@@ -188,14 +188,13 @@ function pitchBiasTerm(bias: PitchBiasCalibration | undefined): UncertaintyTerm 
       },
     };
   }
-  if (
-    !qualifiesToGateVertical({
-      biasDeg: bias.biasDeg,
-      spreadDeg: bias.spreadDeg,
-      sampleCount: bias.segmentCount,
-      source: bias.source,
-    })
-  ) {
+  const quality = {
+    biasDeg: bias.biasDeg,
+    spreadDeg: bias.spreadDeg,
+    sampleCount: bias.segmentCount,
+    source: bias.source,
+  };
+  if (!qualifiesToGateVertical(quality)) {
     return {
       axis: 'vertical',
       label: 'Tilt zero point never checked',
@@ -211,17 +210,22 @@ function pitchBiasTerm(bias: PitchBiasCalibration | undefined): UncertaintyTerm 
       },
     };
   }
+  const spreadDeg = chargedTiltSpreadDeg(quality);
   return {
     axis: 'vertical',
     label: 'Tilt zero point, measured against the sun',
     basis: {
       kind: 'measured',
-      deg: Math.abs(bias.biasDeg) + bias.spreadDeg,
+      deg: Math.abs(bias.biasDeg) + spreadDeg,
       sampleCount: bias.segmentCount,
       note:
         `The home session measured this phone against the sun and found its tilt reading ` +
         `${Math.abs(bias.biasDeg).toFixed(2)}° too ${bias.biasDeg >= 0 ? 'high' : 'low'}, with ` +
         `${bias.segmentCount} independent readings landing ${bias.spreadDeg.toFixed(2)}° apart. ` +
+        (spreadDeg > bias.spreadDeg
+          ? `So few taps can agree by luck, so the spread is charged at ` +
+            `${spreadDeg.toFixed(2)}°, the least that ${bias.segmentCount} taps can pin down. `
+          : '') +
         `Both are charged here, because the app reports the error rather than quietly ` +
         `correcting for it. ${bias.method}`,
     },

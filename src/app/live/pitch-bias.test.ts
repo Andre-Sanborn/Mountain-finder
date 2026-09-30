@@ -12,7 +12,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import type { WebStorageLike } from './fov-choice';
+import { fovCalibrationKey, type WebStorageLike } from './fov-choice';
 import {
   PITCH_BIAS_STORE_KEY,
   parsePitchBiasCalibrations,
@@ -53,12 +53,20 @@ const MEASUREMENT: PitchBiasCalibration = {
 };
 
 describe('the key', () => {
-  it('is the user agent, because the tilt sensor is a property of the handset', () => {
-    expect(pitchBiasKey(IOS_UA)).toBe(IOS_UA);
+  it('is the field-of-view calibration key, because both are measured through one track', () => {
+    const track = { deviceId: 'back-wide', width: 1920, height: 1080 };
+    expect(pitchBiasKey(track)).toBe('back-wide|1920x1080');
+    expect(pitchBiasKey(track)).toBe(fovCalibrationKey(track));
   });
 
-  it('never collapses a missing user agent into an empty key', () => {
-    expect(pitchBiasKey('')).toBe('unknown');
+  it('separates two lenses, and two frame sizes on one lens', () => {
+    const wide = pitchBiasKey({ deviceId: 'back-wide', width: 1920, height: 1080 });
+    expect(pitchBiasKey({ deviceId: 'back-ultrawide', width: 1920, height: 1080 })).not.toBe(wide);
+    expect(pitchBiasKey({ deviceId: 'back-wide', width: 1280, height: 720 })).not.toBe(wide);
+  });
+
+  it('never collapses a missing field into an empty key', () => {
+    expect(pitchBiasKey({})).toBe('unknown|unknownxunknown');
   });
 });
 

@@ -20,7 +20,16 @@
 import { describe, expect, it } from 'vitest';
 
 import type { CameraPose } from '../../core/types';
-import { celestialMark, celestialMarks, MIN_MARK_RADIUS_PX, offFrameDirection } from './celestial-markers';
+import { projectToImage } from '../../core/projection';
+import {
+  celestialMark,
+  celestialMarks,
+  isTappableMark,
+  MIN_MARK_RADIUS_PX,
+  offFrameDirection,
+  type CelestialMark,
+} from './celestial-markers';
+import { resolveCalibrationTap } from './fov-calibration';
 
 const DEG = Math.PI / 180;
 const FRAME = { widthPx: 800, heightPx: 450 };
@@ -191,5 +200,69 @@ describe('projection into the frame', () => {
     // The Sun is 20° anticlockwise, not 340° clockwise.
     expect(offFrameDirection(mark, pose).turnDeg).toBeCloseTo(-20, 6);
     expect(offFrameDirection(mark, pose).text).toContain('to your left');
+  });
+});
+
+describe('which marks a calibration tap may be measured against', () => {
+  // Camera due south and level, 60° × 35° on an 800 × 450 overlay.
+  const POSE = poseAt(180, 0);
+
+  /** A Sun mark at a stated direction, projected the way the screen draws it. */
+  function sunAt(azimuthDeg: number, altitudeDeg: number): CelestialMark {
+    const point = projectToImage(POSE, azimuthDeg, altitudeDeg);
+    return {
+      body: 'sun',
+      centrePx: { xPx: point.x * FRAME.widthPx, yPx: point.y * FRAME.heightPx },
+      radiusPx: 4,
+      angularRadiusDeg: 0.267,
+      azimuthDeg,
+      altitudeDeg,
+      inFrame: point.inFrame,
+      belowHorizon: altitudeDeg < 0,
+    };
+  }
+
+  it('takes a mark in the picture', () => {
+    expect(isTappableMark(sunAt(190, 5), POSE, FRAME)).toBe(true);
+  });
+
+  it('takes a mark above the picture, where a tilt error puts it', () => {
+    // 30° up on the centre line: tan 30° / tan 17.5° = 1.83 half-heights, off the top.
+    const mark = sunAt(180, 30);
+    expect(mark.inFrame).toBe(false);
+    expect(mark.centrePx.yPx).toBeLessThan(0);
+    expect(isTappableMark(mark, POSE, FRAME)).toBe(true);
+  });
+
+  it('refuses a mark off the side, which is a heading error for the re-anchor', () => {
+    // 60° to the right: tan 60° / tan 30° = 3 half-widths past the centre,
+    // so x = 400 + 3 · 400 = 1600 px.
+    const mark = sunAt(240, 10);
+    expect(mark.centrePx.xPx).toBeCloseTo(1600, 6);
+    expect(isTappableMark(mark, POSE, FRAME)).toBe(false);
+  });
+
+  it('refuses a mark behind the camera even when its mirrored image lands on the picture', () => {
+    // Due north, 10° up, behind a camera facing south: the perspective divide
+    // mirrors it to x = 400, inside the width.
+    const mark = sunAt(0, 10);
+    expect(mark.centrePx.xPx).toBeCloseTo(400, 6);
+    expect(isTappableMark(mark, POSE, FRAME)).toBe(false);
+  });
+
+  it('refuses a mark below the horizon, in the picture or not', () => {
+    expect(isTappableMark(sunAt(180, -5), POSE, FRAME)).toBe(false);
+  });
+
+  it('lets the home session measure a tap on the real Sun against a mark off the top', () => {
+    const mark = sunAt(180, 30);
+    const outcome = resolveCalibrationTap(
+      { xPx: 400, yPx: 20 },
+      FRAME,
+      [mark]
+        .filter((candidate) => isTappableMark(candidate, POSE, FRAME))
+        .map((candidate) => ({ kind: 'sun' as const, name: 'the Sun', drawnPx: candidate.centrePx })),
+    );
+    expect(outcome.ok).toBe(true);
   });
 });

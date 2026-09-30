@@ -12,21 +12,22 @@
  * (`src/live/recording.ts`, `estimatePitchBias`), and this module is where that
  * measurement waits for the next AR session on the same handset.
  *
- * ── WHY IT IS KEYED ON THE USER AGENT, NOT ON THE CAMERA TRACK ─────────────
- * `fov-choice.ts` keys its calibration to the camera track's settings, because
- * a field of view describes one crop of one stream. The tilt zero point
- * describes the accelerometer and the browser's reading of it, so a new camera
- * resolution says nothing about it and must not discard it. `localStorage` is
- * already scoped to one origin in one browser on one phone; the user agent is
- * the part left over, and it changes when the browser or the OS that produces
- * the orientation events changes.
+ * ── WHY IT IS KEYED ON THE CAMERA TRACK ────────────────────────────────────
+ * The figure is measured through the camera: taps on the Sun in the picture,
+ * against the tilt the orientation sensor reports. So it holds the angle between
+ * that lens's optical axis and the sensor's idea of level, and where the stream's
+ * crop puts the centre of the picture. Another lens, or another crop, is
+ * another measurement. It is keyed exactly as `fov-choice.ts` keys the field of
+ * view, on the track's device and frame size. F2 needs both measurements on
+ * the same track anyway, so one key keeps the two from drifting apart.
  *
  * Pure apart from {@link readStoredPitchBias} and {@link writeStoredPitchBias},
  * the two functions that touch `localStorage` and can throw-and-be-caught.
  */
 
 import type { PitchBiasSource } from '../../live/recording';
-import type { WebStorageLike } from './fov-choice';
+import { fovCalibrationKey, type WebStorageLike } from './fov-choice';
+import type { TrackSettingsLike } from './lens-log';
 
 /** `localStorage` key holding every tilt measurement this origin has stored. */
 export const PITCH_BIAS_STORE_KEY = 'mountain-finder.live.pitch-bias.v1';
@@ -52,9 +53,9 @@ export interface PitchBiasCalibration {
 
 const PITCH_BIAS_SOURCES: readonly PitchBiasSource[] = ['fov-calibration-taps', 'sun-aiming-steps'];
 
-/** The key a measurement is stored under. */
-export function pitchBiasKey(userAgent: string): string {
-  return userAgent === '' ? 'unknown' : userAgent;
+/** The key a measurement is stored under: the field-of-view calibration's own. */
+export function pitchBiasKey(settings: TrackSettingsLike): string {
+  return fovCalibrationKey(settings);
 }
 
 /**
@@ -115,7 +116,7 @@ export function parsePitchBiasCalibrations(
 }
 
 /**
- * Read the measurement for one user agent.
+ * Read the measurement for one camera track.
  *
  * Every access is wrapped: `localStorage` throws outright in a Safari private
  * window and when a browser is set to block site data, and a thrown getter must

@@ -410,7 +410,11 @@ export function resolveCalibrationTap(
     return {
       ok: false,
       refusal: 'nothing-drawn',
-      detail: 'Nothing is drawn on screen to compare against yet. Point the camera at the sun.',
+      detail:
+        "The app's own circle for the sun is not on the picture or just above or below it, so " +
+        'there is nothing to measure this tap against. Turn the phone until that circle is on ' +
+        'the screen too, then tap the middle of the real sun. If the labels point the wrong ' +
+        'way, fix the direction first.',
     };
   }
   return { ok: true, reference };

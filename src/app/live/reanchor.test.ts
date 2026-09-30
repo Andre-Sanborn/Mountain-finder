@@ -14,6 +14,7 @@
 
 import { describe, expect, it } from 'vitest';
 
+import { projectToImage } from '../../core/projection';
 import { TRIM_LIMIT_DEG } from '../trim';
 
 import {
@@ -23,6 +24,7 @@ import {
   GROSS_HEADING_WARNING_DEG,
   reanchorFromTap,
   reanchorSentence,
+  readsAsSunTap,
   type ReanchorInput,
 } from './reanchor';
 
@@ -41,7 +43,7 @@ function input(partial: Partial<ReanchorInput> = {}): ReanchorInput {
   return {
     reference: { name: 'the sun', azimuthDeg: 130, altitudeDeg: 29 },
     tappedPx: CENTRE,
-    sensedPose: { headingDeg: 222, pitchDeg: 29 },
+    sensedPose: { headingDeg: 222, pitchDeg: 29, rollDeg: 0 },
     drawnHeadingDeg: 222,
     framePx: FRAME,
     principalPointPx: CENTRE,
@@ -62,22 +64,52 @@ describe('reanchorFromTap — the heading', () => {
     expect(result.value.grossHeadingOffsetDeg).toBeCloseTo(-92, 12);
   });
 
-  it('subtracts atan((x − c)/f): a tap f/√3 to the right is 30° off axis', () => {
+  it('subtracts atan((x − c)/f) on the horizon: a tap f/√3 to the right is 30° off axis', () => {
+    // At altitude 0 with no roll: sin P = 0, so P = 0 and the heading is
+    // azimuth − atan2(1/√3, 1) = 130 − 30.
     const result = reanchorFromTap(
-      input({ tappedPx: { xPx: CENTRE.xPx + THIRTY_DEG_PX, yPx: CENTRE.yPx } }),
+      input({
+        reference: { name: 'the sun', azimuthDeg: 130, altitudeDeg: 0 },
+        tappedPx: { xPx: CENTRE.xPx + THIRTY_DEG_PX, yPx: CENTRE.yPx },
+      }),
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.anchoredHeadingDeg).toBeCloseTo(100, 12);
+    // 0 − 29 is past the slider, so it comes back at the clamp.
+    expect(result.value.pitchTrimDeg).toBeCloseTo(-TRIM_LIMIT_DEG.pitchDeg, 12);
+    expect(result.value.pitchClamped).toBe(true);
   });
 
   it('adds it on the other side: the same tap to the left', () => {
     const result = reanchorFromTap(
-      input({ tappedPx: { xPx: CENTRE.xPx - THIRTY_DEG_PX, yPx: CENTRE.yPx } }),
+      input({
+        reference: { name: 'the sun', azimuthDeg: 130, altitudeDeg: 0 },
+        tappedPx: { xPx: CENTRE.xPx - THIRTY_DEG_PX, yPx: CENTRE.yPx },
+      }),
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.anchoredHeadingDeg).toBeCloseTo(160, 12);
+  });
+
+  it('allows for the foreshortening of a tap off axis with the Sun 30° up', () => {
+    // Tap f/√3 right of centre on the horizontal centre line, so a = 1/√3, b = 0.
+    // sin P = sin 30° · √(1 + 1/3) = ½ · 2/√3 = 1/√3, so cos P = √(2/3), and
+    // the ray's azimuth is atan(a / cos P) = atan(1/√2). Heading = 130 − that,
+    // pitch = asin(1/√3). The separate-axes formula said 100° and 30°.
+    const result = reanchorFromTap(
+      input({
+        reference: { name: 'the sun', azimuthDeg: 130, altitudeDeg: 30 },
+        sensedPose: { headingDeg: 222, pitchDeg: 30, rollDeg: 0 },
+        tappedPx: { xPx: CENTRE.xPx + THIRTY_DEG_PX, yPx: CENTRE.yPx },
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const DEG = 180 / Math.PI;
+    expect(result.value.anchoredHeadingDeg).toBeCloseTo(130 - Math.atan(1 / Math.SQRT2) * DEG, 10);
+    expect(result.value.pitchTrimDeg).toBeCloseTo(Math.asin(1 / Math.sqrt(3)) * DEG - 30, 10);
   });
 
   it('wraps the anchored heading into [0, 360) rather than reporting −5°', () => {
@@ -96,7 +128,7 @@ describe('reanchorFromTap — the heading', () => {
     const result = reanchorFromTap(
       input({
         reference: { name: 'the sun', azimuthDeg: 130, altitudeDeg: 0 },
-        sensedPose: { headingDeg: 222, pitchDeg: 0 },
+        sensedPose: { headingDeg: 222, pitchDeg: 0, rollDeg: 0 },
       }),
     );
     expect(result.ok).toBe(true);
@@ -113,7 +145,7 @@ describe('reanchorFromTap — the pitch', () => {
     // slider, so it comes back at the clamp.
     const result = reanchorFromTap(
       input({
-        sensedPose: { headingDeg: 222, pitchDeg: 0 },
+        sensedPose: { headingDeg: 222, pitchDeg: 0, rollDeg: 0 },
         tappedPx: { xPx: CENTRE.xPx, yPx: CENTRE.yPx + TEN_DEG_PX },
       }),
     );
@@ -155,7 +187,7 @@ describe('reanchorFromTap — the sentence and the direction', () => {
 
   it('says left for the opposite sign', () => {
     const result = reanchorFromTap(
-      input({ sensedPose: { headingDeg: 38, pitchDeg: 29 }, drawnHeadingDeg: 38 }),
+      input({ sensedPose: { headingDeg: 38, pitchDeg: 29, rollDeg: 0 }, drawnHeadingDeg: 38 }),
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -176,7 +208,7 @@ describe('reanchorFromTap — the sentence and the direction', () => {
     const result = reanchorFromTap(
       input({
         reference: { name: 'the sun', azimuthDeg: 10, altitudeDeg: 0 },
-        sensedPose: { headingDeg: 350, pitchDeg: 0 },
+        sensedPose: { headingDeg: 350, pitchDeg: 0, rollDeg: 0 },
         drawnHeadingDeg: 350,
       }),
     );
@@ -191,7 +223,110 @@ describe('reanchorFromTap — the sentence and the direction', () => {
   });
 });
 
+describe('reanchorFromTap — inverting the projection the overlay draws with', () => {
+  // A forward projection through `projectToImage` at a known pose, handed back
+  // as a tap, must return that pose. The pose is the answer; nothing here was
+  // read off a run of the solver.
+  const WIDTH = 956;
+  const HEIGHT = 440;
+  const H_FOV = 73.74;
+  const V_FOV =
+    (2 * Math.atan((Math.tan((H_FOV * Math.PI) / 360) * HEIGHT) / WIDTH) * 180) / Math.PI;
+  const TRUE_HEADING = 200;
+  const SENSED_HEADING = 292;
+
+  const cases: { altitudeDeg: number; offAxisDeg: number; rollDeg: number; pitchDeg: number }[] =
+    [];
+  for (const altitudeDeg of [-5, 5, 15, 30, 50]) {
+    for (const offAxisDeg of [-35, -20, -10, 0, 10, 20, 35]) {
+      for (const rollDeg of [-15, 0, 8]) {
+        // The camera pointed a little below the reference, as a hand holds it.
+        cases.push({ altitudeDeg, offAxisDeg, rollDeg, pitchDeg: altitudeDeg - 4 });
+      }
+    }
+  }
+
+  it.each(cases)(
+    'recovers heading and pitch to 0.05° at altitude $altitudeDeg°, $offAxisDeg° off axis, roll $rollDeg°',
+    ({ altitudeDeg, offAxisDeg, rollDeg, pitchDeg }) => {
+      const azimuthDeg = TRUE_HEADING + offAxisDeg;
+      const drawn = projectToImage(
+        { headingDeg: TRUE_HEADING, pitchDeg, rollDeg, hFovDeg: H_FOV, vFovDeg: V_FOV },
+        azimuthDeg,
+        altitudeDeg,
+      );
+      // A reference off the picture cannot be tapped; the grid keeps the ones
+      // that land on it and requires most of them to.
+      if (!drawn.inFrame) return;
+      const sensedPitchDeg = pitchDeg + 3;
+      const result = reanchorFromTap({
+        reference: { name: 'the sun', azimuthDeg, altitudeDeg },
+        tappedPx: { xPx: drawn.x * WIDTH, yPx: drawn.y * HEIGHT },
+        sensedPose: { headingDeg: SENSED_HEADING, pitchDeg: sensedPitchDeg, rollDeg },
+        drawnHeadingDeg: SENSED_HEADING,
+        framePx: { widthPx: WIDTH, heightPx: HEIGHT },
+        principalPointPx: { xPx: WIDTH / 2, yPx: HEIGHT / 2 },
+        visibleHFovDeg: H_FOV,
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      const headingErrorDeg = ((result.value.anchoredHeadingDeg - TRUE_HEADING + 540) % 360) - 180;
+      expect(Math.abs(headingErrorDeg)).toBeLessThan(0.05);
+      expect(Math.abs(result.value.pitchTrimDeg - (pitchDeg - sensedPitchDeg))).toBeLessThan(0.05);
+    },
+  );
+
+  it('keeps most of the grid on the picture, so the check above is not vacuous', () => {
+    const inFrame = cases.filter(({ altitudeDeg, offAxisDeg, rollDeg, pitchDeg }) =>
+      projectToImage(
+        { headingDeg: TRUE_HEADING, pitchDeg, rollDeg, hFovDeg: H_FOV, vFovDeg: V_FOV },
+        TRUE_HEADING + offAxisDeg,
+        altitudeDeg,
+      ).inFrame,
+    );
+    expect(inFrame.length).toBeGreaterThan(cases.length * 0.8);
+  });
+
+  it('recovers a summit below the horizon, Deer Point at −4.5°, 25° off axis', () => {
+    const drawn = projectToImage(
+      { headingDeg: 140, pitchDeg: -2, rollDeg: 3, hFovDeg: H_FOV, vFovDeg: V_FOV },
+      165,
+      -4.5,
+    );
+    expect(drawn.inFrame).toBe(true);
+    const result = reanchorFromTap({
+      reference: { name: 'Deer Point', azimuthDeg: 165, altitudeDeg: -4.5 },
+      tappedPx: { xPx: drawn.x * WIDTH, yPx: drawn.y * HEIGHT },
+      sensedPose: { headingDeg: 232, pitchDeg: 0, rollDeg: 3 },
+      drawnHeadingDeg: 232,
+      framePx: { widthPx: WIDTH, heightPx: HEIGHT },
+      principalPointPx: { xPx: WIDTH / 2, yPx: HEIGHT / 2 },
+      visibleHFovDeg: H_FOV,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.anchoredHeadingDeg).toBeCloseTo(140, 6);
+    expect(result.value.pitchTrimDeg).toBeCloseTo(-2, 6);
+    expect(result.value.grossHeadingOffsetDeg).toBeCloseTo(-92, 6);
+  });
+});
+
 describe('reanchorFromTap — refusals', () => {
+  it('refuses a tap no pose can explain rather than returning NaN', () => {
+    // The Sun at 89° cannot sit far off the vertical axis: the ray's elevation
+    // tops out below it, so the asin argument exceeds 1.
+    const result = reanchorFromTap(
+      input({
+        reference: { name: 'the sun', azimuthDeg: 130, altitudeDeg: 89 },
+        tappedPx: { xPx: 790, yPx: 440 },
+      }),
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.refusal).toBe('no-pose');
+  });
+
+
   it('refuses a frame with no picture in it', () => {
     const result = reanchorFromTap(input({ framePx: { widthPx: 0, heightPx: 0 } }));
     expect(result.ok).toBe(false);
@@ -322,5 +457,31 @@ describe('anchorDrift', () => {
         bandDeg: 1.2,
       }).beyondBand,
     ).toBe(false);
+  });
+});
+
+describe('readsAsSunTap', () => {
+  const TAP = { xPx: 400, yPx: 225 };
+  const summitAt = (xPx: number): Parameters<typeof readsAsSunTap>[1] => ({
+    kind: 'summit',
+    name: 'Deer Point',
+    drawnPx: { xPx, yPx: 225 },
+  });
+
+  it('reads an unclaimed tap and a tap the Sun claimed as a Sun tap', () => {
+    expect(readsAsSunTap(TAP, undefined)).toBe(true);
+    expect(readsAsSunTap(TAP, { kind: 'sun', name: 'the Sun', drawnPx: { xPx: 0, yPx: 0 } })).toBe(
+      true,
+    );
+  });
+
+  it('leaves a tap on a summit dot within 160 px to the summit', () => {
+    expect(readsAsSunTap(TAP, summitAt(400 + 160))).toBe(false);
+    expect(readsAsSunTap(TAP, summitAt(400 - 30))).toBe(false);
+  });
+
+  it('reads a tap a far summit dot claimed as a Sun tap', () => {
+    // 161 px away: past the 160 px a tap is attributed within on the field step.
+    expect(readsAsSunTap(TAP, summitAt(400 + 161))).toBe(true);
   });
 });

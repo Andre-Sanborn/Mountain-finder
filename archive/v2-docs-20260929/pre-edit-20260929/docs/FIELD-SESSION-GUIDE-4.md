@@ -234,10 +234,8 @@ mountains somewhere else entirely — the phone's compass is wrong by more than 
 fix. Fix it here:
 
 1. Hold the phone still for ten seconds. Until then both buttons are grey.
-2. Tap **Fix direction — tap the sun**. Turn the phone until the real sun sits near the
-   middle of the picture, then tap the middle of the sun. A sun near the middle gives a
-   better answer than one near the edge. The labels turn as soon as you lift your finger,
-   and a line says how far they turned.
+2. Tap **Fix direction — tap the sun**, then tap the middle of the real sun in the picture.
+   The labels turn as soon as you lift your finger, and a line says how far they turned.
 3. If you cannot see the sun, tap **Fix direction — tap a summit you know**, choose that
    summit's name from the list, and tap it in the picture. The screen then says what it is
    about to do — for example "This turns the labels 92° to the right." — and you tap

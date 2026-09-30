@@ -74,7 +74,7 @@ import { NO_GROSS_HEADING_OFFSET_DEG, NO_TRIM, isUntrimmed, type TrimState } fro
 import { magneticDeclinationDeg } from '../../core/declination';
 import { BrowserSensorTraces, requestMotionPermission, type RawEventSink } from './browser-sensors';
 import { CameraOpenError, openRearCamera, readTrackSettings, TRACK_POLL_INTERVAL_MS } from './camera-stream';
-import { celestialMarks, offFrameDirection, type CelestialMark } from './celestial-markers';
+import { celestialMarks, isTappableMark, offFrameDirection, type CelestialMark } from './celestial-markers';
 import {
   dragGain,
   dragStepSentence,
@@ -106,6 +106,7 @@ import {
   azimuthInBasis,
   grossHeadingWarning,
   reanchorFromTap,
+  readsAsSunTap,
   STILL_FOR_REANCHOR_MS,
   type Reanchor,
   type ReanchorReference,
@@ -567,9 +568,7 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
   }, [calibrationStoreKey]);
 
   const [pitchBias, setPitchBias] = useState<PitchBiasCalibration | undefined>(undefined);
-  const pitchBiasStoreKey = pitchBiasKey(
-    typeof navigator === 'undefined' ? '' : navigator.userAgent,
-  );
+  const pitchBiasStoreKey = pitchBiasKey(trackSettings);
 
   useEffect(() => {
     setPitchBias(
@@ -848,16 +847,17 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
    * and the same tap solves a heading. A heading tens of degrees from the
    * sensed one is a broken compass, not a mis-measured lens.
    *
-   * An UNATTRIBUTED tap counts, and it is the case that actually fires. A tap
-   * is attributed to a drawn mark within 160 px, which at this field of view is
-   * about 17° — narrower than the 20° this warns about — so a gross error
-   * always leaves the app's own Sun disc too far from the tap to be attributed
-   * at all. The step the person is on asks them to tap the real Sun, so a tap
-   * nothing can be attributed to is read as one.
+   * An UNATTRIBUTED tap counts, and so does one a mark more than 160 px away
+   * claimed (`readsAsSunTap`). 160 px is about 17° at this field of view,
+   * narrower than the 20° this warns about, so under a gross error the app's
+   * own Sun disc is never that close to the tap. The home session attributes a
+   * tap to the nearest mark at any distance, so a summit dot across the
+   * picture would otherwise claim it. The step the person is on asks them to
+   * tap the real Sun, so such a tap is read as one.
    */
   const notePictureTap = useCallback(
     (tappedPx: PointPx, reference: CalibrationReference | undefined) => {
-      if (reference !== undefined && reference.kind !== 'sun') return;
+      if (!readsAsSunTap(tappedPx, reference)) return;
       if (sunReference === undefined || pose === undefined || poseResult?.ok !== true) return;
       const solved = reanchorFromTap({
         reference: sunReference,
@@ -1008,14 +1008,15 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
 
   /* ── the home session's three seams ─────────────────────────────────────── */
   /**
-   * Every mark a tap could be about: the two discs, plus every summit the
+   * Every mark a tap could be about: the two discs, including one drawn just
+   * above or below the picture (`isTappableMark`), plus every summit the
    * renderer put a dot on. A summit is on the same footing as the Sun here —
    * that is the landmark sweep, and it needs no arithmetic of its own.
    */
   const calibrationReferences = useCallback(
     (): readonly CalibrationReference[] => [
       ...marks
-        .filter((mark) => mark.inFrame && !mark.belowHorizon)
+        .filter((mark) => pose !== undefined && isTappableMark(mark, pose, framePx))
         .map((mark) => ({
           kind: mark.body,
           name: mark.body === 'sun' ? 'the Sun' : 'the Moon',
@@ -1027,7 +1028,7 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
         drawnPx: marker.summitPx,
       })),
     ],
-    [marks, layout],
+    [marks, layout, pose, framePx.widthPx],
   );
 
   const calibrationFrame = useCallback((): CalibrationFrame | undefined => {

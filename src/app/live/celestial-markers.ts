@@ -34,7 +34,7 @@
  */
 
 import { moonPosition, sunPosition, type CelestialObserver } from '../../core/celestial';
-import { projectToImage } from '../../core/projection';
+import { isBehindCamera, projectToImage } from '../../core/projection';
 import type { CameraPose } from '../../core/types';
 
 export type CelestialBody = 'sun' | 'moon';
@@ -105,6 +105,28 @@ export function celestialMark(
     inFrame: point.inFrame,
     belowHorizon: position.altitudeDeg < 0,
   };
+}
+
+/**
+ * May a tap on the real body be measured against this mark?
+ *
+ * A mark in the picture always may. A mark above or below the picture also
+ * may, because a tilt sensor that is several degrees out draws the Sun off the
+ * top or bottom, and that gap is the measurement the home session takes. A mark
+ * off either side is a heading error wider than the picture, which the re-anchor
+ * fixes first; fitting a field of view to it would store a scale bent by that
+ * error. A mark behind the camera has no image at all, and one below the
+ * horizon cannot be seen.
+ */
+export function isTappableMark(
+  mark: CelestialMark,
+  pose: CameraPose,
+  frame: { readonly widthPx: number },
+): boolean {
+  if (mark.belowHorizon) return false;
+  if (mark.inFrame) return true;
+  if (isBehindCamera(pose, mark.azimuthDeg, mark.altitudeDeg)) return false;
+  return mark.centrePx.xPx >= 0 && mark.centrePx.xPx <= frame.widthPx;
 }
 
 /** Both bodies at one instant. */

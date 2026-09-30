@@ -48,12 +48,9 @@ after its self-check has run and passed here. The checks are in
 - [x] Grade the rehearsal against apex truth from two independent annotators
 - [x] Map overlay to stored frame through the cover crop in the grader; a 4:3 camera in a 16:9 view mis-scales residuals
 - [x] State the overlay-to-frame mapping in the prereg's § 2.0 and Part 3 bodies, not only its revision history
-- [x] Solve the sun re-anchor through the full projection; it is 1–11° off at a 15–50° Sun (night-2 review)
-- [x] Floor the tilt-spread charge at 0.543°/√taps, and state that F2 vertical tests bias stability
-- [x] Key the stored tilt bias by camera track, like the FOV calibration
-- [x] Let the Sun and Moon marks count as calibration candidates when drawn off the picture
-- [ ] Limit home step-14 tap candidates to the Sun and Moon, so a far summit dot cannot claim a sun tap
-- [ ] Re-solve the re-anchor heading at the clamped pitch when the pitch trim hits ±20°
+- [ ] Solve the sun re-anchor through the full projection; it is 1–11° off at a 15–50° Sun (night-2 review)
+- [ ] Floor the tilt-spread charge at 0.543°/√taps, and state that F2 vertical tests bias stability
+- [ ] Let the Sun and Moon marks count as calibration candidates when drawn off the picture
 - [ ] Run the home session with the human (steps: docs/HOME-SESSION-GUIDE.md)
 - [ ] Turn the home-session recording into fixtures; fix any sign or FOV error it shows
 - [x] Lock the railroad-ridge CV result as a regression test, labelled n = 1
@@ -81,7 +78,7 @@ after its self-check has run and passed here. The checks are in
 - [x] Measure the tilt zero point from step 14's two Sun taps, and record the fit that produced it
 - [x] Pre-register when a tap-derived tilt zero point gates F2's vertical axis
 - [ ] Cross-check the tap-derived tilt bias on a second phone or session; it is n = 1 on both
-- [x] Find why live.spec's "a tap on the real sun says how far off the compass is" failed once under a parallel run (a far summit dot claimed the tap)
+- [ ] Find why live.spec's "a tap on the real sun says how far off the compass is" failed once under a parallel run
 - [x] Give protocolSegments() aiming attitudes that point at a plausible sun altitude
 - [x] Make docs/REAL-PHOTO-POSE.md and FINDINGS X-7's photo counts agree with the nine-photo count
 - [ ] Re-run the rehearsal at a 956x440 viewport over a 1920x1080 camera, without cropToAspect

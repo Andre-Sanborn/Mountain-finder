@@ -771,13 +771,7 @@ which `fitFovCalibration` solves for a pitch offset jointly with the scale, and
 two taps' disagreement through the fitted focal length is the spread. The older measurement,
 the sensed tilt against the Sun's altitude over the aiming steps, remains as the fallback when
 no fit on the Sun or the Moon was recorded. The band then charges the bias and the spread
-together, and the vertical axis is gated like the horizontal one. The field session starts
-from an uncorrected pose, because the app charges the bias in the band rather than
-subtracting it from the pitch, so an F2 vertical pass tests whether the home session's tilt
-bias held steady between the two sessions, not whether the pitch is right to within the
-spread. The measurement is stored under the same key as the field-of-view calibration, the
-camera track's device and frame size, so the field session reads it only on the lens and
-frame size it was measured on.
+together, and the vertical axis is gated like the horizontal one.
 
 **Which measurements qualify to gate the vertical axis.** Not every stored tilt zero point
 closes the band. `qualifiesToGateVertical` (`src/live/recording.ts`) asks three things, and a
@@ -795,11 +789,7 @@ measurement that fails any of them leaves the unquantified term in place and the
    give four scalar measurements against three unknowns, so one degree of freedom is left, and
    `fitFovCalibration` reports `sqrt(SSR / taps)`. With `SSR ~ σ²χ²₁` over two taps that
    statistic has `σ / √2 = 0.543 / √2 = 0.384°` for its own scale, so the 1.0° ceiling sits at
-   2.605σ and refuses about one honest pair in a hundred. Both the rule and the band charge a
-   tap spread at no less than `0.543° / √taps` (`chargedTiltSpreadDeg`), 0.384° for two taps:
-   one degree of freedom can report a spread near zero by luck, and an error every tap shares
-   leaves no residual at all. With the 1.0° ceiling the floor never changes which
-   measurements qualify; it changes what the band charges.
+   2.605σ and refuses about one honest pair in a hundred.
 
 When both measurements exist the taps win, which is what `estimatePitchBias` already does: the
 taps measure where the Sun really sat, while an aiming step charges every degree the person
@@ -1945,22 +1935,3 @@ The stored measurement now carries which of the two sources it came from, since 
 different numbers of readings. A blob written before that field existed reads as no measurement,
 which is the conservative end: the band reports the term as unquantified and the next home
 session remeasures.
-
-### 2026-09-30 — the tilt spread gets a floor, and the tilt bias follows the camera track
-
-Still before any field number exists. Three changes to § 2.2, all from the nightly strategy
-review.
-
-- **§ 2.2 says what an F2 vertical pass tests.** The field session starts from an
-  uncorrected pose: the band charges the home session's bias rather than removing it. A pass
-  therefore shows the tilt bias held steady between the two sessions. It does not show the
-  pitch is right to within the spread.
-- **A tap spread is charged at no less than `0.543° / √taps`.** Two taps leave one degree of
-  freedom, so their spread is a noisy draw, and an error all taps share leaves no residual.
-  The floor is the standard error of the mean at term 9's tap precision: 0.384° for two
-  taps. It cannot change which measurements qualify under the 1.0° ceiling; it raises what
-  the band charges when two taps happen to agree closely.
-- **The tilt bias is stored per camera track**, under the field-of-view calibration's key.
-  The bias is measured through one lens's optical axis and one stream's crop, so another lens
-  or frame size is another measurement. F2 already needs the field-of-view calibration on the
-  same track.

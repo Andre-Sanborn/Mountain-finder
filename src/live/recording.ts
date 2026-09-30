@@ -2739,6 +2739,23 @@ export interface TiltZeroPointQuality {
 }
 
 /**
+ * The spread a tilt zero point is charged at, degrees at 1σ.
+ *
+ * For taps it is never less than `0.543° / √taps`, the standard error of their
+ * mean at the budget's per-tap precision (term 9). Two taps leave one degree of
+ * freedom, so their reported spread is a noisy draw that can land near zero,
+ * and an error every tap shares, such as a finger that always lands low on the
+ * disc, leaves no residual at all. Aiming steps are re-aims rather than taps,
+ * so their spread is charged as measured.
+ */
+export function chargedTiltSpreadDeg(quality: TiltZeroPointQuality): number {
+  if (quality.source !== 'fov-calibration-taps' || !(quality.sampleCount > 0)) {
+    return quality.spreadDeg;
+  }
+  return Math.max(quality.spreadDeg, BUDGET_TERMS.dragDeg / Math.sqrt(quality.sampleCount));
+}
+
+/**
  * May this tilt zero point turn F2's vertical axis from recorded into gated?
  *
  * Three conditions, and all three are about whether a number was measured
@@ -2747,7 +2764,8 @@ export interface TiltZeroPointQuality {
  * fewest that give a spread of re-aims rather than one hold's own wobble.
  * A credible bias, since a figure past {@link MAX_CREDIBLE_PITCH_BIAS_DEG} is a
  * missed aim. And readings that agree, within
- * {@link MAX_QUALIFYING_TILT_SPREAD_DEG}.
+ * {@link MAX_QUALIFYING_TILT_SPREAD_DEG} once {@link chargedTiltSpreadDeg} has
+ * floored a tap spread.
  *
  * A measurement that fails any of them is still stored and still shown. What it
  * does not do is close the band: the live screen keeps its unquantified tilt
@@ -2761,7 +2779,7 @@ export function qualifiesToGateVertical(quality: TiltZeroPointQuality): boolean 
   return (
     enoughReadings &&
     Math.abs(quality.biasDeg) <= MAX_CREDIBLE_PITCH_BIAS_DEG &&
-    quality.spreadDeg <= MAX_QUALIFYING_TILT_SPREAD_DEG
+    chargedTiltSpreadDeg(quality) <= MAX_QUALIFYING_TILT_SPREAD_DEG
   );
 }
 

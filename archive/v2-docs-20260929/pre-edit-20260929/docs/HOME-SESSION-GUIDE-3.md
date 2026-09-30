@@ -290,18 +290,6 @@ Wave the phone through the air in a **figure 8**, a few times, arm out, like dra
 the air with the phone. Then hold it up again. The message clears by itself when the phone
 is satisfied.
 
-### "The compass looks … off"
-
-This line means the phone's compass points the wrong way by more than a nudge can fix. It
-can appear during step 14. Finish step 14 first, with its taps near the left and right
-edges as it asks. Then fix the direction:
-
-1. Hold the phone still for ten seconds. Until then the button is grey.
-2. Tap **Fix direction — tap the sun**.
-3. Turn the phone until the real sun sits near the middle of the picture. A sun near the
-   middle gives a better answer than one near the edge.
-4. Tap the middle of the real sun. The labels turn, and a line says how far they turned.
-
 ### The camera was refused
 
 If you tapped "Don't Allow", the app cannot ask again. Fix it in Settings:
