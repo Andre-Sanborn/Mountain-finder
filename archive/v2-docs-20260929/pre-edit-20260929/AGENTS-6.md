@@ -205,13 +205,6 @@ orchestrator session's model; the session itself must run on Opus 5.5. The night
 into the orchestrator session and so runs on the same model. Changing any agent's model is the
 human's call.
 
-**A session uses the agent definitions it loaded at its start.** On 2026-09-30 the transcripts
-showed `builder` running `claude-opus-5` and `strategy-adversary` running `claude-fable-5-1`
-after the pin landed, while a `general-purpose` agent ran `claude-opus-5-5`. So until a session
-is confirmed to load the pinned files, launch each role as a `general-purpose` agent whose brief
-begins "Read `.claude/agents/<role>.md` and act as that agent", and check the model in the
-agent's transcript (`"model":` field) when it matters.
-
 The two adversaries split by stage: `strategy-adversary` reviews the route
 before you walk it, `adversarial-verifier` reviews what you built when you got
 there.

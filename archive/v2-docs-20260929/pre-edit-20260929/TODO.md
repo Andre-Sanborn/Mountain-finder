@@ -48,9 +48,6 @@ after its self-check has run and passed here. The checks are in
 - [x] Grade the rehearsal against apex truth from two independent annotators
 - [x] Map overlay to stored frame through the cover crop in the grader; a 4:3 camera in a 16:9 view mis-scales residuals
 - [x] State the overlay-to-frame mapping in the prereg's § 2.0 and Part 3 bodies, not only its revision history
-- [ ] Solve the sun re-anchor through the full projection; it is 1–11° off at a 15–50° Sun (night-2 review)
-- [ ] Floor the tilt-spread charge at 0.543°/√taps, and state that F2 vertical tests bias stability
-- [ ] Let the Sun and Moon marks count as calibration candidates when drawn off the picture
 - [ ] Run the home session with the human (steps: docs/HOME-SESSION-GUIDE.md)
 - [ ] Turn the home-session recording into fixtures; fix any sign or FOV error it shows
 - [x] Lock the railroad-ridge CV result as a regression test, labelled n = 1
@@ -120,16 +117,12 @@ after its self-check has run and passed here. The checks are in
 - [x] Regenerate `fixtures/field/aligned-*` so a summit's error is carried into both frames of a pair
 - [x] Fix F4's field-of-view term for summits crossing the axis; register Deer Point's start offset
 - [x] Withhold F4 verdicts from off-protocol movements; restate pass rates under shared-term correlation
-
-## Other open work
-
-Frozen until field data exists: no edits to the pre-registration or `src/live/field-analysis.ts`
-beyond defects, and no CV runs before the field session.
-
 - [ ] Measure heading-dependent compass deviation over a 45° pan, and budget it or drop it
 - [ ] Settle § 1.3's 0.017° against § 1.5's 0.034° for the roll's horizontal term
 - [ ] Decide whether the 2 s brace should be a precondition of F3's captures as well as F4's
-- [ ] Refuse a moved capture whose trim equals its reference's but names a different anchor; rework fixture c4
+
+## Other open work
+
 - [ ] Find a real photograph that exercises D8's self-occlusion rule; it has never fired on one
 - [ ] Re-check CV-2/CV-8's 14 mm figures via `npm run annotate`: suggestPoseTrim now reads coverage 66.6 %, not 0 %
 - [ ] Settle long-side vs CIPA-diagonal 35 mm equivalence against the solved Railroad Ridge pose (~2°, 3% scale)

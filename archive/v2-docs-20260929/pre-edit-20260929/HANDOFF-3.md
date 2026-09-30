@@ -5,7 +5,7 @@ and self-checks in [IMPLEMENTATION.md](IMPLEMENTATION.md), open work in [TODO.md
 
 ## Needed from the human
 
-- **An action only they can take: turn on GitHub Pages (about 2 minutes). It is the only blocker on the route: the home session, the field session and every phone check wait on it.** The
+- **An action only they can take: turn on GitHub Pages (about 2 minutes, not urgent).** The
   Pages workflow builds and passes its gates, but the deploy step fails with 404 "Ensure GitHub
   Pages has been enabled" (run 36514664919). The repository's default branch is the retired
   `claude/topographic-peak-identifier-EV4ZN`, and a Pages environment normally deploys only from
@@ -141,7 +141,7 @@ full tiles, and stop with instructions when one is missing.
   into the orchestrator session. Brief and verbatim prompt:
   [`.claude/reviews/nightly.md`](.claude/reviews/nightly.md).
 - Entries are appended to [docs/REVIEW-LOG.md](docs/REVIEW-LOG.md), newest first.
-- Last reviewed commit: `ee65a8f` (night 2, 2026-09-30). Weekly continue-question due on night 7, 2026-10-05.
+- Last reviewed commit: `90ddd8e` (night 1, 2026-09-29).
 - Nightly reviews started: 2026-09-29. Last weekly continue-question: `<none yet>`; the first is
   due on the seventh night.
 - At session start, check the Routine exists (`list_triggers`) and recreate it if not.

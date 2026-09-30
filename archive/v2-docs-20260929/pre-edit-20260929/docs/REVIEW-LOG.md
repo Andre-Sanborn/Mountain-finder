@@ -14,49 +14,6 @@ not the record of the code.
 
 ---
 
-## 2026-09-30, night 2 (reviewed 90ddd8e..ee65a8f, 34 commits)
-
-The reviewer ran on `claude-fable-5-1`, not the pinned Opus 5.5 (transcript record); see finding 0.
-
-**Adversary findings, ranked:**
-0. The Opus 5.5 pin is not in force: this review ran on Fable 5.1.
-1. The sun re-anchor solves heading as azimuth − atan((x − cx)/f), ignoring pitch
-   foreshortening. Reproduced through `projectToImage`: 1.35° at a 30° Sun 10° off-axis, 4.29°
-   at 30°/30°, 11.21° at 50°/30°; the pitch trim is wrong similarly. The e2e taps the centre and
-   the rehearsal used a −4.5° summit, so nothing caught it.
-2. Direction: the critical path is the 2-minute Pages action. Much of the day refined F3/F4 for
-   bands the pre-registration predicts empty. Freeze the pre-registration and grader until field
-   data; no CV runs before the field session. Pages was mislabelled "not urgent".
-3. F2 vertical: the field pose is uncorrected, so a pass tests bias stability between sessions.
-   The one-degree-of-freedom tap spread is noisy and blind to a shared tap error; floor it at
-   0.543°/√taps. The bias is keyed by user agent while the FOV is keyed by camera track.
-4. Archiving every edit of the pre-registration costs about 14 000 committed lines a day;
-   AGENTS.md's two archiving sentences disagree.
-5. A calibration tap fails with a misleading message when the app's own Sun is off the picture.
-6. Fixture c4 encodes a state the app cannot produce; the grader would let such a bundle hide
-   an anchor.
-7. The aligned fixture's 0.8σ truncation makes "aligned passes" circular as budget evidence.
-
-**Orchestrator decisions:**
-0. Confirmed from transcripts: `builder` ran `claude-opus-5`, `strategy-adversary`
-   `claude-fable-5-1`, `general-purpose` `claude-opus-5-5`. The session keeps the definitions it
-   loaded at start. Roles now launch as `general-purpose` agents reading their role file
-   (AGENTS.md); told to the human.
-1. Accepted. Being fixed with an independent projection round-trip test; both guides now say to
-   put the Sun near the middle before tapping.
-2. Accepted. TODO records the freeze and moves three F3/F4 items below the field test; HANDOFF
-   relabels Pages as the only blocker.
-3. Accepted: the floor, the prereg sentence, and a check of track keying are in the same fix.
-4. Rejected. Archiving before editing is the human's explicit standing preference. The two
-   AGENTS.md sentences are consistent as applied: text edits are allowed, and the pre-edit copy
-   is kept because the human asked for it.
-5. Accepted, in the same fix.
-6. Deferred below the field test (TODO); the app cannot produce the shape.
-7. Accepted as a note: the aligned fixture is a parser fixture, not budget evidence. The
-   allowance schedule has its own injected-exceedance tests (`field-budget-simulation.test.ts`).
-
----
-
 ## 2026-09-29, night 1 (reviewed 622e084..90ddd8e, 30 commits)
 
 **Adversary findings, ranked:**
