@@ -914,10 +914,11 @@ test('the session walks every pose and builds a recording the parser accepts', a
 });
 
 test('a tap during the sun step measures the field of view and the aim', async ({ page }) => {
-  // The landmark sweep, which shares every line of arithmetic with the sun tap:
-  // any mark whose direction the app claims to know is a reference, and a summit
-  // dot is one. It is what this suite can drive at any hour, because the Sun is
-  // below the horizon at Gornergrat for most of the day.
+  // The step's taps are measured against the Sun's own disc and never against a
+  // summit dot, so this test needs the Sun up. The page's clock is fixed at
+  // 2026-04-02 09:00 UTC, when the Sun is 37.4° up at azimuth 129.3° over
+  // Gornergrat and the Moon is 40° below the horizon, so the disc is the only
+  // mark a tap can be about.
   //
   // A KNOWN camera error is injected and the screen has to recover it. Each tap
   // is placed at
@@ -931,7 +932,13 @@ test('a tap during the sun step measures the field of view and the aim', async (
   test.setTimeout(SCENE_TIMEOUT_MS + 180_000);
   const INJECTED_SCALE = 1.1;
   const INJECTED_SHIFT_PX = { xPx: 10, yPx: -6 };
+  const FIXED_TIME = new Date('2026-04-02T09:00:00Z');
+  const observer = { lat: GORNERGRAT.lat, lon: GORNERGRAT.lon, heightM: OBSERVER_EYE_M };
+  const sun = sunPosition(FIXED_TIME, observer, { refraction: true });
+  expect(sun.altitudeDeg).toBeGreaterThan(30);
+  expect(moonPosition(FIXED_TIME, observer, { refraction: true }).altitudeDeg).toBeLessThan(0);
 
+  await page.clock.setFixedTime(FIXED_TIME);
   await startHomeSession(page);
   await page.getByTestId('home-session-start').click();
   for (let index = 0; index < POSE_LABELS.length - 1; index += 1) {
@@ -953,38 +960,6 @@ test('a tap during the sun step measures the field of view and the aim', async (
   expect(box?.height).toBe(FRAME.heightPx);
   await expect(page.getByTestId('home-session-taps')).toHaveAttribute('data-tap-count', '0');
 
-  // Wait for the skyline, because the references are its summit dots.
-  await expect(page.getByTestId('live-scene-state')).toHaveAttribute('data-scene', 'ready', {
-    timeout: SCENE_TIMEOUT_MS,
-  });
-  const dots = await summitDots(page);
-  expect(dots.length, 'the landmark sweep needs drawn summits').toBeGreaterThan(1);
-
-  const marks = await page
-    .locator('[data-testid="live-marks"] circle')
-    .evaluateAll((nodes) =>
-      nodes.map((node) => ({
-        cx: Number(node.getAttribute('cx')),
-        cy: Number(node.getAttribute('cy')),
-      })),
-    );
-  const everything = [...dots, ...marks];
-  /**
-   * A point in the picture 250 px from every drawn mark, or undefined if this
-   * frame has no such gap. The taps at the end of this test use it.
-   */
-  const farFromEverything = (() => {
-    for (let yPx = 10; yPx < FRAME.heightPx; yPx += 10) {
-      for (let xPx = 10; xPx < FRAME.widthPx; xPx += 10) {
-        const nearest = Math.min(
-          ...everything.map((dot) => Math.hypot(dot.cx - xPx, dot.cy - yPx)),
-        );
-        if (nearest > 250) return { xPx, yPx };
-      }
-    }
-    return undefined;
-  })();
-
   const injectedTap = (dot: { cx: number; cy: number }): { xPx: number; yPx: number } => ({
     xPx: FRAME.widthPx / 2 + INJECTED_SCALE * (dot.cx - FRAME.widthPx / 2) + INJECTED_SHIFT_PX.xPx,
     yPx:
@@ -992,44 +967,35 @@ test('a tap during the sun step measures the field of view and the aim', async (
   });
 
   /**
-   * Two references far enough apart to separate scale from offset, each of which
-   * is the NEAREST drawn mark to its own injected tap.
-   *
-   * The screen attributes a tap to the nearest mark, so a pair chosen without
-   * that check could have one tap land nearer a neighbouring summit — and the
-   * fit would then be recovering a displacement nobody injected. The RMS spread
-   * of two points is half their separation, which is why the gap has to clear
-   * twice the module's floor.
+   * Aim so the Sun sits `offAxisDeg` right of centre, wait for the pose to
+   * settle, and return where its disc is drawn. 20° either side puts the two
+   * discs about 390 px apart, well clear of the fit's spread floor.
    */
-  const pair = (() => {
-    const nearest = (point: { xPx: number; yPx: number }): { cx: number; cy: number } | undefined =>
-      everything.reduce<{ cx: number; cy: number } | undefined>((best, dot) => {
-        if (best === undefined) return dot;
-        return Math.hypot(dot.cx - point.xPx, dot.cy - point.yPx) <
-          Math.hypot(best.cx - point.xPx, best.cy - point.yPx)
-          ? dot
-          : best;
-      }, undefined);
-    const claimsItsOwnTap = (dot: { cx: number; cy: number }): boolean => {
-      const hit = nearest(injectedTap(dot));
-      return hit !== undefined && hit.cx === dot.cx && hit.cy === dot.cy;
-    };
-    const sorted = [...dots].sort((a, b) => a.cx - b.cx);
-    for (let i = 0; i < sorted.length; i += 1) {
-      for (let j = sorted.length - 1; j > i; j -= 1) {
-        const a = sorted[i];
-        const b = sorted[j];
-        if (a === undefined || b === undefined) continue;
-        if (b.cx - a.cx <= 2 * MIN_SPREAD_PX) continue;
-        if (claimsItsOwnTap(a) && claimsItsOwnTap(b)) return { left: a, right: b };
-      }
-    }
-    return undefined;
-  })();
-  expect(pair, 'no two drawn summits are far enough apart and unambiguous').toBeDefined();
-  if (pair === undefined) return;
-  const { left, right } = pair;
+  const discWithSunAt = async (offAxisDeg: number): Promise<{ cx: number; cy: number }> => {
+    const headingDeg = sun.azimuthDeg - offAxisDeg;
+    await pumpSet(
+      page,
+      eventAnglesFor(magneticBearingFor(headingDeg, FIXED_TIME), sun.altitudeDeg),
+    );
+    await expect
+      .poll(async () => poseNumber(page, 'data-pitch-deg'), { timeout: 15_000 })
+      .toBeCloseTo(sun.altitudeDeg, 2);
+    await expect
+      .poll(async () => {
+        const drawn = await poseNumber(page, 'data-heading-deg');
+        return Math.abs(((drawn - headingDeg + 540) % 360) - 180);
+      }, { timeout: 15_000 })
+      .toBeLessThan(0.05);
+    const disc = page.getByTestId('live-mark-sun');
+    await expect(disc).toBeVisible();
+    return disc.evaluate((node) => ({
+      cx: Number(node.getAttribute('cx')),
+      cy: Number(node.getAttribute('cy')),
+    }));
+  };
 
+  const left = await discWithSunAt(-20);
+  expect(left.cx).toBeLessThan(FRAME.widthPx / 2 - MIN_SPREAD_PX);
   const firstTap = injectedTap(left);
   await tapAt(page, firstTap.xPx, firstTap.yPx);
   await expect(page.getByTestId('home-session-taps')).toHaveAttribute('data-tap-count', '1');
@@ -1039,6 +1005,8 @@ test('a tap during the sun step measures the field of view and the aim', async (
   await expect(refusal).toHaveAttribute('data-refusal', 'too-few-taps');
   await expect(refusal).toContainText('different parts of the picture');
 
+  const right = await discWithSunAt(20);
+  expect(right.cx).toBeGreaterThan(FRAME.widthPx / 2 + MIN_SPREAD_PX);
   const secondTap = injectedTap(right);
   await tapAt(page, secondTap.xPx, secondTap.yPx);
   await expect(page.getByTestId('home-session-taps')).toHaveAttribute('data-tap-count', '2');
@@ -1046,9 +1014,9 @@ test('a tap during the sun step measures the field of view and the aim', async (
   const fit = page.getByTestId('home-session-fit');
   await expect(fit).toBeVisible();
   const read = async (attribute: string): Promise<number> => Number(await fit.getAttribute(attribute));
-  // The injected camera, recovered. The tolerances allow for the label positions
-  // moving by a fraction of a pixel between the read above and each tap: the
-  // fused pose is still settling by thousandths of a degree.
+  // The injected camera, recovered. The tolerances allow for the disc moving by
+  // a fraction of a pixel between the read above and each tap: the fused pose
+  // is still settling by thousandths of a degree.
   expect(await read('data-scale')).toBeCloseTo(INJECTED_SCALE, 2);
   const assumedFocalPx = FRAME.widthPx / 2 / Math.tan((VISIBLE_FOV.hFovDeg * DEG) / 2);
   const fittedFocalPx = INJECTED_SCALE * assumedFocalPx;
@@ -1086,17 +1054,17 @@ test('a tap during the sun step measures the field of view and the aim', async (
     Number(await page.getByTestId('live-trim').getAttribute('data-heading-deg')),
   ).toBeCloseTo(fittedHeadingOffset, 6);
 
-  // A tap far from every drawn mark is still counted. The gap between the mark
-  // and the real thing is what the tilt zero point is read from, so refusing a
-  // wide gap would let the sensor set a ceiling on its own error. Last in the
-  // test because it adds a third tap, which changes the fit already read above.
-  if (farFromEverything !== undefined) {
-    await tapAt(page, farFromEverything.xPx, farFromEverything.yPx);
-    await expect(page.getByTestId('home-session-taps')).toHaveAttribute('data-tap-count', '3');
-    await expect(page.getByTestId('home-session-tap-note')).toHaveCount(0);
-  } else {
-    console.log('every part of this frame is within 250 px of a drawn mark; skipped the wide-gap tap');
-  }
+  // A tap far from the disc is still counted. The gap between the mark and the
+  // real thing is what the tilt zero point is read from, so refusing a wide gap
+  // would let the sensor set a ceiling on its own error. Last in the test
+  // because it adds a third tap, which changes the fit already read above.
+  const farCorner = right.cx > FRAME.widthPx / 2 ? { xPx: 10, yPx: FRAME.heightPx - 10 } : {
+    xPx: FRAME.widthPx - 10,
+    yPx: FRAME.heightPx - 10,
+  };
+  await tapAt(page, farCorner.xPx, farCorner.yPx);
+  await expect(page.getByTestId('home-session-taps')).toHaveAttribute('data-tap-count', '3');
+  await expect(page.getByTestId('home-session-tap-note')).toHaveCount(0);
 });
 
 test('the observer stands on the map’s ground, not on the GPS altitude', async ({ page }) => {
@@ -1745,29 +1713,27 @@ test('a tap on the real sun says how far off the compass is', async ({ page }) =
   await expect(page.getByTestId('home-session')).toHaveAttribute('data-step-pose', 'sun-capture');
   await expect(page.getByTestId('home-session-tap-layer')).toBeVisible();
 
-  // Wait for the skyline, so the drawn summits that could claim the tap exist.
+  // Wait for the skyline, so summit dots are drawn. They never claim a tap on
+  // this step, so only a disc near the middle could stop the warning.
   await expect(page.getByTestId('live-scene-state')).toHaveAttribute('data-scene', 'ready', {
     timeout: SCENE_TIMEOUT_MS,
   });
   const centre = { xPx: FRAME.widthPx / 2, yPx: FRAME.heightPx / 2 };
-  const drawn = [
-    ...(await summitDots(page)),
-    ...(await page
-      .locator('[data-testid="live-marks"] circle')
-      .evaluateAll((nodes) =>
-        nodes.map((node) => ({
-          cx: Number(node.getAttribute('cx')),
-          cy: Number(node.getAttribute('cy')),
-        })),
-      )),
-  ];
+  const drawn = await page
+    .locator('[data-testid="live-marks"] circle')
+    .evaluateAll((nodes) =>
+      nodes.map((node) => ({
+        cx: Number(node.getAttribute('cx')),
+        cy: Number(node.getAttribute('cy')),
+      })),
+    );
   const nearestPx = Math.min(
     ...drawn.map((dot) => Math.hypot(dot.cx - centre.xPx, dot.cy - centre.yPx)),
     Number.POSITIVE_INFINITY,
   );
   if (nearestPx <= 160) {
     console.log(
-      `a drawn mark sits ${nearestPx.toFixed(0)} px from the middle of the frame, so the tap ` +
+      `a drawn disc sits ${nearestPx.toFixed(0)} px from the middle of the frame, so the tap ` +
         'would be attributed to it; skipped the warning assertion',
     );
     return;

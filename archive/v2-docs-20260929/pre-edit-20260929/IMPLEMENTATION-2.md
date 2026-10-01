@@ -1937,25 +1937,3 @@ re-anchor, and fitting a scale to it would store a bent field of view. For the g
 warning, a tap reads as a sun tap unless a non-sun mark within 160 px claimed it (`readsAsSunTap`).
 Before this, a distant summit dot could claim the sun tap and hide the warning, so the e2e test
 for it failed at `ee65a8f` depending on the Sun's position at run time.
-
-## Step 14 measures against the Sun and Moon only
-
-`resolveCalibrationTap` gives a tap to the nearest drawn mark with no distance cap, because the
-gap between mark and tap is the measurement. With summit dots as candidates, a dot nearer the tap
-than an off-picture Sun mark claimed it, and the fit stored a field of view bent by the compass
-error that places the dots. Summits are now dropped before choosing; the field session's landmark
-sweep keeps them under its 160 px cap. The step-14 e2e test fixes the page clock at 2026-04-02
-09:00 UTC, when the Sun is 37.4° up and the Moon below the horizon, taps the Sun's disc at ±20°
-off axis, and recovers an injected scale of 1.1 and shift of (10, −6) px. The home guide now says
-to fix the direction first when the compass warning shows, then do step 14's taps.
-
-The re-anchor refuses a tap whose implied pitch trim exceeds ±20° (`tilt-out-of-range`): a tilt
-sensor that far out is past the 15° credible bias, and clamping the trim would leave the labels
-at a pitch the heading was not solved for. The closed-form inverse takes the wrong asin branch
-only when the tapped ray passes the zenith: first at camera pitch 68° with the Sun about 50° up
-near a top corner of a 74° frame at level roll, 59° at ±15° roll. The protocol's 15° to 50° Sun
-window keeps every step clear of it.
-
-The tap-spread floor is the standard error of the mean of independent tap errors. An error every
-tap shares, such as a finger that always lands low on the disc, shows in no spread and is not
-bounded by the floor.

@@ -70,21 +70,21 @@ describe('reanchorFromTap — the heading', () => {
     const result = reanchorFromTap(
       input({
         reference: { name: 'the sun', azimuthDeg: 130, altitudeDeg: 0 },
+        sensedPose: { headingDeg: 222, pitchDeg: 0, rollDeg: 0 },
         tappedPx: { xPx: CENTRE.xPx + THIRTY_DEG_PX, yPx: CENTRE.yPx },
       }),
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.anchoredHeadingDeg).toBeCloseTo(100, 12);
-    // 0 − 29 is past the slider, so it comes back at the clamp.
-    expect(result.value.pitchTrimDeg).toBeCloseTo(-TRIM_LIMIT_DEG.pitchDeg, 12);
-    expect(result.value.pitchClamped).toBe(true);
+    expect(result.value.pitchTrimDeg).toBeCloseTo(0, 12);
   });
 
   it('adds it on the other side: the same tap to the left', () => {
     const result = reanchorFromTap(
       input({
         reference: { name: 'the sun', azimuthDeg: 130, altitudeDeg: 0 },
+        sensedPose: { headingDeg: 222, pitchDeg: 0, rollDeg: 0 },
         tappedPx: { xPx: CENTRE.xPx - THIRTY_DEG_PX, yPx: CENTRE.yPx },
       }),
     );
@@ -116,6 +116,7 @@ describe('reanchorFromTap — the heading', () => {
     const result = reanchorFromTap(
       input({
         reference: { name: 'the sun', azimuthDeg: 10, altitudeDeg: 0 },
+        sensedPose: { headingDeg: 222, pitchDeg: 0, rollDeg: 0 },
         tappedPx: { xPx: CENTRE.xPx + THIRTY_DEG_PX, yPx: CENTRE.yPx },
       }),
     );
@@ -138,31 +139,50 @@ describe('reanchorFromTap — the heading', () => {
 });
 
 describe('reanchorFromTap — the pitch', () => {
-  it('adds atan((y − c)/f), and clamps an answer no slider could hold', () => {
+  it('adds atan((y − c)/f): a reference 10° below the axis wants the camera 10° higher', () => {
     // Screen y grows downward, so a reference 10° below the axis means the
-    // camera is pointed 10° ABOVE it. Reference altitude 29°, so the wanted
-    // pitch is 39°; against a sensed pitch of 0° that is +39, past the ±20°
-    // slider, so it comes back at the clamp.
+    // camera is pointed 10° ABOVE it: 29° + 10° against a sensed 29°.
     const result = reanchorFromTap(
-      input({
-        sensedPose: { headingDeg: 222, pitchDeg: 0, rollDeg: 0 },
-        tappedPx: { xPx: CENTRE.xPx, yPx: CENTRE.yPx + TEN_DEG_PX },
-      }),
+      input({ tappedPx: { xPx: CENTRE.xPx, yPx: CENTRE.yPx + TEN_DEG_PX } }),
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value.pitchTrimDeg).toBeCloseTo(TRIM_LIMIT_DEG.pitchDeg, 12);
-    expect(result.value.pitchClamped).toBe(true);
+    expect(result.value.pitchTrimDeg).toBeCloseTo(10, 10);
   });
 
-  it('leaves a small pitch answer unclamped and says so', () => {
+  it('subtracts it for a reference above the axis', () => {
     const result = reanchorFromTap(
       input({ tappedPx: { xPx: CENTRE.xPx, yPx: CENTRE.yPx - TEN_DEG_PX } }),
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.pitchTrimDeg).toBeCloseTo(-10, 10);
-    expect(result.value.pitchClamped).toBe(false);
+  });
+
+  it('refuses a tap whose pitch answer is past the ±20° trim, rather than a heading solved there', () => {
+    // Wanted pitch 29° + 10° = 39°; against a sensed 0° that is +39°, past the
+    // slider and far past any tilt sensor's credible bias.
+    const result = reanchorFromTap(
+      input({
+        sensedPose: { headingDeg: 222, pitchDeg: 0, rollDeg: 0 },
+        tappedPx: { xPx: CENTRE.xPx, yPx: CENTRE.yPx + TEN_DEG_PX },
+      }),
+    );
+    expect(result.ok).toBe(false);
+    expect(result.ok ? '' : result.refusal).toBe('tilt-out-of-range');
+    expect(result.ok ? '' : result.detail).toContain('39°');
+  });
+
+  it('accepts a pitch answer just inside the trim and refuses one just outside', () => {
+    // On the axis the wanted pitch is the altitude, 29°; the trim is 29 − sensed.
+    const inside = reanchorFromTap(
+      input({ sensedPose: { headingDeg: 222, pitchDeg: 29 - TRIM_LIMIT_DEG.pitchDeg + 0.01, rollDeg: 0 } }),
+    );
+    expect(inside.ok).toBe(true);
+    const outside = reanchorFromTap(
+      input({ sensedPose: { headingDeg: 222, pitchDeg: 29 - TRIM_LIMIT_DEG.pitchDeg - 0.01, rollDeg: 0 } }),
+    );
+    expect(outside.ok).toBe(false);
   });
 
   it('is zero when the tap sits on the axis and the sensed pitch already agrees', () => {

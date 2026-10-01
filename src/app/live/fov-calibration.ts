@@ -387,6 +387,11 @@ export type TapOutcome =
  *
  * The frame is the bound the sensor has no part in. A finger cannot land
  * outside the picture without the person meaning something else by it.
+ *
+ * Only the Sun and Moon marks are candidates. Summit dots are placed by the
+ * compass, so a summit claiming a tap would fold the heading error into the
+ * field of view. The field session's landmark sweep uses {@link pickReference}
+ * directly and keeps summits.
  */
 export function resolveCalibrationTap(
   tappedPx: PointPx,
@@ -405,7 +410,8 @@ export function resolveCalibrationTap(
       detail: 'That tap landed outside the picture. Tap the middle of the real sun in the camera view.',
     };
   }
-  const reference = pickReference(tappedPx, candidates, UNCAPPED_TAP_DISTANCE_PX);
+  const discs = candidates.filter((candidate) => candidate.kind !== 'summit');
+  const reference = pickReference(tappedPx, discs, UNCAPPED_TAP_DISTANCE_PX);
   if (reference === undefined) {
     return {
       ok: false,

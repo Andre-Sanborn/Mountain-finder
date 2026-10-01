@@ -335,16 +335,39 @@ describe('resolveCalibrationTap', () => {
     expect(outcome.ok ? outcome.reference : undefined).toBe(sun);
   });
 
-  it('still attributes a tap to the nearest drawn mark', () => {
+  it('attributes a tap to the nearer of the two discs', () => {
+    const moon: CalibrationReference = {
+      kind: 'moon',
+      name: 'the Moon',
+      drawnPx: { xPx: 520, yPx: 180 },
+    };
+    const near = resolveCalibrationTap({ xPx: 310, yPx: 205 }, framePx, [sun, moon]);
+    expect(near.ok ? near.reference : undefined).toBe(sun);
+    const far = resolveCalibrationTap({ xPx: 500, yPx: 190 }, framePx, [sun, moon]);
+    expect(far.ok ? far.reference : undefined).toBe(moon);
+  });
+
+  it('never lets a summit dot claim a tap, even one nearer than an above-frame Sun mark', () => {
+    // The Sun mark sits 60 px above the picture; the tap lands 380 px below it
+    // and 20 px from a summit dot. Only the Sun may be measured.
+    const aboveFrame = sunAt(400, -60);
     const summit: CalibrationReference = {
       kind: 'summit',
       name: 'Matterhorn',
-      drawnPx: { xPx: 520, yPx: 180 },
+      drawnPx: { xPx: 420, yPx: 320 },
     };
-    const near = resolveCalibrationTap({ xPx: 310, yPx: 205 }, framePx, [sun, summit]);
-    expect(near.ok ? near.reference : undefined).toBe(sun);
-    const far = resolveCalibrationTap({ xPx: 500, yPx: 190 }, framePx, [sun, summit]);
-    expect(far.ok ? far.reference : undefined).toBe(summit);
+    const outcome = resolveCalibrationTap({ xPx: 400, yPx: 320 }, framePx, [aboveFrame, summit]);
+    expect(outcome.ok ? outcome.reference : undefined).toBe(aboveFrame);
+  });
+
+  it('refuses a tap when only summit dots are drawn', () => {
+    const summit: CalibrationReference = {
+      kind: 'summit',
+      name: 'Matterhorn',
+      drawnPx: { xPx: 300, yPx: 200 },
+    };
+    const outcome = resolveCalibrationTap({ xPx: 300, yPx: 200 }, framePx, [summit]);
+    expect(outcome.ok ? '' : outcome.refusal).toBe('nothing-drawn');
   });
 
   it('refuses a tap outside the picture', () => {

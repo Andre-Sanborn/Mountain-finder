@@ -2743,10 +2743,11 @@ export interface TiltZeroPointQuality {
  *
  * For taps it is never less than `0.543° / √taps`, the standard error of their
  * mean at the budget's per-tap precision (term 9). Two taps leave one degree of
- * freedom, so their reported spread is a noisy draw that can land near zero,
- * and an error every tap shares, such as a finger that always lands low on the
- * disc, leaves no residual at all. Aiming steps are re-aims rather than taps,
- * so their spread is charged as measured.
+ * freedom, so their reported spread is a noisy draw that can land near zero.
+ * The floor covers independent tap errors only. An error every tap shares, such
+ * as a finger that always lands low on the disc, shows in no spread and is not
+ * bounded by this floor. Aiming steps are re-aims rather than taps, so their
+ * spread is charged as measured.
  */
 export function chargedTiltSpreadDeg(quality: TiltZeroPointQuality): number {
   if (quality.source !== 'fov-calibration-taps' || !(quality.sampleCount > 0)) {

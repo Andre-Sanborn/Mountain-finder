@@ -786,12 +786,7 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
       setReanchorMode('off');
       setPendingReanchor(undefined);
       setGrossWarning(undefined);
-      setReanchorNote(
-        `The labels now line up with ${reference.name}. ${value.sentence}` +
-          (value.pitchClamped
-            ? ' The up-and-down part was bigger than the nudge allows, so only part of it was used.'
-            : ''),
-      );
+      setReanchorNote(`The labels now line up with ${reference.name}. ${value.sentence}`);
     },
     [poseResult],
   );
@@ -1010,8 +1005,8 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
   /**
    * Every mark a tap could be about: the two discs, including one drawn just
    * above or below the picture (`isTappableMark`), plus every summit the
-   * renderer put a dot on. A summit is on the same footing as the Sun here —
-   * that is the landmark sweep, and it needs no arithmetic of its own.
+   * renderer put a dot on. The field session's landmark sweep uses the summits;
+   * the home session's tap drops them in `resolveCalibrationTap`.
    */
   const calibrationReferences = useCallback(
     (): readonly CalibrationReference[] => [

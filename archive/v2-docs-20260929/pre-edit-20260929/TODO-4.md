@@ -52,11 +52,8 @@ after its self-check has run and passed here. The checks are in
 - [x] Floor the tilt-spread charge at 0.543°/√taps, and state that F2 vertical tests bias stability
 - [x] Key the stored tilt bias by camera track, like the FOV calibration
 - [x] Let the Sun and Moon marks count as calibration candidates when drawn off the picture
-- [x] Limit home step-14 tap candidates to the Sun and Moon, so a far summit dot cannot claim a sun tap
-- [x] Home guide: fix the direction before step 14's taps when the compass warning shows
-- [x] Field guide: check the field-of-view readout is not "(uncalibrated)" before starting
-- [ ] Move the "(uncalibrated)" check to the at-home rehearsal, so a lost calibration costs no drive
-- [x] Refuse the re-anchor when the pitch trim exceeds the ±20° clamp (night-3 review)
+- [ ] Limit home step-14 tap candidates to the Sun and Moon, so a far summit dot cannot claim a sun tap
+- [ ] Refuse the re-anchor when the pitch trim exceeds the ±20° clamp (night-3 review)
 - [ ] Run the home session with the human (steps: docs/HOME-SESSION-GUIDE.md)
 - [ ] Turn the home-session recording into fixtures; fix any sign or FOV error it shows
 - [x] Lock the railroad-ridge CV result as a regression test, labelled n = 1

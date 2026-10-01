@@ -156,10 +156,6 @@ https://andre-sanborn.github.io/Mountain-finder/live.html?session=field
 Tap **Start** at the top and allow the camera, the motion sensors and your location. Then
 find the panel headed **Field session**.
 
-Before you start it, check the line that reads "… up · field … × …" does not end in
-**(uncalibrated)**. If it does, the home session's calibration did not carry over to this
-phone and browser, so write that down and tell Claude when you are back.
-
 Before anything is captured it shows five lines about what is saved. They are worth reading
 once, because this is the session that stores photographs:
 

@@ -40,6 +40,18 @@
  * / f)`. Anywhere else those two separate formulas are wrong by the pitch's
  * foreshortening: 4.3° of heading for the Sun 30° up and 30° off axis.
  *
+ * `asin` returns the branch with |P + atan(b)| ≤ 90°, so it is wrong only when
+ * the tapped ray passes the zenith: a level camera pitched above 67°, tapping
+ * near the top of a 74° frame, at a Sun above 50°. The protocol keeps the Sun
+ * at 15° to 50° and the camera near its height, so no step reaches it.
+ *
+ * ── A TILT ERROR NO TRIM CAN HOLD ──────────────────────────────────────────
+ * The heading is solved at the pitch the tap implies. When that pitch differs
+ * from the sensed one by more than the ±20° pitch trim, storing the heading
+ * would leave the labels drawn at a pitch the heading was not solved for. A
+ * tilt sensor that far out is also well past the 15° a tilt bias can credibly
+ * be (`MAX_CREDIBLE_PITCH_BIAS_DEG`), so the tap is refused instead.
+ *
  * ── WHY IT IS NOT `pickReference` ──────────────────────────────────────────
  * `fov-calibration.ts` attributes a tap to the nearest DRAWN mark within 160 px.
  * Under a gross error nothing drawn is anywhere near the truth — the whole point
@@ -104,10 +116,6 @@ function foldSigned(deg: number): number {
   return wrapped > 180 ? wrapped - 360 : wrapped;
 }
 
-function clamp(value: number, limit: number): number {
-  return Math.max(-limit, Math.min(limit, value));
-}
-
 /** What the person tapped, and where its real direction is. */
 export interface ReanchorReference {
   /** `'the sun'`, `'the moon'` or a summit's name — what the screen calls it. */
@@ -143,10 +151,8 @@ export interface ReanchorInput {
 export interface Reanchor {
   /** What to store as the gross heading offset. Unclamped, signed. */
   readonly grossHeadingOffsetDeg: number;
-  /** What to store as the fine pitch trim, clamped to the slider's range. */
+  /** What to store as the fine pitch trim, inside the slider's range. */
   readonly pitchTrimDeg: number;
-  /** True when the pitch answer hit that clamp, so the screen can say so. */
-  readonly pitchClamped: boolean;
   /** The heading the labels are now drawn at, [0, 360). */
   readonly anchoredHeadingDeg: number;
   /** How far the labels move, degrees, always positive. */
@@ -157,7 +163,7 @@ export interface Reanchor {
   readonly sentence: string;
 }
 
-export type ReanchorRefusal = 'no-frame' | 'tap-outside-frame' | 'no-pose';
+export type ReanchorRefusal = 'no-frame' | 'tap-outside-frame' | 'no-pose' | 'tilt-out-of-range';
 
 export type ReanchorResult =
   | { readonly ok: true; readonly value: Reanchor }
@@ -228,8 +234,17 @@ export function reanchorFromTap(input: ReanchorInput): ReanchorResult {
       Math.atan2(a, Math.cos(pitch) - b * Math.sin(pitch)) * DEG_PER_RAD,
   );
 
-  const pitchOffsetDeg = wantedPitchDeg - input.sensedPose.pitchDeg;
-  const pitchTrimDeg = clamp(pitchOffsetDeg, TRIM_LIMIT_DEG.pitchDeg);
+  const pitchTrimDeg = wantedPitchDeg - input.sensedPose.pitchDeg;
+  if (!(Math.abs(pitchTrimDeg) <= TRIM_LIMIT_DEG.pitchDeg)) {
+    return {
+      ok: false,
+      refusal: 'tilt-out-of-range',
+      detail:
+        `For ${input.reference.name} to be where you tapped, the phone's tilt sensor would be ` +
+        `${Math.abs(pitchTrimDeg).toFixed(0)}° out, far more than a tilt sensor goes wrong. ` +
+        'Check you tapped the real thing, put it near the middle of the picture and tap again.',
+    };
+  }
 
   // Positive heading change turns the camera to the right, so what it is
   // pointed at moves LEFT across the frame — the same sign relation the drag
@@ -243,7 +258,6 @@ export function reanchorFromTap(input: ReanchorInput): ReanchorResult {
     value: {
       grossHeadingOffsetDeg: foldSigned(anchoredHeadingDeg - input.sensedPose.headingDeg),
       pitchTrimDeg,
-      pitchClamped: pitchTrimDeg !== pitchOffsetDeg,
       anchoredHeadingDeg,
       moveDeg,
       moveDirection,
