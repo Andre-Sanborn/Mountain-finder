@@ -53,7 +53,7 @@ after its self-check has run and passed here. The checks are in
 - [x] Key the stored tilt bias by camera track, like the FOV calibration
 - [x] Let the Sun and Moon marks count as calibration candidates when drawn off the picture
 - [ ] Limit home step-14 tap candidates to the Sun and Moon, so a far summit dot cannot claim a sun tap
-- [ ] Refuse the re-anchor when the pitch trim exceeds the ±20° clamp (night-3 review)
+- [ ] Re-solve the re-anchor heading at the clamped pitch when the pitch trim hits ±20°
 - [ ] Run the home session with the human (steps: docs/HOME-SESSION-GUIDE.md)
 - [ ] Turn the home-session recording into fixtures; fix any sign or FOV error it shows
 - [x] Lock the railroad-ridge CV result as a regression test, labelled n = 1

@@ -14,35 +14,6 @@ not the record of the code.
 
 ---
 
-## 2026-10-01, night 3 (reviewed ee65a8f..188cb57, 3 commits)
-
-The reviewer ran as a `general-purpose` agent reading `.claude/agents/strategy-adversary.md`, on
-`claude-opus-5-5` (transcript record).
-
-**Adversary findings, ranked:**
-1. Home step 14 gives a calibration tap to the nearest mark, summit dots included. Under a gross
-   compass error the Sun mark is off the side or far away, a summit dot claims the tap, and the
-   field-of-view fit stores a scale bent by the compass error under the track key the field
-   session reads. The tilt bias already refuses summit taps; the FOV fit does not. The new
-   home-guide section ("finish step 14 first, then fix the direction") leads straight into it.
-2. The ±20° pitch-clamp case is past the 15° credibility bound; refuse it rather than re-solve.
-3. A comment beside the tap-spread floor implies the floor covers an error every tap shares; it
-   does not.
-4. Both calibrations now hang on the track key; if `deviceId` changes between sessions they drop
-   (fail-safe), but the field guide never tells the person to check for "(uncalibrated)".
-
-**Checked and found sound:** the closed-form inverse against `projectToImage` over 200 000 random
-poses (worst 3.4e-13°); its only wrong-branch region (camera pitch above about 65° with the Sun
-above about 70°) is unreachable; `no-pose` fires only on a tap error; the roll sign; the
-independent round-trip test; night 2's findings 1, 3 and 5 as decided; the freeze held.
-
-**Orchestrator decisions:** all four accepted and in one fix before the home session: step-14
-candidates limited to the Sun and Moon with a mutation-checked test; the guide reordered to fix
-the direction first; a refusal at the pitch clamp; the comment corrected; one field-guide line to
-check for "(uncalibrated)". The domain limit gets one sentence in the re-anchor header.
-
----
-
 ## 2026-09-30, night 2 (reviewed 90ddd8e..ee65a8f, 34 commits)
 
 The reviewer ran on `claude-fable-5-1`, not the pinned Opus 5.5 (transcript record); see finding 0.
