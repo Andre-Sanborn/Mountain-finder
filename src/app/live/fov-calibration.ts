@@ -388,10 +388,12 @@ export type TapOutcome =
  * The frame is the bound the sensor has no part in. A finger cannot land
  * outside the picture without the person meaning something else by it.
  *
- * Only the Sun and Moon marks are candidates. Summit dots are placed by the
- * compass, so a summit claiming a tap would fold the heading error into the
- * field of view. The field session's landmark sweep uses {@link pickReference}
- * directly and keeps summits.
+ * Only the Sun's mark is a candidate, because the step asks for the Sun.
+ * Summit dots are placed by the compass, so a summit claiming a tap would fold
+ * the heading error into the field of view. A daytime Moon drawn nearer the tap
+ * than an off-frame Sun mark would claim a tap on the real Sun, and the gross
+ * compass check would never see it. The field session's landmark sweep uses
+ * {@link pickReference} directly and keeps the Moon and the summits.
  */
 export function resolveCalibrationTap(
   tappedPx: PointPx,
@@ -410,8 +412,8 @@ export function resolveCalibrationTap(
       detail: 'That tap landed outside the picture. Tap the middle of the real sun in the camera view.',
     };
   }
-  const discs = candidates.filter((candidate) => candidate.kind !== 'summit');
-  const reference = pickReference(tappedPx, discs, UNCAPPED_TAP_DISTANCE_PX);
+  const suns = candidates.filter((candidate) => candidate.kind === 'sun');
+  const reference = pickReference(tappedPx, suns, UNCAPPED_TAP_DISTANCE_PX);
   if (reference === undefined) {
     return {
       ok: false,
@@ -437,8 +439,8 @@ export function resolveCalibrationTap(
  * the sensor deciding what the sensor's own error is allowed to be.
  *
  * What replaces it is a bound the sensor has no part in: the tap has to land
- * inside the picture. The cost is that with several marks drawn, a tap far from
- * all of them is still attributed to the nearest — which the home session's
- * step avoids by asking for the Sun, the brightest thing on the screen.
+ * inside the picture. The cost is that any tap inside the picture is read as a
+ * tap on the Sun, which is why the step asks for the Sun, the brightest thing
+ * on the screen.
  */
 export const UNCAPPED_TAP_DISTANCE_PX = Number.POSITIVE_INFINITY;

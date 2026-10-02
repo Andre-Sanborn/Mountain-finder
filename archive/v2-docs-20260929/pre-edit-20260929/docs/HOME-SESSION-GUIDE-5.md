@@ -296,8 +296,7 @@ This line means the phone's compass points the wrong way by more than a nudge ca
 can appear during step 14. If it does, fix the direction first, then do step 14's taps.
 Step 14 measures each tap against the app's own circle for the sun. With the compass far
 out, that circle may not be on the screen at all, and the app then refuses the tap and
-tells you to fix the direction first. Fixing the direction clears any step 14 taps made
-before it, and a line under the tap count says so. Make those taps again.
+tells you to fix the direction first.
 
 1. Hold the phone still for ten seconds. Until then the button is grey.
 2. Tap **Fix direction — tap the sun**.

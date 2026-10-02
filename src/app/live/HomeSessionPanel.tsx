@@ -123,6 +123,8 @@ export interface HomeSessionPanelProps {
     tappedPx: { readonly xPx: number; readonly yPx: number },
     reference: CalibrationReference | undefined,
   ) => void;
+  /** Goes up by one each time a re-anchor is applied. */
+  readonly reanchorCount: number;
   /** Hand the tilt zero point to the screen, which stores it and bands with it. */
   readonly onPitchMeasured: (estimate: PitchBiasEstimate) => void;
   readonly shareTarget: ShareTarget;
@@ -313,6 +315,23 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
     setDragMode('normal');
     finish();
   }, [phase, trialIndex, setDragMode, finish]);
+
+  /**
+   * Drop the taps made before a re-anchor.
+   *
+   * Each tap is measured against the mark drawn when it was made, and a
+   * re-anchor turns every mark. A tap from before it would join the fit with a
+   * heading error tens of degrees wide and skew the field of view.
+   */
+  const { reanchorCount } = props;
+  const reanchorCountRef = useRef(reanchorCount);
+  useEffect(() => {
+    if (reanchorCount === reanchorCountRef.current) return;
+    reanchorCountRef.current = reanchorCount;
+    if (taps.length === 0) return;
+    setTaps([]);
+    setTapNote('The direction changed, so earlier taps were cleared. Tap the sun again.');
+  }, [reanchorCount, taps.length]);
 
   /* ── the tap, on the sun step ───────────────────────────────────────────── */
   const onTap = useCallback(

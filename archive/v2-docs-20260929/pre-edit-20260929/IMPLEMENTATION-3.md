@@ -1959,18 +1959,3 @@ window keeps every step clear of it.
 The tap-spread floor is the standard error of the mean of independent tap errors. An error every
 tap shares, such as a finger that always lands low on the disc, shows in no spread and is not
 bounded by the floor.
-
-## Step 14 taps: Sun only, and cleared by a re-anchor
-
-`resolveCalibrationTap` offers only the Sun's mark as a candidate. A daytime Moon drawn nearer the
-tap than an off-picture Sun mark would otherwise claim a tap on the real Sun and hide the gross
-compass warning. `readsAsSunTap` is now "unclaimed or the Sun"; the field sweep caps attribution
-at 160 px, so its old distance branch changed nothing there.
-
-The gross compass warning fires only after a tap, so the first step-14 tap is already in the fit
-when the person fixes the direction. Night 4 measured fits of 61.8° to 69.6° against a true 60° at
-compass errors of 22° to 28°, with no refusal. Each re-anchor now raises `reanchorCount`, and
-`HomeSessionPanel` clears its taps and says so. Clearing all taps was chosen over discarding the
-ones that disagree, which would need a threshold set by the error under test. The e2e "a re-anchor
-clears the sun taps made before it" fails when the clear is removed. The field session's taps,
-and taps across a drag or trim reset, are not yet cleared.

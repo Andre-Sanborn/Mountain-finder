@@ -1683,28 +1683,25 @@ test('turning the phone on purpose after a re-anchor raises no drift warning', a
 });
 
 test('a tap on the real sun says how far off the compass is', async ({ page }) => {
-  // The automatic warning. It fires on a tap the app can attribute to nothing:
-  // a tap is attributed to a drawn mark within 160 px, about 17° here, so a
-  // compass 92° out always leaves the app's own sun disc too far away to claim
-  // the tap. The step the person is on asks for the middle of the real sun.
+  // The automatic warning. Only the Sun's own mark may claim a tap on this
+  // step, and with the compass 92° out that mark is far off the picture, so the
+  // tap is unclaimed and read as a tap on the real Sun. The page's clock is
+  // fixed at 2026-04-02 09:00 UTC, when the Sun is 37.4° up over Gornergrat.
   test.setTimeout(SCENE_TIMEOUT_MS + 120_000);
-  const now = new Date();
+  const FIXED_TIME = new Date('2026-04-02T09:00:00Z');
   const sun = sunPosition(
-    now,
+    FIXED_TIME,
     { lat: GORNERGRAT.lat, lon: GORNERGRAT.lon, heightM: OBSERVER_EYE_M },
     { refraction: true },
   );
-  if (sun.altitudeDeg < 5) {
-    console.log('the sun is below the working window at this instant; nothing to tap');
-    test.skip();
-    return;
-  }
+  expect(sun.altitudeDeg).toBeGreaterThan(30);
 
+  await page.clock.setFixedTime(FIXED_TIME);
   await startHomeSession(page);
   // Really aimed at the sun, with the compass 92° out.
   await pumpSet(
     page,
-    eventAnglesFor(magneticBearingFor(sun.azimuthDeg + GROSS_ERROR_DEG, now), sun.altitudeDeg),
+    eventAnglesFor(magneticBearingFor(sun.azimuthDeg + GROSS_ERROR_DEG, FIXED_TIME), sun.altitudeDeg),
   );
   await page.getByTestId('home-session-start').click();
   for (let index = 0; index < POSE_LABELS.length - 1; index += 1) {
@@ -1714,40 +1711,76 @@ test('a tap on the real sun says how far off the compass is', async ({ page }) =
   await expect(page.getByTestId('home-session-tap-layer')).toBeVisible();
 
   // Wait for the skyline, so summit dots are drawn. They never claim a tap on
-  // this step, so only a disc near the middle could stop the warning.
+  // this step.
   await expect(page.getByTestId('live-scene-state')).toHaveAttribute('data-scene', 'ready', {
     timeout: SCENE_TIMEOUT_MS,
   });
-  const centre = { xPx: FRAME.widthPx / 2, yPx: FRAME.heightPx / 2 };
-  const drawn = await page
-    .locator('[data-testid="live-marks"] circle')
-    .evaluateAll((nodes) =>
-      nodes.map((node) => ({
-        cx: Number(node.getAttribute('cx')),
-        cy: Number(node.getAttribute('cy')),
-      })),
-    );
-  const nearestPx = Math.min(
-    ...drawn.map((dot) => Math.hypot(dot.cx - centre.xPx, dot.cy - centre.yPx)),
-    Number.POSITIVE_INFINITY,
-  );
-  if (nearestPx <= 160) {
-    console.log(
-      `a drawn disc sits ${nearestPx.toFixed(0)} px from the middle of the frame, so the tap ` +
-        'would be attributed to it; skipped the warning assertion',
-    );
-    return;
-  }
 
   // The middle of the picture is where the real sun is, because that is where
   // the camera is pointed.
-  await tapAt(page, centre.xPx, centre.yPx);
+  await tapAt(page, FRAME.widthPx / 2, FRAME.heightPx / 2);
   const warning = page.getByTestId('live-gross-warning');
   await expect(warning).toBeVisible({ timeout: 15_000 });
   await expect(warning).toContainText('tap the sun (or a summit you know) to fix it');
   const said = await warning.textContent();
   const degrees = Number(/(\d+)°/.exec(said ?? '')?.[1] ?? 0);
   expect(Math.abs(degrees - GROSS_ERROR_DEG)).toBeLessThan(3);
+});
+
+test('a re-anchor clears the sun taps made before it', async ({ page }) => {
+  // A tap made under a 25° compass error is measured against a Sun mark drawn
+  // 25° from where it belongs. Once the direction is fixed, that tap must not
+  // join the field-of-view fit with the taps made after.
+  test.setTimeout(SCENE_TIMEOUT_MS + 120_000);
+  const COMPASS_ERROR_DEG = 25;
+  const FIXED_TIME = new Date('2026-04-02T09:00:00Z');
+  const sun = sunPosition(
+    FIXED_TIME,
+    { lat: GORNERGRAT.lat, lon: GORNERGRAT.lon, heightM: OBSERVER_EYE_M },
+    { refraction: true },
+  );
+  expect(sun.altitudeDeg).toBeGreaterThan(30);
+
+  await page.clock.setFixedTime(FIXED_TIME);
+  await startHomeSession(page);
+  await pumpSet(
+    page,
+    eventAnglesFor(
+      magneticBearingFor(sun.azimuthDeg + COMPASS_ERROR_DEG, FIXED_TIME),
+      sun.altitudeDeg,
+    ),
+  );
+  await page.getByTestId('home-session-start').click();
+  for (let index = 0; index < POSE_LABELS.length - 1; index += 1) {
+    await page.getByTestId('home-session-next').click();
+  }
+  await expect(page.getByTestId('home-session')).toHaveAttribute('data-step-pose', 'sun-capture');
+
+  const taps = page.getByTestId('home-session-taps');
+  await tapAt(page, FRAME.widthPx / 2, FRAME.heightPx / 2);
+  await expect(taps).toHaveAttribute('data-tap-count', '1');
+  await expect(page.getByTestId('live-gross-warning')).toBeVisible({ timeout: 15_000 });
+
+  const reanchor = page.getByTestId('live-reanchor');
+  await expect
+    .poll(async () => Number(await reanchor.getAttribute('data-still-ms')), { timeout: 40_000 })
+    .toBeGreaterThanOrEqual(10_000);
+  await page.getByTestId('live-reanchor-sun').click();
+  await tapReanchorAt(page, FRAME.widthPx / 2, FRAME.heightPx / 2);
+  await expect(reanchor).toHaveAttribute('data-anchor-source', 'sun');
+
+  await expect(taps).toHaveAttribute('data-tap-count', '0');
+  await expect(page.getByTestId('home-session-tap-note')).toContainText(
+    'earlier taps were cleared',
+  );
+
+  // A tap after the re-anchor starts the count again, alone.
+  await tapAt(page, FRAME.widthPx / 2, FRAME.heightPx / 2);
+  await expect(taps).toHaveAttribute('data-tap-count', '1');
+  await expect(page.getByTestId('home-session-fit-refusal')).toHaveAttribute(
+    'data-refusal',
+    'too-few-taps',
+  );
 });
 
 test('a summit picked by name re-anchors the labels, after the person confirms', async ({

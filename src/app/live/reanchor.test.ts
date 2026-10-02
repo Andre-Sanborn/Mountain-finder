@@ -481,27 +481,15 @@ describe('anchorDrift', () => {
 });
 
 describe('readsAsSunTap', () => {
-  const TAP = { xPx: 400, yPx: 225 };
-  const summitAt = (xPx: number): Parameters<typeof readsAsSunTap>[1] => ({
-    kind: 'summit',
-    name: 'Deer Point',
-    drawnPx: { xPx, yPx: 225 },
-  });
+  const at = { xPx: 400, yPx: 225 };
 
   it('reads an unclaimed tap and a tap the Sun claimed as a Sun tap', () => {
-    expect(readsAsSunTap(TAP, undefined)).toBe(true);
-    expect(readsAsSunTap(TAP, { kind: 'sun', name: 'the Sun', drawnPx: { xPx: 0, yPx: 0 } })).toBe(
-      true,
-    );
+    expect(readsAsSunTap(undefined)).toBe(true);
+    expect(readsAsSunTap({ kind: 'sun', name: 'the Sun', drawnPx: at })).toBe(true);
   });
 
-  it('leaves a tap on a summit dot within 160 px to the summit', () => {
-    expect(readsAsSunTap(TAP, summitAt(400 + 160))).toBe(false);
-    expect(readsAsSunTap(TAP, summitAt(400 - 30))).toBe(false);
-  });
-
-  it('reads a tap a far summit dot claimed as a Sun tap', () => {
-    // 161 px away: past the 160 px a tap is attributed within on the field step.
-    expect(readsAsSunTap(TAP, summitAt(400 + 161))).toBe(true);
+  it('leaves a tap the Moon or a summit claimed to that mark', () => {
+    expect(readsAsSunTap({ kind: 'moon', name: 'the Moon', drawnPx: at })).toBe(false);
+    expect(readsAsSunTap({ kind: 'summit', name: 'Deer Point', drawnPx: at })).toBe(false);
   });
 });

@@ -298,6 +298,8 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
   const [reanchorNote, setReanchorNote] = useState<string | undefined>(undefined);
   /** The warning raised when a tap says the compass is grossly wrong. */
   const [grossWarning, setGrossWarning] = useState<string | undefined>(undefined);
+  /** How many re-anchors have been applied, so a tap made before one can be dropped. */
+  const [reanchorCount, setReanchorCount] = useState(0);
   /**
    * The summit the field session is anchored on, by peak id.
    *
@@ -786,6 +788,7 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
       setReanchorMode('off');
       setPendingReanchor(undefined);
       setGrossWarning(undefined);
+      setReanchorCount((count) => count + 1);
       setReanchorNote(`The labels now line up with ${reference.name}. ${value.sentence}`);
     },
     [poseResult],
@@ -842,17 +845,12 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
    * and the same tap solves a heading. A heading tens of degrees from the
    * sensed one is a broken compass, not a mis-measured lens.
    *
-   * An UNATTRIBUTED tap counts, and so does one a mark more than 160 px away
-   * claimed (`readsAsSunTap`). 160 px is about 17° at this field of view,
-   * narrower than the 20° this warns about, so under a gross error the app's
-   * own Sun disc is never that close to the tap. The home session attributes a
-   * tap to the nearest mark at any distance, so a summit dot across the
-   * picture would otherwise claim it. The step the person is on asks them to
-   * tap the real Sun, so such a tap is read as one.
+   * A tap nothing claimed counts, and so does one the Sun's mark claimed
+   * (`readsAsSunTap`): the step asks for the real Sun wherever the app drew it.
    */
   const notePictureTap = useCallback(
     (tappedPx: PointPx, reference: CalibrationReference | undefined) => {
-      if (!readsAsSunTap(tappedPx, reference)) return;
+      if (!readsAsSunTap(reference)) return;
       if (sunReference === undefined || pose === undefined || poseResult?.ok !== true) return;
       const solved = reanchorFromTap({
         reference: sunReference,
@@ -1005,8 +1003,8 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
   /**
    * Every mark a tap could be about: the two discs, including one drawn just
    * above or below the picture (`isTappableMark`), plus every summit the
-   * renderer put a dot on. The field session's landmark sweep uses the summits;
-   * the home session's tap drops them in `resolveCalibrationTap`.
+   * renderer put a dot on. The field session's landmark sweep uses them all;
+   * the home session's tap keeps only the Sun, in `resolveCalibrationTap`.
    */
   const calibrationReferences = useCallback(
     (): readonly CalibrationReference[] => [
@@ -1413,6 +1411,7 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
             calibrationFrame={calibrationFrame}
             onCalibrated={applyFovFit}
             onPictureTap={notePictureTap}
+            reanchorCount={reanchorCount}
             onPitchMeasured={applyPitchBias}
             shareTarget={shareTarget}
             completedDrag={completedDrag}

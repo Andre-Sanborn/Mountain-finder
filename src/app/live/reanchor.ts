@@ -72,7 +72,7 @@
 import { normaliseBearingDeg } from '../../core/geodesy';
 import { TRIM_LIMIT_DEG } from '../trim';
 
-import { MAX_TAP_DISTANCE_PX, type CalibrationReference, type PointPx } from './fov-calibration';
+import type { CalibrationReference, PointPx } from './fov-calibration';
 
 const RAD_PER_DEG = Math.PI / 180;
 const DEG_PER_RAD = 180 / Math.PI;
@@ -292,24 +292,14 @@ export function grossHeadingWarning(
 
 /**
  * Whether a tap on the picture is read as a tap on the real Sun, for the gross
- * heading check.
+ * heading check: a tap nothing claimed, or one the Sun's own mark claimed.
  *
- * A tap claimed by the Sun's own mark is one, and so is a tap nothing claimed.
- * A tap claimed by another mark counts only when that mark is more than
- * {@link MAX_TAP_DISTANCE_PX} away: the home session attributes a tap to the
- * nearest mark however far off it is, so under a gross compass error a summit
- * dot across the picture claims the tap the step asked to be on the Sun.
+ * The home session lets only the Sun claim a tap, and the field session's
+ * landmark sweep lets a mark claim one only within `MAX_TAP_DISTANCE_PX`.
+ * So a tap any other mark claimed is about that mark.
  */
-export function readsAsSunTap(
-  tappedPx: PointPx,
-  reference: CalibrationReference | undefined,
-): boolean {
-  if (reference === undefined || reference.kind === 'sun') return true;
-  const distancePx = Math.hypot(
-    tappedPx.xPx - reference.drawnPx.xPx,
-    tappedPx.yPx - reference.drawnPx.yPx,
-  );
-  return distancePx > MAX_TAP_DISTANCE_PX;
+export function readsAsSunTap(reference: CalibrationReference | undefined): boolean {
+  return reference === undefined || reference.kind === 'sun';
 }
 
 /** Whether the compass has drifted away from the anchor, and by how much. */
