@@ -14,33 +14,6 @@ not the record of the code.
 
 ---
 
-## 2026-10-02, night 4 (reviewed 188cb57..fcaecaa, 2 commits)
-
-The reviewer ran as a `general-purpose` agent reading `.claude/agents/strategy-adversary.md`, on
-`claude-opus-5-5` (transcript record).
-
-**Adversary findings, ranked:**
-1. A step-14 tap made before the direction is fixed stays in the field-of-view fit. The gross
-   compass warning fires only after a tap that was already appended, and taps are never cleared.
-   With the guide's "fix the direction, then go back to step 14", a stale tap plus two good taps
-   fits 61.8°, 65.2° and 69.6° against a true 60° at compass errors of 22°, 25° and 28°, with no
-   refusal. Night 3's failure by a different route.
-2. A daytime Moon can still claim a Sun tap in step 14 and hide the warning.
-3. Comments in `LiveScreen.tsx` and `readsAsSunTap` still argue the removed summit case.
-4. The gross-warning e2e still uses the wall clock and skips much of the day.
-
-**Checked and found sound:** night 3's four fixes as decided; the step-14 e2e rewrite stays
-independent (injected scale 1.1 and shift (10, −6) px) and has teeth; the `tilt-out-of-range`
-boundary and NaN handling; the freeze held. The step-14 e2e passed in the orchestrator's run
-before commit `fcaecaa` (live and field-session specs, 31 passed).
-
-**Orchestrator decisions:** all four accepted, in one fix before the home session: clear step-14
-taps when a re-anchor is applied; step 14 measures against the Sun only; the comments rewritten
-and `readsAsSunTap` simplified if no caller needs its distance branch; the warning e2e on a fixed
-clock with no skips.
-
----
-
 ## 2026-10-01, night 3 (reviewed ee65a8f..188cb57, 3 commits)
 
 The reviewer ran as a `general-purpose` agent reading `.claude/agents/strategy-adversary.md`, on
