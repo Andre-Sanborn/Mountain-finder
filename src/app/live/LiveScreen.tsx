@@ -846,7 +846,8 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
    * sensed one is a broken compass, not a mis-measured lens.
    *
    * A tap nothing claimed counts, and so does one the Sun's mark claimed
-   * (`readsAsSunTap`): the step asks for the real Sun wherever the app drew it.
+   * (`readsAsSunTap`): the home step asks for the real Sun wherever the app
+   * drew it. The field sweep sends only the Sun's claims.
    */
   const notePictureTap = useCallback(
     (tappedPx: PointPx, reference: CalibrationReference | undefined) => {
@@ -1342,7 +1343,9 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
 
       {/* Above the drag layer while a re-anchor is armed: a finger on the
           picture then means "the real thing is here" rather than "push the
-          labels", and the two cannot share one surface. */}
+          labels", and the two cannot share one surface. The sessions' own tap
+          surfaces sit in the top strip, which stacks above this one, so they
+          are not drawn while it is armed. */}
       {reanchorMode !== 'off' && (
         <div
           ref={reanchorLayerRef}
@@ -1412,6 +1415,8 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
             onCalibrated={applyFovFit}
             onPictureTap={notePictureTap}
             reanchorCount={reanchorCount}
+            reanchorArmed={reanchorMode !== 'off'}
+            compassWarning={grossWarning !== undefined}
             onPitchMeasured={applyPitchBias}
             shareTarget={shareTarget}
             completedDrag={completedDrag}
@@ -1435,6 +1440,7 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
             calibrationFrame={calibrationFrame}
             onCalibrated={applyFovFit}
             onPictureTap={notePictureTap}
+            reanchorArmed={reanchorMode !== 'off'}
             dragMode={dragMode}
             setDragMode={setDragMode}
             resetTrim={resetTrim}

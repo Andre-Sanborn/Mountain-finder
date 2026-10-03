@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 
 import { expect, test, type Page } from '@playwright/test';
 
+import { sunPosition } from '../../src/core/celestial';
+import { MAX_TAP_DISTANCE_PX } from '../../src/app/live/fov-calibration';
 import { EPOCH_FLOOR, findForbiddenContent } from '../../src/live/recording';
 import {
   findForbiddenContent as findForbiddenBundleContent,
@@ -10,17 +12,19 @@ import {
 } from '../../src/live/field-analysis';
 import { FAKE_CAMERA_DIR, writeFakeCameraVideo } from './support/fake-camera';
 import { holdStillForReanchor, tapReanchorAt } from './support/field-run';
+import { tapSurfaceAt } from './support/tap';
 import {
+  DEG,
   FRAME,
   GORNERGRAT,
   MATTERHORN,
   MIN_SPREAD_PX,
+  OBSERVER_EYE_M,
   TRUE_HEADING_DEG,
   VISIBLE_FOV,
   bearingDeg,
   dragPicture,
   eventAnglesFor,
-  expectedSummitPx,
   installSensorPump,
   magneticBearingFor,
   poseNumber,
@@ -62,6 +66,12 @@ import {
 
 /** A tile fetch, then a 360° sweep. The still path allows 120 s for a 131° one. */
 const SCENE_TIMEOUT_MS = 180_000;
+
+/**
+ * Pitch for the field-of-view taps, degrees. The panel covers the top of the
+ * picture, and this puts the skyline's dots below it.
+ */
+const FOV_TAP_PITCH_DEG = 14;
 
 const FIELD_FRAME = { widthPx: 1920, heightPx: 1080 } as const;
 const FIELD_VIDEO = resolve(
@@ -204,21 +214,7 @@ async function sharedFrameReadings(page: Page): Promise<readonly SharedFrameRead
 
 /** Tap the picture at one point, on the field session's own tap surface. */
 async function fieldTapAt(page: Page, xPx: number, yPx: number): Promise<void> {
-  await page.getByTestId('field-session-tap-layer').evaluate(
-    (node, point) => {
-      node.dispatchEvent(
-        new PointerEvent('pointerup', {
-          bubbles: true,
-          cancelable: true,
-          clientX: point.xPx,
-          clientY: point.yPx,
-          pointerId: 1,
-          pointerType: 'touch',
-        }),
-      );
-    },
-    { xPx, yPx },
-  );
+  await tapSurfaceAt(page, 'field-session-tap-layer', xPx, yPx);
 }
 
 /** Wait until the phone has been still long enough for a capture (term 8). */
@@ -358,6 +354,12 @@ test.describe('the field session', () => {
     // about the protocol and the bundle, and an injected camera error would put
     // the labels somewhere the truth below did not predict. What it changes is
     // `fovSource`, which F2 and F3 both require.
+    // The panel covers the top of the picture, so the phone tilts up until the
+    // skyline's dots sit low enough for a finger to reach them.
+    await aim(TRUE_HEADING_DEG, FOV_TAP_PITCH_DEG);
+    await expect
+      .poll(async () => poseNumber(page, 'data-pitch-deg'), { timeout: 15_000 })
+      .toBeCloseTo(FOV_TAP_PITCH_DEG, 1);
     const dots = await summitDots(page);
     const spread = [...dots].sort((a, b) => a.cx - b.cx);
     const left = spread[0];
@@ -375,6 +377,10 @@ test.describe('the field session', () => {
       'calibrated',
       { timeout: 15_000 },
     );
+    await aim(TRUE_HEADING_DEG, 0);
+    await expect
+      .poll(async () => poseNumber(page, 'data-pitch-deg'), { timeout: 15_000 })
+      .toBeCloseTo(0, 1);
     await page.getByTestId('field-session-next').click();
 
     /* ── 3. which way the labels point ────────────────────────────────────── */
@@ -789,6 +795,12 @@ test.describe('the field session', () => {
     await page.getByTestId('field-session-next').click();
 
     await expect(session).toHaveAttribute('data-step-id', 'fov-check');
+    // The panel covers the top of the picture, so the phone tilts up until the
+    // skyline's dots sit low enough for a finger to reach them.
+    await aim(TRUE_HEADING_DEG, FOV_TAP_PITCH_DEG);
+    await expect
+      .poll(async () => poseNumber(page, 'data-pitch-deg'), { timeout: 15_000 })
+      .toBeCloseTo(FOV_TAP_PITCH_DEG, 1);
     const dots = await summitDots(page);
     const spread = [...dots].sort((a, b) => a.cx - b.cx);
     const left = spread[0];
@@ -812,22 +824,35 @@ test.describe('the field session', () => {
     // lands on the summit's own drawn dot, so the correction is about nothing
     // and the anchor is what the step is for.
     await expect(session).toHaveAttribute('data-step-id', 'fix-direction');
+    // Still tilted up, and turned so the Matterhorn sits right of centre. The
+    // re-anchor's own controls cover the middle of the bottom strip.
+    const reanchorHeadingDeg = TRUE_HEADING_DEG - 20;
+    await aim(reanchorHeadingDeg, FOV_TAP_PITCH_DEG);
     await holdStillForReanchor(page);
     await page.getByTestId('live-reanchor-summit').click();
     const picker = page.getByTestId('live-reanchor-summit-name');
+    // By the start of the name: "Klein Matterhorn" sorts first and is a different summit.
     const matterhornId = await picker
-      .locator('option', { hasText: 'Matterhorn' })
+      .locator('option', { hasText: /^Matterhorn / })
       .first()
       .getAttribute('value');
     expect(matterhornId).not.toBeNull();
     await picker.selectOption(matterhornId ?? '');
-    const summitPx = expectedSummitPx(TRUE_HEADING_DEG);
+    const summitPx = projectIndependently(
+      { headingDeg: reanchorHeadingDeg, pitchDeg: FOV_TAP_PITCH_DEG, rollDeg: 0, ...VISIBLE_FOV },
+      bearingDeg(GORNERGRAT, MATTERHORN),
+      summitAltitudeDeg(),
+    );
     await tapReanchorAt(page, summitPx.xPx, summitPx.yPx);
+    // The tap is on the real summit and the compass is right, so the move is near zero.
+    const move = Number(await page.getByTestId('live-reanchor-confirm').getAttribute('data-move-deg'));
+    expect(Math.abs(move)).toBeLessThan(1);
     await page.getByTestId('live-reanchor-confirm-yes').click();
     await expect(page.getByTestId('live-reanchor')).toHaveAttribute(
       'data-anchor-source',
       'summit',
     );
+    await aim(TRUE_HEADING_DEG, 0);
     await page.getByTestId('field-session-next').click();
 
     await expect(session).toHaveAttribute('data-step-id', 'fix');
@@ -921,4 +946,121 @@ test.describe('the field session', () => {
       .toBeLessThan(1);
     await expect(drift).toHaveAttribute('data-beyond-band', 'false');
   });
+
+  test('a missed landmark is not a tap on the Sun, and a re-anchor gets the next tap', async ({
+    page,
+  }) => {
+    // The live screen reads an unclaimed tap as a tap on the real Sun, because
+    // the home step asks for the Sun. The field sweep asks for landmarks, so an
+    // unclaimed tap here must not reach that check. At this instant the Sun is
+    // 37° up at azimuth 129°, about 136° left of where the camera points, so a
+    // tap solved against it would put the compass far out and raise the warning.
+    //
+    // The tap goes in the sky above the skyline, where the implied tilt error is
+    // under 15°. Further down, the Sun solve refuses the tap for tilt before any
+    // warning, and the test could not tell the fix from that refusal.
+    test.setTimeout(SCENE_TIMEOUT_MS + 120_000);
+    const PITCH_DEG = 5;
+    const FIXED_TIME = new Date('2026-04-02T09:00:00Z');
+    const sun = sunPosition(
+      FIXED_TIME,
+      { lat: GORNERGRAT.lat, lon: GORNERGRAT.lon, heightM: OBSERVER_EYE_M },
+      { refraction: true },
+    );
+    expect(sun.altitudeDeg).toBeGreaterThan(30);
+
+    await page.clock.setFixedTime(FIXED_TIME);
+    await installBundleShareStub(page);
+    await installSensorPump(page);
+    await page.goto('/live.html?session=field');
+    await page.getByTestId('live-start').click();
+    await expect(page.getByTestId('live-root')).toHaveAttribute('data-phase', 'running');
+    await pumpSet(
+      page,
+      eventAnglesFor(magneticBearingFor(TRUE_HEADING_DEG, FIXED_TIME), PITCH_DEG),
+    );
+    await expect(page.getByTestId('live-scene-state')).toHaveAttribute('data-scene', 'ready', {
+      timeout: SCENE_TIMEOUT_MS,
+    });
+
+    const session = page.getByTestId('field-session');
+    await expect(page.getByTestId('field-session-start')).toBeEnabled({ timeout: 30_000 });
+    await page.getByTestId('field-session-start').click();
+    await page.getByTestId('field-session-next').click();
+    await expect(session).toHaveAttribute('data-step-id', 'fov-check');
+
+    // A point on the tap surface, clear of the panel, further than the claim
+    // radius from every summit dot, and high enough for the Sun solve to run.
+    const dots = await summitDots(page);
+    expect(dots.length).toBeGreaterThan(0);
+    const focalYPx = FRAME.heightPx / 2 / Math.tan((VISIBLE_FOV.vFovDeg * DEG) / 2);
+    const maxYPx =
+      FRAME.heightPx / 2 - focalYPx * Math.tan((sun.altitudeDeg - 15 - PITCH_DEG) * DEG);
+    const clear = await openPointOn(page, 'field-session-tap-layer', {
+      avoid: dots,
+      radiusPx: MAX_TAP_DISTANCE_PX + 20,
+      maxYPx,
+    });
+    expect(clear, 'no open point on the tap surface').toBeDefined();
+    if (clear === undefined) return;
+
+    await fieldTapAt(page, clear.xPx, clear.yPx);
+    // The note and the warning are set in the same handler, so once the note
+    // shows, a warning would show too.
+    await expect(page.getByTestId('field-session-tap-note')).toContainText(
+      'not near anything the app has drawn',
+    );
+    await expect(page.getByTestId('field-session-taps')).toHaveAttribute('data-tap-count', '0');
+    await expect(page.getByTestId('live-gross-warning')).toHaveCount(0);
+
+    // The panel's tap surface is in the top strip, which stacks above the
+    // re-anchor's. So it must step aside while a re-anchor is armed, or the
+    // re-anchor never receives the tap.
+    await holdStillForReanchor(page);
+    await page.getByTestId('live-reanchor-sun').click();
+    await expect(page.getByTestId('field-session-tap-layer')).toHaveCount(0);
+    const open = await openPointOn(page, 'live-reanchor-tap-layer', {
+      avoid: [],
+      radiusPx: 0,
+      maxYPx,
+    });
+    expect(open, 'no open point on the re-anchor surface').toBeDefined();
+    if (open === undefined) return;
+    // Solved as the Sun, so the labels turn a long way. The point here is only
+    // that the re-anchor received the tap.
+    await tapReanchorAt(page, open.xPx, open.yPx);
+    await expect(page.getByTestId('live-reanchor')).toHaveAttribute('data-anchor-source', 'sun');
+    await expect(page.getByTestId('field-session-tap-layer')).toBeVisible();
+    await expect(page.getByTestId('field-session-taps')).toHaveAttribute('data-tap-count', '0');
+  });
 });
+
+/**
+ * The highest point, no lower than `maxYPx`, where the named surface is topmost
+ * and which is further than `radiusPx` from every one of `avoid`.
+ */
+async function openPointOn(
+  page: Page,
+  testId: string,
+  limits: {
+    readonly avoid: readonly { cx: number; cy: number }[];
+    readonly radiusPx: number;
+    readonly maxYPx: number;
+  },
+): Promise<{ xPx: number; yPx: number } | undefined> {
+  return page.evaluate(
+    ({ testId, avoid, widthPx, radiusPx, maxYPx }) => {
+      for (let yPx = 5; yPx <= maxYPx; yPx += 10) {
+        for (let xPx = 10; xPx < widthPx; xPx += 10) {
+          const hit = document.elementFromPoint(xPx, yPx);
+          if (hit?.getAttribute('data-testid') !== testId) continue;
+          if (avoid.every((dot) => Math.hypot(dot.cx - xPx, dot.cy - yPx) > radiusPx)) {
+            return { xPx, yPx };
+          }
+        }
+      }
+      return undefined;
+    },
+    { testId, widthPx: FRAME.widthPx, ...limits },
+  );
+}

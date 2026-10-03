@@ -123,6 +123,7 @@ import {
   rangeM,
   summitDots,
 } from './support/gornergrat';
+import { tapSurfaceAt } from './support/tap';
 
 const FAKE_VIDEO = resolve(
   FAKE_CAMERA_DIR,
@@ -716,31 +717,17 @@ async function startHomeSession(page: Page): Promise<void> {
 }
 
 /**
- * Tap the picture at one point.
+ * How far above the Sun the phone is tilted when a test taps the real Sun.
  *
- * A real `mouse.click` would land on whichever element is topmost, and the
- * panel's own instruction covers the upper half of a 450 px viewport. So the
- * `pointerup` is constructed and dispatched on the tap surface itself, the same
- * route this file already uses for the sensor events, and for the same reason:
- * the handler is a function of the event object, so a constructed event
- * exercises the code a finger would.
+ * The session panel covers the top of the picture, down past its middle on a
+ * 450 px viewport. Tilting up puts the Sun low in the frame, where a finger can
+ * reach it.
  */
+const TILT_ABOVE_SUN_DEG = 14;
+
+/** Tap the picture at one point, on the home session's tap surface. */
 async function tapAt(page: Page, xPx: number, yPx: number): Promise<void> {
-  await page.getByTestId('home-session-tap-layer').evaluate(
-    (node, point) => {
-      node.dispatchEvent(
-        new PointerEvent('pointerup', {
-          bubbles: true,
-          cancelable: true,
-          clientX: point.xPx,
-          clientY: point.yPx,
-          pointerId: 1,
-          pointerType: 'touch',
-        }),
-      );
-    },
-    { xPx, yPx },
-  );
+  await tapSurfaceAt(page, 'home-session-tap-layer', xPx, yPx);
 }
 
 /** Work through the six drag attempts the session ends with. */
@@ -966,20 +953,18 @@ test('a tap during the sun step measures the field of view and the aim', async (
       FRAME.heightPx / 2 + INJECTED_SCALE * (dot.cy - FRAME.heightPx / 2) + INJECTED_SHIFT_PX.yPx,
   });
 
+  const pitchDeg = sun.altitudeDeg + TILT_ABOVE_SUN_DEG;
   /**
    * Aim so the Sun sits `offAxisDeg` right of centre, wait for the pose to
    * settle, and return where its disc is drawn. 20° either side puts the two
-   * discs about 390 px apart, well clear of the fit's spread floor.
+   * discs well clear of the fit's spread floor.
    */
   const discWithSunAt = async (offAxisDeg: number): Promise<{ cx: number; cy: number }> => {
     const headingDeg = sun.azimuthDeg - offAxisDeg;
-    await pumpSet(
-      page,
-      eventAnglesFor(magneticBearingFor(headingDeg, FIXED_TIME), sun.altitudeDeg),
-    );
+    await pumpSet(page, eventAnglesFor(magneticBearingFor(headingDeg, FIXED_TIME), pitchDeg));
     await expect
       .poll(async () => poseNumber(page, 'data-pitch-deg'), { timeout: 15_000 })
-      .toBeCloseTo(sun.altitudeDeg, 2);
+      .toBeCloseTo(pitchDeg, 2);
     await expect
       .poll(async () => {
         const drawn = await poseNumber(page, 'data-heading-deg');
@@ -1462,21 +1447,7 @@ async function stubOfflineController(page: Page): Promise<void> {
 const GROSS_ERROR_DEG = 92;
 
 async function tapReanchorAt(page: Page, xPx: number, yPx: number): Promise<void> {
-  await page.getByTestId('live-reanchor-tap-layer').evaluate(
-    (node, point) => {
-      node.dispatchEvent(
-        new PointerEvent('pointerup', {
-          bubbles: true,
-          cancelable: true,
-          clientX: point.xPx,
-          clientY: point.yPx,
-          pointerId: 1,
-          pointerType: 'touch',
-        }),
-      );
-    },
-    { xPx, yPx },
-  );
+  await tapSurfaceAt(page, 'live-reanchor-tap-layer', xPx, yPx);
 }
 
 test('a compass a quarter turn out is put right by one tap on the sun', async ({ page }) => {
@@ -1699,9 +1670,10 @@ test('a tap on the real sun says how far off the compass is', async ({ page }) =
   await page.clock.setFixedTime(FIXED_TIME);
   await startHomeSession(page);
   // Really aimed at the sun, with the compass 92° out.
+  const pitchDeg = sun.altitudeDeg + TILT_ABOVE_SUN_DEG;
   await pumpSet(
     page,
-    eventAnglesFor(magneticBearingFor(sun.azimuthDeg + GROSS_ERROR_DEG, FIXED_TIME), sun.altitudeDeg),
+    eventAnglesFor(magneticBearingFor(sun.azimuthDeg + GROSS_ERROR_DEG, FIXED_TIME), pitchDeg),
   );
   await page.getByTestId('home-session-start').click();
   for (let index = 0; index < POSE_LABELS.length - 1; index += 1) {
@@ -1716,9 +1688,14 @@ test('a tap on the real sun says how far off the compass is', async ({ page }) =
     timeout: SCENE_TIMEOUT_MS,
   });
 
-  // The middle of the picture is where the real sun is, because that is where
-  // the camera is pointed.
-  await tapAt(page, FRAME.widthPx / 2, FRAME.heightPx / 2);
+  // Straight below the middle of the picture, because the camera is pointed
+  // along the Sun's azimuth and tilted above it.
+  const realSun = projectIndependently(
+    { headingDeg: sun.azimuthDeg, pitchDeg, rollDeg: 0, ...VISIBLE_FOV },
+    sun.azimuthDeg,
+    sun.altitudeDeg,
+  );
+  await tapAt(page, realSun.xPx, realSun.yPx);
   const warning = page.getByTestId('live-gross-warning');
   await expect(warning).toBeVisible({ timeout: 15_000 });
   await expect(warning).toContainText('tap the sun (or a summit you know) to fix it');
@@ -1743,12 +1720,10 @@ test('a re-anchor clears the sun taps made before it', async ({ page }) => {
 
   await page.clock.setFixedTime(FIXED_TIME);
   await startHomeSession(page);
+  const pitchDeg = sun.altitudeDeg + TILT_ABOVE_SUN_DEG;
   await pumpSet(
     page,
-    eventAnglesFor(
-      magneticBearingFor(sun.azimuthDeg + COMPASS_ERROR_DEG, FIXED_TIME),
-      sun.altitudeDeg,
-    ),
+    eventAnglesFor(magneticBearingFor(sun.azimuthDeg + COMPASS_ERROR_DEG, FIXED_TIME), pitchDeg),
   );
   await page.getByTestId('home-session-start').click();
   for (let index = 0; index < POSE_LABELS.length - 1; index += 1) {
@@ -1756,8 +1731,13 @@ test('a re-anchor clears the sun taps made before it', async ({ page }) => {
   }
   await expect(page.getByTestId('home-session')).toHaveAttribute('data-step-pose', 'sun-capture');
 
+  const realSun = projectIndependently(
+    { headingDeg: sun.azimuthDeg, pitchDeg, rollDeg: 0, ...VISIBLE_FOV },
+    sun.azimuthDeg,
+    sun.altitudeDeg,
+  );
   const taps = page.getByTestId('home-session-taps');
-  await tapAt(page, FRAME.widthPx / 2, FRAME.heightPx / 2);
+  await tapAt(page, realSun.xPx, realSun.yPx);
   await expect(taps).toHaveAttribute('data-tap-count', '1');
   await expect(page.getByTestId('live-gross-warning')).toBeVisible({ timeout: 15_000 });
 
@@ -1766,7 +1746,7 @@ test('a re-anchor clears the sun taps made before it', async ({ page }) => {
     .poll(async () => Number(await reanchor.getAttribute('data-still-ms')), { timeout: 40_000 })
     .toBeGreaterThanOrEqual(10_000);
   await page.getByTestId('live-reanchor-sun').click();
-  await tapReanchorAt(page, FRAME.widthPx / 2, FRAME.heightPx / 2);
+  await tapReanchorAt(page, realSun.xPx, realSun.yPx);
   await expect(reanchor).toHaveAttribute('data-anchor-source', 'sun');
 
   await expect(taps).toHaveAttribute('data-tap-count', '0');
@@ -1775,12 +1755,66 @@ test('a re-anchor clears the sun taps made before it', async ({ page }) => {
   );
 
   // A tap after the re-anchor starts the count again, alone.
-  await tapAt(page, FRAME.widthPx / 2, FRAME.heightPx / 2);
+  await tapAt(page, realSun.xPx, realSun.yPx);
   await expect(taps).toHaveAttribute('data-tap-count', '1');
   await expect(page.getByTestId('home-session-fit-refusal')).toHaveAttribute(
     'data-refusal',
     'too-few-taps',
   );
+});
+
+test('a measurement made under a gross compass error cannot be used', async ({ page }) => {
+  // Each tap is measured against a Sun mark drawn 25° from the real Sun, so
+  // the fit's heading trim would carry the compass error into the stored
+  // calibration. The screen must hold the fit back until the direction is fixed.
+  //
+  // The phone is tilted above the Sun so the real Sun sits low in the
+  // picture, clear of the panel. Two aims put it 8° left and 33° right of
+  // centre; the drawn mark sits 25° further left each time, so both stay on
+  // the picture and far enough apart for a fit.
+  test.setTimeout(SCENE_TIMEOUT_MS + 120_000);
+  const COMPASS_ERROR_DEG = 25;
+  const FIXED_TIME = new Date('2026-04-02T09:00:00Z');
+  const sun = sunPosition(
+    FIXED_TIME,
+    { lat: GORNERGRAT.lat, lon: GORNERGRAT.lon, heightM: OBSERVER_EYE_M },
+    { refraction: true },
+  );
+  expect(sun.altitudeDeg).toBeGreaterThan(30);
+  const pitchDeg = sun.altitudeDeg + TILT_ABOVE_SUN_DEG;
+
+  await page.clock.setFixedTime(FIXED_TIME);
+  await startHomeSession(page);
+  await page.getByTestId('home-session-start').click();
+  for (let index = 0; index < POSE_LABELS.length - 1; index += 1) {
+    await page.getByTestId('home-session-next').click();
+  }
+  await expect(page.getByTestId('home-session')).toHaveAttribute('data-step-pose', 'sun-capture');
+
+  const taps = page.getByTestId('home-session-taps');
+  for (const [index, offAxisDeg] of [-8, 33].entries()) {
+    const trueHeadingDeg = sun.azimuthDeg - offAxisDeg;
+    const sensedHeadingDeg = trueHeadingDeg + COMPASS_ERROR_DEG;
+    await pumpSet(page, eventAnglesFor(magneticBearingFor(sensedHeadingDeg, FIXED_TIME), pitchDeg));
+    await expect
+      .poll(async () => {
+        const drawn = await poseNumber(page, 'data-heading-deg');
+        return Math.abs(((drawn - sensedHeadingDeg + 540) % 360) - 180);
+      }, { timeout: 15_000 })
+      .toBeLessThan(0.05);
+    const realSun = projectIndependently(
+      { headingDeg: trueHeadingDeg, pitchDeg, rollDeg: 0, ...VISIBLE_FOV },
+      sun.azimuthDeg,
+      sun.altitudeDeg,
+    );
+    await tapAt(page, realSun.xPx, realSun.yPx);
+    await expect(taps).toHaveAttribute('data-tap-count', String(index + 1));
+  }
+
+  await expect(page.getByTestId('live-gross-warning')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('home-session-fit')).toBeVisible();
+  await expect(page.getByTestId('home-session-use-fit')).toHaveCount(0);
+  await expect(page.getByTestId('home-session-fit-held')).toContainText('Fix the direction first');
 });
 
 test('a summit picked by name re-anchors the labels, after the person confirms', async ({

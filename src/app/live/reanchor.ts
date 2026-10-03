@@ -294,9 +294,9 @@ export function grossHeadingWarning(
  * Whether a tap on the picture is read as a tap on the real Sun, for the gross
  * heading check: a tap nothing claimed, or one the Sun's own mark claimed.
  *
- * The home session lets only the Sun claim a tap, and the field session's
- * landmark sweep lets a mark claim one only within `MAX_TAP_DISTANCE_PX`.
- * So a tap any other mark claimed is about that mark.
+ * Only the home session's sun step sends an unclaimed tap, and there only the
+ * Sun may claim one. The field session's landmark sweep sends only taps the
+ * Sun's mark claimed, because its unclaimed taps are missed landmarks.
  */
 export function readsAsSunTap(reference: CalibrationReference | undefined): boolean {
   return reference === undefined || reference.kind === 'sun';

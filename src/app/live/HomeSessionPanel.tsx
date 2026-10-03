@@ -125,6 +125,12 @@ export interface HomeSessionPanelProps {
   ) => void;
   /** Goes up by one each time a re-anchor is applied. */
   readonly reanchorCount: number;
+  /** True while the screen's re-anchor wants a tap on the picture. This panel
+      sits in a strip stacked above the screen's own tap surface, so its tap
+      surface must step aside or it takes the re-anchor's tap. */
+  readonly reanchorArmed: boolean;
+  /** True while the screen warns that the compass is grossly off. */
+  readonly compassWarning: boolean;
   /** Hand the tilt zero point to the screen, which stores it and bands with it. */
   readonly onPitchMeasured: (estimate: PitchBiasEstimate) => void;
   readonly shareTarget: ShareTarget;
@@ -496,9 +502,17 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
                       and is aimed {Math.abs(fit.value.trim.headingDeg).toFixed(2)}°{' '}
                       {fit.value.trim.headingDeg < 0 ? 'right' : 'left'} of where it thought.
                     </p>
-                    <button type="button" data-testid="home-session-use-fit" onClick={useFit}>
-                      Use this measurement
-                    </button>
+                    {props.compassWarning ? (
+                      // The fit's heading trim would absorb the compass error,
+                      // and the taps were measured against a misplaced Sun mark.
+                      <p className="live__warn" data-testid="home-session-fit-held">
+                        Fix the direction first. This measurement was made with the compass off.
+                      </p>
+                    ) : (
+                      <button type="button" data-testid="home-session-use-fit" onClick={useFit}>
+                        Use this measurement
+                      </button>
+                    )}
                   </>
                 )}
                 {calibrationNote !== undefined && (
@@ -617,7 +631,7 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
           finger on the picture means "that is where the real sun is" during this
           step and "push the labels" at every other time, and the two cannot
           share one surface. */}
-      {phase === 'recording' && step?.kind === 'tap' && (
+      {phase === 'recording' && step?.kind === 'tap' && !props.reanchorArmed && (
         <div
           ref={tapLayerRef}
           className="live__session-taps"

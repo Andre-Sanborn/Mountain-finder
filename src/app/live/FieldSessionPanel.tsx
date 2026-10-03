@@ -128,12 +128,16 @@ export interface FieldSessionPanelProps {
   readonly calibrationReferences: () => readonly CalibrationReference[];
   readonly calibrationFrame: () => CalibrationFrame | undefined;
   readonly onCalibrated: (fit: FovFit, taps: readonly CalibrationTap[]) => void;
-  /** Tell the screen about every tap on the picture, attributed or not, so it
-      can watch for a gross compass error no field-of-view fit can absorb. */
+  /** Tell the screen about a tap the Sun's mark claimed, so it can watch for a
+      gross compass error no field-of-view fit can absorb. */
   readonly onPictureTap?: (
     tappedPx: { readonly xPx: number; readonly yPx: number },
     reference: CalibrationReference | undefined,
   ) => void;
+  /** True while the screen's re-anchor wants a tap on the picture. This panel
+      sits in a strip stacked above the screen's own tap surface, so its tap
+      surface must step aside or it takes the re-anchor's tap. */
+  readonly reanchorArmed: boolean;
   readonly dragMode: DragMode;
   readonly setDragMode: (mode: DragMode) => void;
   /** Put the labels back where the sensors say, before a repeated drag. */
@@ -406,7 +410,10 @@ export function FieldSessionPanel(props: FieldSessionPanelProps): JSX.Element {
       const tappedPx = { xPx: event.clientX - box.left, yPx: event.clientY - box.top };
       const references = props.calibrationReferences();
       const picked = pickReference(tappedPx, references, MAX_TAP_DISTANCE_PX);
-      props.onPictureTap?.(tappedPx, picked);
+      // Only the Sun's own claim: the sweep asks for landmarks, so a tap nothing
+      // claimed is a missed landmark, and the screen reads an unclaimed tap as
+      // a tap on the real Sun.
+      if (picked?.kind === 'sun') props.onPictureTap?.(tappedPx, picked);
       if (picked === undefined) {
         setTapNote(
           references.length === 0
@@ -744,7 +751,7 @@ export function FieldSessionPanel(props: FieldSessionPanelProps): JSX.Element {
           finger on the picture means "that is where the real thing is" during
           this step and "push the labels" at every other time, and the two cannot
           share one surface. */}
-      {phase === 'running' && step?.kind === 'tap' && (
+      {phase === 'running' && step?.kind === 'tap' && !props.reanchorArmed && (
         <div
           ref={tapLayerRef}
           className="live__session-taps"

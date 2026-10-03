@@ -12,6 +12,8 @@ import { expect, type Page } from '@playwright/test';
 
 import { STILL_FOR_REANCHOR_MS } from '../../../src/app/live/reanchor';
 
+import { tapSurfaceAt } from './tap';
+
 /** A file the share sheet was handed, as the page saw it. */
 export interface SharedFile {
   readonly name: string;
@@ -77,21 +79,7 @@ export async function sharedBytes(page: Page): Promise<readonly { name: string; 
 
 /** Tap the picture at one point, on the field session's own tap surface. */
 export async function fieldTapAt(page: Page, xPx: number, yPx: number): Promise<void> {
-  await page.getByTestId('field-session-tap-layer').evaluate(
-    (node, point) => {
-      node.dispatchEvent(
-        new PointerEvent('pointerup', {
-          bubbles: true,
-          cancelable: true,
-          clientX: point.xPx,
-          clientY: point.yPx,
-          pointerId: 1,
-          pointerType: 'touch',
-        }),
-      );
-    },
-    { xPx, yPx },
-  );
+  await tapSurfaceAt(page, 'field-session-tap-layer', xPx, yPx);
 }
 
 /**
@@ -116,21 +104,7 @@ export async function holdStillForReanchor(page: Page): Promise<void> {
  * rather than "push the labels".
  */
 export async function tapReanchorAt(page: Page, xPx: number, yPx: number): Promise<void> {
-  await page.getByTestId('live-reanchor-tap-layer').evaluate(
-    (node, point) => {
-      node.dispatchEvent(
-        new PointerEvent('pointerup', {
-          bubbles: true,
-          cancelable: true,
-          clientX: point.xPx,
-          clientY: point.yPx,
-          pointerId: 1,
-          pointerType: 'touch',
-        }),
-      );
-    },
-    { xPx, yPx },
-  );
+  await tapSurfaceAt(page, 'live-reanchor-tap-layer', xPx, yPx);
 }
 
 /** Wait until the phone has been still long enough for a capture. */

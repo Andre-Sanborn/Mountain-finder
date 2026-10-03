@@ -1974,27 +1974,3 @@ compass errors of 22° to 28°, with no refusal. Each re-anchor now raises `rean
 ones that disagree, which would need a threshold set by the error under test. The e2e "a re-anchor
 clears the sun taps made before it" fails when the clear is removed. The field session's taps,
 and taps across a drag or trim reset, are not yet cleared.
-
-## Picture taps and the stacking of the top strip
-
-The home and field panels draw their tap surfaces inside `.live__chrome--top`, which has z-index 3
-and its own stacking context. The re-anchor surface is a root-level `.live__session-taps` at
-z-index 1, so a panel's tap surface always won hit-testing over it, and on a phone the "Fix
-direction" tap never reached the re-anchor. While a re-anchor is armed the screen now passes
-`reanchorArmed` and both panels stop drawing their tap surface. Moving both layers into the
-screen was rejected because each panel's tap handler needs its own step state.
-
-E2e taps go through hit-testing: `tests/e2e/support/tap.ts` checks `elementFromPoint`, names
-whatever is on top if it is the wrong element, then calls `page.mouse.click`. A pointer event
-dispatched on a test-id node reaches it whatever is stacked above, which hid this bug. With the
-step-aside removed, "a re-anchor clears the sun taps made before it" fails.
-
-The session panel covers rows 45 to 215 of the 450 px test viewport, full width, during home step
-14 and the field FOV check: where the guide puts the Sun and where the horizon's dots sit. The
-e2e taps reach their targets by tilting 14° up so the targets sit low in the frame; the layout
-itself is still open.
-
-While the gross compass warning shows, the home panel replaces "Use this measurement" with a line
-saying to fix the direction first, since every tap was measured against a misplaced Sun mark.
-The field landmark sweep sends only Sun claims to the gross compass check; an unclaimed field tap
-is a missed landmark, not a tap on the Sun.
