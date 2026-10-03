@@ -80,6 +80,10 @@ const DEG_PER_RAD = 180 / Math.PI;
 /** How long the phone must be still before a re-anchor is offered, ms. */
 export const STILL_FOR_REANCHOR_MS = 10_000;
 
+/** What a session panel's strip says while a re-anchor waits for its tap. */
+export const REANCHOR_STRIP_LINE =
+  'Fixing the direction: tap the picture as the line at the bottom asks.';
+
 /**
  * How far the sensed heading may disagree with a solved one before the screen
  * says the compass is broken rather than imprecise, degrees.

@@ -67,12 +67,6 @@ import {
 /** A tile fetch, then a 360° sweep. The still path allows 120 s for a 131° one. */
 const SCENE_TIMEOUT_MS = 180_000;
 
-/**
- * Pitch for the field-of-view taps, degrees. The panel covers the top of the
- * picture, and this puts the skyline's dots below it.
- */
-const FOV_TAP_PITCH_DEG = 14;
-
 const FIELD_FRAME = { widthPx: 1920, heightPx: 1080 } as const;
 const FIELD_VIDEO = resolve(
   FAKE_CAMERA_DIR,
@@ -354,12 +348,9 @@ test.describe('the field session', () => {
     // about the protocol and the bundle, and an injected camera error would put
     // the labels somewhere the truth below did not predict. What it changes is
     // `fovSource`, which F2 and F3 both require.
-    // The panel covers the top of the picture, so the phone tilts up until the
-    // skyline's dots sit low enough for a finger to reach them.
-    await aim(TRUE_HEADING_DEG, FOV_TAP_PITCH_DEG);
-    await expect
-      .poll(async () => poseNumber(page, 'data-pitch-deg'), { timeout: 15_000 })
-      .toBeCloseTo(FOV_TAP_PITCH_DEG, 1);
+    // The panel is a strip at the top edge during this step, so the skyline's
+    // dots are reachable with the phone held level.
+    await expect(session).toHaveAttribute('data-compact', 'true');
     const dots = await summitDots(page);
     const spread = [...dots].sort((a, b) => a.cx - b.cx);
     const left = spread[0];
@@ -377,10 +368,6 @@ test.describe('the field session', () => {
       'calibrated',
       { timeout: 15_000 },
     );
-    await aim(TRUE_HEADING_DEG, 0);
-    await expect
-      .poll(async () => poseNumber(page, 'data-pitch-deg'), { timeout: 15_000 })
-      .toBeCloseTo(0, 1);
     await page.getByTestId('field-session-next').click();
 
     /* ── 3. which way the labels point ────────────────────────────────────── */
@@ -795,12 +782,6 @@ test.describe('the field session', () => {
     await page.getByTestId('field-session-next').click();
 
     await expect(session).toHaveAttribute('data-step-id', 'fov-check');
-    // The panel covers the top of the picture, so the phone tilts up until the
-    // skyline's dots sit low enough for a finger to reach them.
-    await aim(TRUE_HEADING_DEG, FOV_TAP_PITCH_DEG);
-    await expect
-      .poll(async () => poseNumber(page, 'data-pitch-deg'), { timeout: 15_000 })
-      .toBeCloseTo(FOV_TAP_PITCH_DEG, 1);
     const dots = await summitDots(page);
     const spread = [...dots].sort((a, b) => a.cx - b.cx);
     const left = spread[0];
@@ -824,12 +805,16 @@ test.describe('the field session', () => {
     // lands on the summit's own drawn dot, so the correction is about nothing
     // and the anchor is what the step is for.
     await expect(session).toHaveAttribute('data-step-id', 'fix-direction');
-    // Still tilted up, and turned so the Matterhorn sits right of centre. The
-    // re-anchor's own controls cover the middle of the bottom strip.
+    // Turned so the Matterhorn sits right of centre, at the height of the
+    // skyline: under the full panel, and clear of the strip it shrinks to while
+    // a re-anchor is armed.
     const reanchorHeadingDeg = TRUE_HEADING_DEG - 20;
-    await aim(reanchorHeadingDeg, FOV_TAP_PITCH_DEG);
+    await aim(reanchorHeadingDeg, 0);
     await holdStillForReanchor(page);
+    await expect(session).toHaveAttribute('data-compact', 'false');
+    const fullPanel = await session.boundingBox();
     await page.getByTestId('live-reanchor-summit').click();
+    await expect(session).toHaveAttribute('data-compact', 'true');
     const picker = page.getByTestId('live-reanchor-summit-name');
     // By the start of the name: "Klein Matterhorn" sorts first and is a different summit.
     const matterhornId = await picker
@@ -839,9 +824,12 @@ test.describe('the field session', () => {
     expect(matterhornId).not.toBeNull();
     await picker.selectOption(matterhornId ?? '');
     const summitPx = projectIndependently(
-      { headingDeg: reanchorHeadingDeg, pitchDeg: FOV_TAP_PITCH_DEG, rollDeg: 0, ...VISIBLE_FOV },
+      { headingDeg: reanchorHeadingDeg, pitchDeg: 0, rollDeg: 0, ...VISIBLE_FOV },
       bearingDeg(GORNERGRAT, MATTERHORN),
       summitAltitudeDeg(),
+    );
+    expect(summitPx.yPx, 'the summit is not under the full panel').toBeLessThan(
+      (fullPanel?.y ?? 0) + (fullPanel?.height ?? 0),
     );
     await tapReanchorAt(page, summitPx.xPx, summitPx.yPx);
     // The tap is on the real summit and the compass is right, so the move is near zero.
@@ -1032,6 +1020,122 @@ test.describe('the field session', () => {
     await expect(page.getByTestId('live-reanchor')).toHaveAttribute('data-anchor-source', 'sun');
     await expect(page.getByTestId('field-session-tap-layer')).toBeVisible();
     await expect(page.getByTestId('field-session-taps')).toHaveAttribute('data-tap-count', '0');
+  });
+
+  test('a measurement made while the compass is grossly off cannot be used', async ({ page }) => {
+    // The compass reads 25° clockwise of the truth, and the person has dragged
+    // the labels back onto the view by hand. The Sun's mark is then drawn on the
+    // real Sun, so a tap on it is the Sun's, and solving that tap puts the true
+    // heading 25° from what the compass says. The screen warns, and the panel
+    // must hold the fit back until the direction is fixed, as the home panel
+    // does. The page's clock is fixed at 2026-04-02 09:00 UTC, when the Sun is
+    // 37.4° up at azimuth 129.3° over Gornergrat.
+    test.setTimeout(SCENE_TIMEOUT_MS + 120_000);
+    const COMPASS_ERROR_DEG = 25;
+    const FIXED_TIME = new Date('2026-04-02T09:00:00Z');
+    const sun = sunPosition(
+      FIXED_TIME,
+      { lat: GORNERGRAT.lat, lon: GORNERGRAT.lon, heightM: OBSERVER_EYE_M },
+      { refraction: true },
+    );
+    expect(sun.altitudeDeg).toBeGreaterThan(30);
+
+    await page.clock.setFixedTime(FIXED_TIME);
+    await installBundleShareStub(page);
+    await installSensorPump(page);
+    await page.goto('/live.html?session=field');
+    await page.getByTestId('live-start').click();
+    await expect(page.getByTestId('live-root')).toHaveAttribute('data-phase', 'running');
+
+    /** Aim the camera at a true heading; the compass reports it 25° clockwise. */
+    const aimTrue = async (trueHeadingDeg: number): Promise<void> => {
+      await pumpSet(
+        page,
+        eventAnglesFor(
+          magneticBearingFor(trueHeadingDeg + COMPASS_ERROR_DEG, FIXED_TIME),
+          sun.altitudeDeg,
+        ),
+      );
+    };
+    const drawnOffTrue = async (trueHeadingDeg: number): Promise<number> => {
+      const drawn = await poseNumber(page, 'data-heading-deg');
+      return ((drawn - trueHeadingDeg + 540) % 360) - 180;
+    };
+
+    await aimTrue(sun.azimuthDeg);
+    await expect
+      .poll(async () => Math.abs(await drawnOffTrue(sun.azimuthDeg)), { timeout: 15_000 })
+      .toBeCloseTo(COMPASS_ERROR_DEG, 0);
+
+    const session = page.getByTestId('field-session');
+    await expect(page.getByTestId('field-session-start')).toBeEnabled({ timeout: 30_000 });
+    await page.getByTestId('field-session-start').click();
+    await expect(session).toHaveAttribute('data-step-id', 'stand');
+
+    // Drag the labels until they are drawn at the true heading. The first drag
+    // measures how many degrees a pixel moves them, and the second closes the gap.
+    const before = await drawnOffTrue(sun.azimuthDeg);
+    await dragPicture(page, 100, 0);
+    let after = before;
+    await expect
+      .poll(async () => {
+        after = await drawnOffTrue(sun.azimuthDeg);
+        return Math.abs(after - before);
+      }, { timeout: 15_000 })
+      .toBeGreaterThan(1);
+    const degPerPx = (after - before) / 100;
+    await dragPicture(page, -after / degPerPx, 0);
+    await expect
+      .poll(async () => Math.abs(await drawnOffTrue(sun.azimuthDeg)), { timeout: 15_000 })
+      .toBeLessThan(0.5);
+
+    await page.getByTestId('field-session-next').click();
+    await expect(session).toHaveAttribute('data-step-id', 'fov-check');
+
+    // The real Sun, a third of the way out on either side of the middle. The
+    // mark is drawn on it, so each tap is claimed by the Sun.
+    const taps = page.getByTestId('field-session-taps');
+    for (const [index, offAxisDeg] of [-15, 15].entries()) {
+      const trueHeadingDeg = sun.azimuthDeg - offAxisDeg;
+      await aimTrue(trueHeadingDeg);
+      await expect
+        .poll(async () => Math.abs(await drawnOffTrue(trueHeadingDeg)), { timeout: 15_000 })
+        .toBeLessThan(0.5);
+      const realSun = projectIndependently(
+        { headingDeg: trueHeadingDeg, pitchDeg: sun.altitudeDeg, rollDeg: 0, ...VISIBLE_FOV },
+        sun.azimuthDeg,
+        sun.altitudeDeg,
+      );
+      await fieldTapAt(page, realSun.xPx, realSun.yPx);
+      await expect(taps).toHaveAttribute('data-tap-count', String(index + 1));
+    }
+
+    await expect(page.getByTestId('live-gross-warning')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('field-session-fit')).toBeVisible();
+    await expect(page.getByTestId('field-session-use-fit')).toHaveCount(0);
+    await expect(page.getByTestId('field-session-fit-held')).toContainText(
+      'Fix the direction first',
+    );
+
+    // Fixing the direction clears the warning, and it must clear the taps too:
+    // otherwise the held fit becomes usable, still built from taps measured
+    // against marks the compass error had misplaced.
+    await holdStillForReanchor(page);
+    await page.getByTestId('live-reanchor-sun').click();
+    const lastAim = sun.azimuthDeg - 15;
+    const sunNow = projectIndependently(
+      { headingDeg: lastAim, pitchDeg: sun.altitudeDeg, rollDeg: 0, ...VISIBLE_FOV },
+      sun.azimuthDeg,
+      sun.altitudeDeg,
+    );
+    await tapReanchorAt(page, sunNow.xPx, sunNow.yPx);
+    await expect(page.getByTestId('live-reanchor')).toHaveAttribute('data-anchor-source', 'sun');
+    await expect(page.getByTestId('live-gross-warning')).toHaveCount(0);
+    await expect(taps).toHaveAttribute('data-tap-count', '0');
+    await expect(page.getByTestId('field-session-tap-note')).toContainText(
+      'earlier taps were cleared',
+    );
+    await expect(page.getByTestId('field-session-use-fit')).toHaveCount(0);
   });
 });
 

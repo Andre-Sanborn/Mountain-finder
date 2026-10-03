@@ -1441,6 +1441,8 @@ export function LiveScreen(props: LiveScreenProps): JSX.Element {
             onCalibrated={applyFovFit}
             onPictureTap={notePictureTap}
             reanchorArmed={reanchorMode !== 'off'}
+            compassWarning={grossWarning !== undefined}
+            reanchorCount={reanchorCount}
             dragMode={dragMode}
             setDragMode={setDragMode}
             resetTrim={resetTrim}

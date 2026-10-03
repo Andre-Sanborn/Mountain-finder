@@ -1989,21 +1989,10 @@ whatever is on top if it is the wrong element, then calls `page.mouse.click`. A 
 dispatched on a test-id node reaches it whatever is stacked above, which hid this bug. With the
 step-aside removed, "a re-anchor clears the sun taps made before it" fails.
 
-While a tap step is active (home step 14, the field FOV check) or a re-anchor is armed, each
-session panel renders a compact strip: a progress line, a one-line `stripInstruction` from the
-step script, any status lines, and the step's buttons on the right. The page title is hidden
-through `:has()` (Safari 15.4 and later; older Safari keeps it, about 25 px taller). The full
-panel covered rows 45 to 215 of a 450 px viewport, where the guide puts the Sun and the skyline's
-dots sit. The strip ends within 15 % of a 450 px viewport before any message (an e2e assertion):
-about 14 % of an 844 × 390 landscape phone with no message, about 21 % with a two-line message.
-A class driven by step state was chosen over moving the panel to the bottom, which already holds
-the re-anchor controls. The e2e taps the real Sun at the centre and halfway up at 10 % and 90 %
-of the width through hit-testing; reverting the layout makes each tap land on the panel. The
-bottom strip's text boxes still hide the lower picture, though taps pass through them.
-
-The field panel also holds "Use this measurement" under the gross warning and clears its taps on
-a re-anchor; without the clearing, the re-anchor would clear the warning and release a fit built
-from taps against misplaced marks.
+The session panel covers rows 45 to 215 of the 450 px test viewport, full width, during home step
+14 and the field FOV check: where the guide puts the Sun and where the horizon's dots sit. The
+e2e taps reach their targets by tilting 14° up so the targets sit low in the frame; the layout
+itself is still open.
 
 While the gross compass warning shows, the home panel replaces "Use this measurement" with a line
 saying to fix the direction first, since every tap was measured against a misplaced Sun mark.

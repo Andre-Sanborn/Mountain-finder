@@ -65,11 +65,9 @@ after its self-check has run and passed here. The checks are in
 - [x] Hold "Use this measurement" while the gross compass warning shows
 - [x] Send only Sun claims from the field landmark sweep to the gross compass check
 - [x] Route e2e taps through hit-testing (`tests/e2e/support/tap.ts`)
-- [x] Collapse the session panel to an edge strip during tap steps; it covers where the Sun and dots sit
-- [ ] Decide whether the bottom strip's text boxes should shrink during tap steps
-- [x] Re-run rehearsal.spec.ts under hit-tested taps
-- [ ] Keep the rehearsal's left pan under the registered 45.401° turn (it pans 48.9°; F4.envelope fails)
-- [x] Hold the field panel's "Use this measurement" under the gross warning too, and clear its taps on a re-anchor
+- [ ] Collapse the session panel to an edge strip during tap steps; it covers where the Sun and dots sit
+- [ ] Re-run rehearsal.spec.ts under hit-tested taps
+- [ ] Hold the field panel's "Use this measurement" under the gross warning too
 - [x] Refuse the re-anchor when the pitch trim exceeds the ±20° clamp (night-3 review)
 - [ ] Run the home session with the human (steps: docs/HOME-SESSION-GUIDE.md)
 - [ ] Turn the home-session recording into fixtures; fix any sign or FOV error it shows

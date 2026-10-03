@@ -82,6 +82,7 @@ import {
 } from './fov-calibration';
 import type { FovFit } from './fov-calibration';
 import type { ShareResult } from './home-session-share';
+import { REANCHOR_STRIP_LINE } from './reanchor';
 
 /** How often the pose is sampled into the trace buffer, milliseconds. */
 const SAMPLE_INTERVAL_MS = 50;
@@ -138,6 +139,10 @@ export interface FieldSessionPanelProps {
       sits in a strip stacked above the screen's own tap surface, so its tap
       surface must step aside or it takes the re-anchor's tap. */
   readonly reanchorArmed: boolean;
+  /** True while the screen warns that the compass is grossly off. */
+  readonly compassWarning: boolean;
+  /** Goes up by one each time a re-anchor is applied. */
+  readonly reanchorCount: number;
   readonly dragMode: DragMode;
   readonly setDragMode: (mode: DragMode) => void;
   /** Put the labels back where the sensors say, before a repeated drag. */
@@ -397,6 +402,24 @@ export function FieldSessionPanel(props: FieldSessionPanelProps): JSX.Element {
     ],
   );
 
+  /**
+   * Drop the taps made before a re-anchor.
+   *
+   * Each tap is measured against the mark drawn when it was made, and a
+   * re-anchor turns every mark. Without this, a fit held back for a gross
+   * compass error would become usable the moment the direction was fixed,
+   * still built from the taps the error spoiled.
+   */
+  const { reanchorCount } = props;
+  const reanchorCountRef = useRef(reanchorCount);
+  useEffect(() => {
+    if (reanchorCount === reanchorCountRef.current) return;
+    reanchorCountRef.current = reanchorCount;
+    if (taps.length === 0) return;
+    setTaps([]);
+    setTapNote('The direction changed, so earlier taps were cleared. Tap again.');
+  }, [reanchorCount, taps.length]);
+
   /* ── the field-of-view taps ─────────────────────────────────────────────── */
   const onTap = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -424,6 +447,7 @@ export function FieldSessionPanel(props: FieldSessionPanelProps): JSX.Element {
         return;
       }
       setTapNote(undefined);
+      setCalibrationNote(undefined);
       setTaps((current) => [...current, { reference: picked, tappedPx }]);
     },
     [props],
@@ -477,10 +501,48 @@ export function FieldSessionPanel(props: FieldSessionPanelProps): JSX.Element {
   const accuracyM = context?.horizontalAccuracyM;
   const shortfallCount = taken.reduce((sum, item) => sum + item.shortfalls.length, 0);
 
+  /**
+   * A tap step, or an armed re-anchor, shrinks the panel to a strip at the top
+   * edge. Both want a finger on the picture, and the full panel covers the
+   * upper half of a landscape phone, where the skyline's dots sit.
+   */
+  const compact = phase === 'running' && (step?.kind === 'tap' || props.reanchorArmed);
+  /** A fit made while the compass is grossly off is shown but cannot be used. */
+  const fitHeld = fit?.ok === true && props.compassWarning;
+
+  const primaryButton =
+    step === undefined ? null : step.role !== undefined ? (
+      <button
+        type="button"
+        data-testid="field-session-capture"
+        data-role={step.role}
+        disabled={busy}
+        onClick={() => void take(step.role ?? 'before-drag')}
+      >
+        {step.id === 'capture-raw'
+          ? 'Capture raw'
+          : step.id === 'capture-drag'
+            ? 'Capture after drag'
+            : 'Capture'}
+      </button>
+    ) : (
+      <button type="button" data-testid="field-session-next" onClick={advance}>
+        Done — next step
+      </button>
+    );
+
+  const captureNoteLine =
+    captureNote === undefined ? null : (
+      <p className="live__warn" data-testid="field-session-capture-note">
+        {captureNote}
+      </p>
+    );
+
   return (
     <>
       <section
-        className="live__session"
+        className={compact ? 'live__session live__session--compact' : 'live__session'}
+        data-compact={String(compact)}
         data-testid="field-session"
         data-phase={phase}
         data-step-index={stepIndex}
@@ -517,7 +579,7 @@ export function FieldSessionPanel(props: FieldSessionPanelProps): JSX.Element {
           </>
         )}
 
-        {phase === 'running' && step !== undefined && entry !== undefined && (
+        {phase === 'running' && step !== undefined && entry !== undefined && !compact && (
           <>
             <p data-testid="field-session-progress">
               Step {stepIndex + 1} of {plan.length} — {step.title}
@@ -618,23 +680,47 @@ export function FieldSessionPanel(props: FieldSessionPanelProps): JSX.Element {
               </p>
             )}
 
-            {step.kind === 'tap' && (
-              <>
-                <p data-testid="field-session-taps" data-tap-count={taps.length}>
-                  {taps.length} tap{taps.length === 1 ? '' : 's'} so far.
-                </p>
-                {tapNote !== undefined && (
-                  <p className="live__warn" data-testid="field-session-tap-note">
-                    {tapNote}
-                  </p>
-                )}
-                {fit !== undefined && !fit.ok && (
-                  <p data-testid="field-session-fit-refusal" data-refusal={fit.refusal}>
-                    {fit.detail}
-                  </p>
-                )}
-                {fit?.ok === true && (
+            {primaryButton}
+
+            {captureNoteLine}
+
+            <p data-testid="field-session-taken" data-count={taken.length}>
+              {taken.length} of {FIELD_CAPTURE_COUNT} captures saved on this phone.
+            </p>
+          </>
+        )}
+
+        {phase === 'running' && step !== undefined && entry !== undefined && compact && (
+          <>
+            <div className="live__strip-text">
+              <p className="live__strip-head" data-testid="field-session-progress">
+                Step {stepIndex + 1} of {plan.length} — {step.title}
+                {entry.repeat > 0 ? ` (${entry.repeat} of ${REPEATED_DRAG_COUNT})` : ''}
+                {step.kind === 'tap' && (
                   <>
+                    {' · '}
+                    <span data-testid="field-session-taps" data-tap-count={taps.length}>
+                      {taps.length} tap{taps.length === 1 ? '' : 's'} so far
+                    </span>
+                  </>
+                )}
+              </p>
+              <p className="live__strip-instruction" data-testid="field-session-instruction">
+                {props.reanchorArmed ? REANCHOR_STRIP_LINE : (step.stripInstruction ?? step.instruction)}
+              </p>
+              {step.kind === 'tap' && (
+                <>
+                  {tapNote !== undefined && (
+                    <p className="live__warn" data-testid="field-session-tap-note">
+                      {tapNote}
+                    </p>
+                  )}
+                  {fit !== undefined && !fit.ok && (
+                    <p data-testid="field-session-fit-refusal" data-refusal={fit.refusal}>
+                      {fit.detail}
+                    </p>
+                  )}
+                  {fit?.ok === true && calibrationNote === undefined && (
                     <p
                       data-testid="field-session-fit"
                       data-frame-hfov-deg={fit.value.frameHFovDeg}
@@ -642,46 +728,29 @@ export function FieldSessionPanel(props: FieldSessionPanelProps): JSX.Element {
                     >
                       The camera is seeing {fit.value.visibleHFovDeg.toFixed(2)}° across the screen.
                     </p>
-                    <button type="button" data-testid="field-session-use-fit" onClick={useFit}>
-                      Use this measurement
-                    </button>
-                  </>
-                )}
-                {calibrationNote !== undefined && (
-                  <p data-testid="field-session-calibration-note">{calibrationNote}</p>
-                )}
-              </>
-            )}
-
-            {step.role !== undefined ? (
-              <button
-                type="button"
-                data-testid="field-session-capture"
-                data-role={step.role}
-                disabled={busy}
-                onClick={() => void take(step.role ?? 'before-drag')}
-              >
-                {step.id === 'capture-raw'
-                  ? 'Capture raw'
-                  : step.id === 'capture-drag'
-                    ? 'Capture after drag'
-                    : 'Capture'}
-              </button>
-            ) : (
-              <button type="button" data-testid="field-session-next" onClick={advance}>
-                Done — next step
-              </button>
-            )}
-
-            {captureNote !== undefined && (
-              <p className="live__warn" data-testid="field-session-capture-note">
-                {captureNote}
-              </p>
-            )}
-
-            <p data-testid="field-session-taken" data-count={taken.length}>
-              {taken.length} of {FIELD_CAPTURE_COUNT} captures saved on this phone.
-            </p>
+                  )}
+                  {fitHeld && (
+                    // The fit's heading trim would absorb the compass error,
+                    // and a Sun tap was measured against a misplaced mark.
+                    <p className="live__warn" data-testid="field-session-fit-held">
+                      Fix the direction first. This measurement was made with the compass off.
+                    </p>
+                  )}
+                  {calibrationNote !== undefined && (
+                    <p data-testid="field-session-calibration-note">{calibrationNote}</p>
+                  )}
+                </>
+              )}
+              {captureNoteLine}
+            </div>
+            <div className="live__strip-actions">
+              {step.kind === 'tap' && fit?.ok === true && !fitHeld && (
+                <button type="button" data-testid="field-session-use-fit" onClick={useFit}>
+                  Use this measurement
+                </button>
+              )}
+              {primaryButton}
+            </div>
           </>
         )}
 

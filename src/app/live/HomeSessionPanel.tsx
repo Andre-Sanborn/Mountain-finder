@@ -94,6 +94,7 @@ import {
 } from './home-session';
 import type { HomeSessionRecorder } from './home-session-recorder';
 import { shareRecording, type ShareResult, type ShareTarget } from './home-session-share';
+import { REANCHOR_STRIP_LINE } from './reanchor';
 
 /** How often the countdown is redrawn, milliseconds. */
 const TICK_MS = 250;
@@ -358,6 +359,7 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
         return;
       }
       setTapNote(undefined);
+      setCalibrationNote(undefined);
       setTaps((current) => [...current, { reference: outcome.reference, tappedPx }]);
     },
     [props],
@@ -402,10 +404,32 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
 
   const counts = recorder.counts;
 
+  /**
+   * A tap step, or an armed re-anchor, shrinks the panel to a strip at the top
+   * edge. Both want a finger on the picture, and the full panel covers the
+   * upper half of a landscape phone, where the guide puts the Sun.
+   */
+  const compact = phase === 'recording' && (step?.kind === 'tap' || props.reanchorArmed);
+  /** A fit made while the compass is grossly off is shown but cannot be used. */
+  const fitHeld = fit?.ok === true && props.compassWarning;
+
+  const nextButton = (
+    <button type="button" data-testid="home-session-next" onClick={advance}>
+      {stepIndex + 1 === HOME_SESSION_STEPS.length ? 'On to the lining-up practice' : 'Move on now'}
+    </button>
+  );
+
+  const sunWarning = bearingWarning === undefined ? null : (
+    <p className="live__warn" data-testid="home-session-sun-warning">
+      {bearingWarning}
+    </p>
+  );
+
   return (
     <>
       <section
-        className="live__session"
+        className={compact ? 'live__session live__session--compact' : 'live__session'}
+        data-compact={String(compact)}
         data-testid="home-session"
         data-phase={phase}
         data-step-index={stepIndex}
@@ -449,7 +473,7 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
           </>
         )}
 
-        {phase === 'recording' && step !== undefined && (
+        {phase === 'recording' && step !== undefined && !compact && (
           <>
             <p data-testid="home-session-progress">
               Step {stepIndex + 1} of {HOME_SESSION_STEPS.length} — {step.title}
@@ -461,34 +485,48 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
               {step.kind === 'hold' ? 'Hold still' : 'Keep going'} —{' '}
               {Math.ceil(remainingMs / 1000)} s left.
             </p>
-            <button type="button" data-testid="home-session-next" onClick={advance}>
-              {stepIndex + 1 === HOME_SESSION_STEPS.length
-                ? 'On to the lining-up practice'
-                : 'Move on now'}
-            </button>
-            {bearingWarning !== undefined && (
-              <p className="live__warn" data-testid="home-session-sun-warning">
-                {bearingWarning}
-              </p>
-            )}
+            {nextButton}
+            {sunWarning}
+          </>
+        )}
 
-            {step.kind === 'tap' && (
-              <>
-                <p data-testid="home-session-taps" data-tap-count={taps.length}>
-                  {taps.length} tap{taps.length === 1 ? '' : 's'} so far.
-                </p>
-                {tapNote !== undefined && (
-                  <p className="live__warn" data-testid="home-session-tap-note">
-                    {tapNote}
-                  </p>
-                )}
-                {fit !== undefined && !fit.ok && (
-                  <p data-testid="home-session-fit-refusal" data-refusal={fit.refusal}>
-                    {fit.detail}
-                  </p>
-                )}
-                {fit?.ok === true && (
+        {phase === 'recording' && step !== undefined && compact && (
+          <>
+            <div className="live__strip-text">
+              <p className="live__strip-head" data-testid="home-session-progress">
+                Step {stepIndex + 1} of {HOME_SESSION_STEPS.length} — {step.title} ·{' '}
+                <span
+                  data-testid="home-session-remaining"
+                  data-remaining-ms={Math.round(remainingMs)}
+                >
+                  {Math.ceil(remainingMs / 1000)} s left
+                </span>
+                {step.kind === 'tap' && (
                   <>
+                    {' · '}
+                    <span data-testid="home-session-taps" data-tap-count={taps.length}>
+                      {taps.length} tap{taps.length === 1 ? '' : 's'} so far
+                    </span>
+                  </>
+                )}
+              </p>
+              <p className="live__strip-instruction" data-testid="home-session-instruction">
+                {props.reanchorArmed ? REANCHOR_STRIP_LINE : (step.stripInstruction ?? step.instruction)}
+              </p>
+              {sunWarning}
+              {step.kind === 'tap' && (
+                <>
+                  {tapNote !== undefined && (
+                    <p className="live__warn" data-testid="home-session-tap-note">
+                      {tapNote}
+                    </p>
+                  )}
+                  {fit !== undefined && !fit.ok && (
+                    <p data-testid="home-session-fit-refusal" data-refusal={fit.refusal}>
+                      {fit.detail}
+                    </p>
+                  )}
+                  {fit?.ok === true && calibrationNote === undefined && (
                     <p
                       data-testid="home-session-fit"
                       data-frame-hfov-deg={fit.value.frameHFovDeg}
@@ -502,24 +540,28 @@ export function HomeSessionPanel(props: HomeSessionPanelProps): JSX.Element {
                       and is aimed {Math.abs(fit.value.trim.headingDeg).toFixed(2)}°{' '}
                       {fit.value.trim.headingDeg < 0 ? 'right' : 'left'} of where it thought.
                     </p>
-                    {props.compassWarning ? (
-                      // The fit's heading trim would absorb the compass error,
-                      // and the taps were measured against a misplaced Sun mark.
-                      <p className="live__warn" data-testid="home-session-fit-held">
-                        Fix the direction first. This measurement was made with the compass off.
-                      </p>
-                    ) : (
-                      <button type="button" data-testid="home-session-use-fit" onClick={useFit}>
-                        Use this measurement
-                      </button>
-                    )}
-                  </>
-                )}
-                {calibrationNote !== undefined && (
-                  <p data-testid="home-session-calibration-note">{calibrationNote}</p>
-                )}
-              </>
-            )}
+                  )}
+                  {fitHeld && (
+                    // The fit's heading trim would absorb the compass error,
+                    // and the taps were measured against a misplaced Sun mark.
+                    <p className="live__warn" data-testid="home-session-fit-held">
+                      Fix the direction first. This measurement was made with the compass off.
+                    </p>
+                  )}
+                  {calibrationNote !== undefined && (
+                    <p data-testid="home-session-calibration-note">{calibrationNote}</p>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="live__strip-actions">
+              {step.kind === 'tap' && fit?.ok === true && !fitHeld && (
+                <button type="button" data-testid="home-session-use-fit" onClick={useFit}>
+                  Use this measurement
+                </button>
+              )}
+              {nextButton}
+            </div>
           </>
         )}
 

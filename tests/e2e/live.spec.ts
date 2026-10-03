@@ -716,15 +716,6 @@ async function startHomeSession(page: Page): Promise<void> {
   await expect(page.getByTestId('home-session-start')).toBeEnabled({ timeout: 30_000 });
 }
 
-/**
- * How far above the Sun the phone is tilted when a test taps the real Sun.
- *
- * The session panel covers the top of the picture, down past its middle on a
- * 450 px viewport. Tilting up puts the Sun low in the frame, where a finger can
- * reach it.
- */
-const TILT_ABOVE_SUN_DEG = 14;
-
 /** Tap the picture at one point, on the home session's tap surface. */
 async function tapAt(page: Page, xPx: number, yPx: number): Promise<void> {
   await tapSurfaceAt(page, 'home-session-tap-layer', xPx, yPx);
@@ -953,7 +944,7 @@ test('a tap during the sun step measures the field of view and the aim', async (
       FRAME.heightPx / 2 + INJECTED_SCALE * (dot.cy - FRAME.heightPx / 2) + INJECTED_SHIFT_PX.yPx,
   });
 
-  const pitchDeg = sun.altitudeDeg + TILT_ABOVE_SUN_DEG;
+  const pitchDeg = sun.altitudeDeg;
   /**
    * Aim so the Sun sits `offAxisDeg` right of centre, wait for the pose to
    * settle, and return where its disc is drawn. 20° either side puts the two
@@ -1050,6 +1041,99 @@ test('a tap during the sun step measures the field of view and the aim', async (
   await tapAt(page, farCorner.xPx, farCorner.yPx);
   await expect(page.getByTestId('home-session-taps')).toHaveAttribute('data-tap-count', '3');
   await expect(page.getByTestId('home-session-tap-note')).toHaveCount(0);
+});
+
+test('the sun step shrinks the panel, so the sun can be tapped where the guide puts it', async ({
+  page,
+}) => {
+  // The guide puts the Sun halfway up the picture, first near the left edge and
+  // then near the right, and the re-anchor wants it in the middle. The full
+  // panel covers the upper half of a landscape screen, so during this step it
+  // shrinks to a strip at the top edge. The phone is aimed straight at the Sun,
+  // with no tilt, so the disc sits on the picture's horizontal midline.
+  test.setTimeout(SCENE_TIMEOUT_MS + 120_000);
+  const FIXED_TIME = new Date('2026-04-02T09:00:00Z');
+  const sun = sunPosition(
+    FIXED_TIME,
+    { lat: GORNERGRAT.lat, lon: GORNERGRAT.lon, heightM: OBSERVER_EYE_M },
+    { refraction: true },
+  );
+  expect(sun.altitudeDeg).toBeGreaterThan(30);
+
+  await page.clock.setFixedTime(FIXED_TIME);
+  await startHomeSession(page);
+  await page.getByTestId('home-session-start').click();
+  const session = page.getByTestId('home-session');
+  await expect(session).toHaveAttribute('data-compact', 'false');
+  for (let index = 0; index < POSE_LABELS.length - 1; index += 1) {
+    await page.getByTestId('home-session-next').click();
+  }
+  await expect(session).toHaveAttribute('data-step-pose', 'sun-capture');
+  await expect(session).toHaveAttribute('data-compact', 'true');
+  await expect(page.getByTestId('home-session-instruction')).toContainText('LEFT');
+  await expect(page.getByTestId('home-session-instruction')).toContainText('RIGHT');
+
+  // The whole top strip, title included, stays in the top 15 % of the screen.
+  const strip = await session.boundingBox();
+  expect(strip).not.toBeNull();
+  expect((strip?.y ?? 0) + (strip?.height ?? FRAME.heightPx)).toBeLessThanOrEqual(
+    0.15 * FRAME.heightPx,
+  );
+  await expect(page.getByTestId('live-title')).toBeHidden();
+
+  // Near an edge means 80 % of the way out from the middle, and halfway up
+  // means on the horizontal midline. Off the axis a tilted camera bends lines
+  // of equal altitude, so the aim that puts the Sun at each point is found by
+  // iterating on the closed form rather than read off the angles.
+  const focalPx = FRAME.widthPx / 2 / Math.tan((VISIBLE_FOV.hFovDeg * DEG) / 2);
+  const aimFor = (target: { xPx: number; yPx: number }): { headingDeg: number; pitchDeg: number } => {
+    let headingDeg = sun.azimuthDeg;
+    let pitchDeg = sun.altitudeDeg;
+    for (let round = 0; round < 60; round += 1) {
+      const seen = projectIndependently(
+        { headingDeg, pitchDeg, rollDeg: 0, ...VISIBLE_FOV },
+        sun.azimuthDeg,
+        sun.altitudeDeg,
+      );
+      headingDeg += Math.atan((seen.xPx - target.xPx) / focalPx) / DEG;
+      pitchDeg += Math.atan((target.yPx - seen.yPx) / focalPx) / DEG;
+    }
+    return { headingDeg, pitchDeg };
+  };
+  const taps = page.getByTestId('home-session-taps');
+  const targets = [0.5, 0.1, 0.9].map((u) => ({ xPx: u * FRAME.widthPx, yPx: FRAME.heightPx / 2 }));
+  for (const [index, target] of targets.entries()) {
+    const { headingDeg, pitchDeg } = aimFor(target);
+    await pumpSet(page, eventAnglesFor(magneticBearingFor(headingDeg, FIXED_TIME), pitchDeg));
+    await expect
+      .poll(async () => {
+        const drawn = await poseNumber(page, 'data-heading-deg');
+        return Math.abs(((drawn - headingDeg + 540) % 360) - 180);
+      }, { timeout: 15_000 })
+      .toBeLessThan(0.05);
+    await expect
+      .poll(async () => poseNumber(page, 'data-pitch-deg'), { timeout: 15_000 })
+      .toBeCloseTo(pitchDeg, 2);
+    // Where the Sun really is under that aim, from the closed form.
+    const realSun = projectIndependently(
+      { headingDeg, pitchDeg, rollDeg: 0, ...VISIBLE_FOV },
+      sun.azimuthDeg,
+      sun.altitudeDeg,
+    );
+    expect(Math.hypot(realSun.xPx - target.xPx, realSun.yPx - target.yPx)).toBeLessThan(0.5);
+    await tapAt(page, realSun.xPx, realSun.yPx);
+    await expect(taps).toHaveAttribute('data-tap-count', String(index + 1));
+  }
+
+  // The taps sit on the Sun's own disc, so the fit is usable, and its button is
+  // in the strip rather than under the finger.
+  await expect(page.getByTestId('home-session-fit')).toBeVisible();
+  await page.getByTestId('home-session-use-fit').click();
+  await expect(page.getByTestId('live-fov-label')).toHaveAttribute(
+    'data-fov-source',
+    'calibrated',
+    { timeout: 15_000 },
+  );
 });
 
 test('the observer stands on the map’s ground, not on the GPS altitude', async ({ page }) => {
@@ -1670,7 +1754,7 @@ test('a tap on the real sun says how far off the compass is', async ({ page }) =
   await page.clock.setFixedTime(FIXED_TIME);
   await startHomeSession(page);
   // Really aimed at the sun, with the compass 92° out.
-  const pitchDeg = sun.altitudeDeg + TILT_ABOVE_SUN_DEG;
+  const pitchDeg = sun.altitudeDeg;
   await pumpSet(
     page,
     eventAnglesFor(magneticBearingFor(sun.azimuthDeg + GROSS_ERROR_DEG, FIXED_TIME), pitchDeg),
@@ -1688,8 +1772,7 @@ test('a tap on the real sun says how far off the compass is', async ({ page }) =
     timeout: SCENE_TIMEOUT_MS,
   });
 
-  // Straight below the middle of the picture, because the camera is pointed
-  // along the Sun's azimuth and tilted above it.
+  // The middle of the picture, because the camera is pointed straight at it.
   const realSun = projectIndependently(
     { headingDeg: sun.azimuthDeg, pitchDeg, rollDeg: 0, ...VISIBLE_FOV },
     sun.azimuthDeg,
@@ -1720,7 +1803,7 @@ test('a re-anchor clears the sun taps made before it', async ({ page }) => {
 
   await page.clock.setFixedTime(FIXED_TIME);
   await startHomeSession(page);
-  const pitchDeg = sun.altitudeDeg + TILT_ABOVE_SUN_DEG;
+  const pitchDeg = sun.altitudeDeg;
   await pumpSet(
     page,
     eventAnglesFor(magneticBearingFor(sun.azimuthDeg + COMPASS_ERROR_DEG, FIXED_TIME), pitchDeg),
@@ -1768,10 +1851,9 @@ test('a measurement made under a gross compass error cannot be used', async ({ p
   // the fit's heading trim would carry the compass error into the stored
   // calibration. The screen must hold the fit back until the direction is fixed.
   //
-  // The phone is tilted above the Sun so the real Sun sits low in the
-  // picture, clear of the panel. Two aims put it 8° left and 33° right of
-  // centre; the drawn mark sits 25° further left each time, so both stay on
-  // the picture and far enough apart for a fit.
+  // The phone is aimed at the Sun's altitude. Two aims put it 8° left and
+  // 33° right of centre; the drawn mark sits 25° further left each time, so
+  // both stay on the picture and far enough apart for a fit.
   test.setTimeout(SCENE_TIMEOUT_MS + 120_000);
   const COMPASS_ERROR_DEG = 25;
   const FIXED_TIME = new Date('2026-04-02T09:00:00Z');
@@ -1781,7 +1863,7 @@ test('a measurement made under a gross compass error cannot be used', async ({ p
     { refraction: true },
   );
   expect(sun.altitudeDeg).toBeGreaterThan(30);
-  const pitchDeg = sun.altitudeDeg + TILT_ABOVE_SUN_DEG;
+  const pitchDeg = sun.altitudeDeg;
 
   await page.clock.setFixedTime(FIXED_TIME);
   await startHomeSession(page);

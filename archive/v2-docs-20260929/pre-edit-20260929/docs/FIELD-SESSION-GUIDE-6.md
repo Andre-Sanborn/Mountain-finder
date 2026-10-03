@@ -216,24 +216,14 @@ of the far ridges.
 > Point the camera so the sun, or a summit the app has labelled, is near the left edge and
 > tap the middle of the real one. Then turn until it is near the right edge and tap it again.
 
-During this step the panel shrinks to a strip along the top edge, so the picture is clear
-for your finger. The strip shortens the instruction to "Tap the sun or a labelled summit near
-the LEFT edge, then near the RIGHT." and puts its buttons at its right-hand end.
-
-Your finger means "the real thing is here" during this step only. A counter in the strip
-reads "1 tap so far", then "2 taps so far". After the second tap the strip reports what it
-measured:
+Your finger means "the real thing is here" during this step only. A counter reads "1 tap so
+far", then "2 taps so far". After the second tap the screen reports what it measured:
 
 > The camera is seeing 68.42° across the screen.
 
 Tap **Use this measurement**. **Nothing after this counts without it.** If the app refuses
 the two taps instead, it says why; try two features further apart, and do not carry on until
 it accepts.
-
-If the strip says "Fix the direction first" where that button would be, the compass is far
-out. Fix the direction now, with the **Fix direction** buttons near the bottom of the screen,
-as step 3 describes. That clears the two taps, and a line in the strip says so. Make them
-again, then tap **Use this measurement**.
 
 ### Step 3 — Check which way the labels point
 

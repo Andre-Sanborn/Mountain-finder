@@ -261,6 +261,19 @@ describe('the run plan', () => {
     ]);
   });
 
+  it('gives every tap step a one-line version for the strip, asking for both edges', () => {
+    // The panel shrinks to a strip while the picture is tapped. About 75
+    // characters is one line across a landscape phone beside the strip's buttons.
+    const tapSteps = fieldRunPlan().filter((entry) => entry.step.kind === 'tap');
+    expect(tapSteps.length).toBeGreaterThan(0);
+    for (const { step } of tapSteps) {
+      expect(step.stripInstruction, step.id).toBeDefined();
+      expect(step.stripInstruction?.length ?? 0, step.id).toBeLessThanOrEqual(75);
+      expect(step.stripInstruction).toContain('LEFT');
+      expect(step.stripInstruction).toContain('RIGHT');
+    }
+  });
+
   it('asks for the four movements § 2.4 registers, by name', () => {
     const moves = fieldRunPlan().filter((entry) => entry.step.role === 'moved');
     expect(moves).toHaveLength(MOVEMENT_STEP_COUNT);

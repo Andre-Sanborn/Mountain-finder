@@ -136,6 +136,9 @@ export interface FieldStep {
   readonly title: string;
   /** One plain sentence of what to do. No jargon, no explanation. */
   readonly instruction: string;
+  /** The instruction cut to one line, for the strip a tap step shrinks the
+      panel to so the picture stays clear. Tap steps only. */
+  readonly stripInstruction?: string;
   readonly kind: FieldStepKind;
   /** The role a capture taken on this step carries. Absent on every other kind. */
   readonly role?: CaptureRole;
@@ -168,6 +171,7 @@ export const FIELD_SESSION_STEPS: readonly FieldStep[] = [
     title: 'Check the camera width',
     instruction:
       'Point the camera so the sun, or a summit the app has labelled, is near the left edge and tap the middle of the real one. Then turn until it is near the right edge and tap it again.',
+    stripInstruction: 'Tap the sun or a labelled summit near the LEFT edge, then near the RIGHT.',
     kind: 'tap',
   },
   {

@@ -70,6 +70,9 @@ export interface HomeSessionStep {
   readonly title: string;
   /** One plain sentence of what to do. No jargon, no explanation. */
   readonly instruction: string;
+  /** The instruction cut to one line, for the strip a tap step shrinks the
+      panel to so the picture stays clear. Tap steps only. */
+  readonly stripInstruction?: string;
   readonly kind: StepKind;
   /** How long the step runs before it says "done", milliseconds. */
   readonly holdMs: number;
@@ -191,6 +194,7 @@ export const HOME_SESSION_STEPS: readonly HomeSessionStep[] = [
     title: 'Tap the real sun',
     instruction:
       'Hold the phone sideways and point it at the sun near the LEFT of the screen; tap the middle of the real sun. Then turn until it is near the RIGHT and tap it again.',
+    stripInstruction: 'Tap the sun halfway up near the LEFT edge, then near the RIGHT.',
     kind: 'tap',
     holdMs: 60_000,
   },

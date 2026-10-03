@@ -414,6 +414,82 @@
 }
 
 /*
+ * The panel shrunk to a strip at the top edge, while a step or a re-anchor
+ * wants a finger on the picture. The guide puts the Sun halfway up and near
+ * either edge, and on a landscape phone the full panel covers the upper half.
+ * Text on the left, buttons on the right, so two lines of text and one row of
+ * buttons share the height. About 15 % of a 390 px landscape screen.
+ */
+.live__session--compact {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.live__session--compact h2 {
+  display: none;
+}
+
+.live__chrome--top:has(.live__session--compact) > .live__header {
+  display: none;
+}
+
+.live__strip-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.live__session--compact p {
+  margin: 0;
+}
+
+.live__strip-head {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.live__strip-instruction {
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.live__session--compact .live__warn {
+  padding: 0 0 0 0.4rem;
+  border-left-width: 3px;
+  background: none;
+  max-width: none;
+}
+
+.live__strip-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.live__session--compact .live__strip-actions button {
+  width: auto;
+  margin: 0;
+  min-height: 44px;
+  padding: 0 0.6rem;
+  font-size: 0.8rem;
+}
+
+/* A portrait screen has height to spare and not width, so the buttons go under the text. */
+@media (orientation: portrait) {
+  .live__session--compact {
+    flex-wrap: wrap;
+  }
+
+  .live__strip-text {
+    flex-basis: 100%;
+  }
+}
+
+/*
  * The tap surface for the sun step. Fixed rather than absolute so the top
  * strip's own scroll container cannot clip it, and above the drag layer because
  * during this step a finger on the picture means "the real sun is here" rather

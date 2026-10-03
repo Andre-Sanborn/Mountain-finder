@@ -177,11 +177,6 @@ These are the fourteen, in order, with the words the screen uses:
     the screen; tap the middle of the real sun. Then turn until it is near the RIGHT and tap
     it again. (up to 1 minute)
 
-    During this step the panel shrinks to a strip along the top edge, so the picture is clear
-    for your finger. The strip says "Tap the sun halfway up near the LEFT edge, then near the
-    RIGHT.", with the tap count and the seconds left on the line above. Its buttons sit at its
-    right-hand end.
-
 Notes on the awkward ones:
 
 - **Steps 5, 6 and 7 point the camera at the sun.** Point the *phone*, and watch the screen,
@@ -193,9 +188,8 @@ Notes on the awkward ones:
 - **Step 12 is the long one.** Lean the phone sideways against something solid and walk away
   for three minutes. Bumping it spoils the step.
 - **Step 14 wants two taps.** Tap the sun's disc in the picture, not the label. A counter
-  in the strip at the top says how many taps it has. After the second tap the strip reports
-  what it measured and offers a button reading **Use this measurement** at its right-hand
-  end — tap it.
+  says how many taps it has. After the second tap the screen reports what it measured and
+  offers a button reading **Use this measurement** — tap it.
 - **Step 14: keep the sun halfway up the screen.** The step asks you to turn the phone so the
   sun sits near the left edge for the first tap and near the right edge for the second. Keep
   it about halfway between the top and the bottom of the picture both times. Near the top or
@@ -306,8 +300,7 @@ tells you to fix the direction first. Fixing the direction clears any step 14 ta
 before it, and a line under the tap count says so. Make those taps again.
 
 1. Hold the phone still for ten seconds. Until then the button is grey.
-2. Tap **Fix direction — tap the sun**. The strip at the top now reads "Fixing the direction:
-   tap the picture as the line at the bottom asks."
+2. Tap **Fix direction — tap the sun**.
 3. Turn the phone until the real sun sits near the middle of the picture. A sun near the
    middle gives a better answer than one near the edge.
 4. Tap the middle of the real sun. The labels turn, and a line says how far they turned.

@@ -91,6 +91,19 @@ describe('HOME_SESSION_STEPS', () => {
     expect(tap?.instruction).toContain('LEFT');
     expect(tap?.instruction).toContain('RIGHT');
   });
+
+  it('gives every tap step a one-line version for the strip, asking for the same two places', () => {
+    // The panel shrinks to a strip while the picture is tapped. About 75
+    // characters is one line across a landscape phone beside the strip's buttons.
+    const tapSteps = HOME_SESSION_STEPS.filter((step) => step.kind === 'tap');
+    expect(tapSteps.length).toBeGreaterThan(0);
+    for (const step of tapSteps) {
+      expect(step.stripInstruction, step.pose).toBeDefined();
+      expect(step.stripInstruction?.length ?? 0, step.pose).toBeLessThanOrEqual(75);
+      expect(step.stripInstruction).toContain('LEFT');
+      expect(step.stripInstruction).toContain('RIGHT');
+    }
+  });
 });
 
 describe('HOME_SESSION_PRIVACY_STATEMENT', () => {
