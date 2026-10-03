@@ -14,38 +14,6 @@ not the record of the code.
 
 ---
 
-## 2026-10-03, night 5 (reviewed fcaecaa..f2f7a98, 2 commits)
-
-The reviewer ran as a `general-purpose` agent reading `.claude/agents/strategy-adversary.md`, on
-`claude-opus-5-5` (transcript record).
-
-**Adversary findings, ranked:**
-1. During step 14 a real finger cannot reach the re-anchor tap layer. The home-session tap layer
-   sits inside `.live__chrome--top` (z-index 3, its own stacking context) and wins hit-testing over
-   the root-level re-anchor layer (z-index 1). Confirmed with `elementFromPoint` on a skeleton of
-   the same DOM and the real `live.css`. The e2e passes only because its helpers dispatch events
-   on a node chosen by test id, skipping hit-testing.
-2. "Use this measurement" stays available while the gross warning shows, and a re-anchor does not
-   withdraw a saved fit: two taps under a 25° compass error store a bent field of view.
-3. Taps spanning a "Use this measurement" are fitted against marks drawn under different trims.
-4. In the field session an unclaimed landmark tap is read as a Sun tap.
-
-**Checked and found sound:** night 4's four fixes as decided; the clearing effect under a
-re-anchor before any tap, strict mode, and same-render taps; the `readsAsSunTap` simplification is
-equivalent in the field sweep; the freeze held.
-
-**Direction:** every night since night 2 has found a real defect in the same few hundred lines
-(the Sun re-anchor and step-14 calibration). The node-dispatch e2e sees the logic, not the
-gesture. Fix 1 and 2, switch the tap helpers to hit-testing, then stop refining step 14; the home
-session is the only test of what the phone does. The binding constraint is GitHub Pages.
-
-**Orchestrator decisions:** 1, 2 and 4 accepted, with the e2e tap helpers switched to
-coordinate taps through hit-testing, in one fix. 3 deferred to the existing TODO on clearing taps
-across trim changes. After this fix, no further step-14 or re-anchor UI work before the home
-session. The week's evidence goes into night 7's continue-question.
-
----
-
 ## 2026-10-02, night 4 (reviewed 188cb57..fcaecaa, 2 commits)
 
 The reviewer ran as a `general-purpose` agent reading `.claude/agents/strategy-adversary.md`, on

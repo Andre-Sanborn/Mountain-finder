@@ -60,7 +60,6 @@ after its self-check has run and passed here. The checks are in
 - [x] Measure step-14 taps against the Sun only; a daytime Moon no longer claims them
 - [x] Pin the gross-compass e2e to a fixed sunny instant so it never skips
 - [ ] Clear the field session's FOV taps on a re-anchor, and on a drag or trim reset, as step 14 does
-- [ ] Clear step-14 taps after "Use this measurement", so later taps are not fitted against old marks
 - [x] Refuse the re-anchor when the pitch trim exceeds the ±20° clamp (night-3 review)
 - [ ] Run the home session with the human (steps: docs/HOME-SESSION-GUIDE.md)
 - [ ] Turn the home-session recording into fixtures; fix any sign or FOV error it shows
