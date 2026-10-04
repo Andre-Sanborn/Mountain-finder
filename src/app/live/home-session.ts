@@ -194,7 +194,7 @@ export const HOME_SESSION_STEPS: readonly HomeSessionStep[] = [
     title: 'Tap the real sun',
     instruction:
       'Hold the phone sideways and point it at the sun near the LEFT of the screen; tap the middle of the real sun. Then turn until it is near the RIGHT and tap it again.',
-    stripInstruction: 'Tap the sun halfway up near the LEFT edge, then near the RIGHT.',
+    stripInstruction: 'Tap the real sun halfway up near the LEFT edge, then near the RIGHT.',
     kind: 'tap',
     holdMs: 60_000,
   },

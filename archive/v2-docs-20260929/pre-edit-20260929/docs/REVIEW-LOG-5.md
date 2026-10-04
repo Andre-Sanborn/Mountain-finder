@@ -14,44 +14,6 @@ not the record of the code.
 
 ---
 
-## 2026-10-04, night 6 (reviewed f2f7a98..e6c1503, 3 commits)
-
-The reviewer ran as a `general-purpose` agent reading `.claude/agents/strategy-adversary.md`, on
-`claude-opus-5-5`.
-
-**Adversary findings, ranked:**
-1. Under a compass error above about 13° the field session sticks at step 2. A field tap reaches
-   the gross check only if the Sun's mark claims it within 160 px (14.7° on the 800 px e2e
-   viewport, about 12.9° on an 844 px phone), below the 20° warning threshold. So every tap reads
-   "not near anything", "Fix the direction first" never shows, and the guide says not to carry on.
-   The direction fix is step 3. The night-3 home fix was never carried to the field guide.
-2. The strip instructions dropped "real"; tapping the drawn mark would echo the assumed field of
-   view back as calibrated.
-3. IMPLEMENTATION.md's "taps pass through" the bottom boxes is not wholly true: `.live__why`,
-   `.live__settings` and `.live__offline` take taps across their width.
-4. The rehearsal's F4.envelope failure is an artefact: the still frame starts Deer Point at
-   u ≈ 0.39 against the registered 0.2, and no pan from that frame stays under 45.401°.
-5. Low: a field fit held after a legitimate hand drag; a compass recovering between taps.
-
-**Checked and found sound:** night 5 answered as decided; the strip's height, growth under
-messages, buttons, portrait wrap and `:has()` fallback; the hit-tested e2e taps; the freeze held.
-
-**Week 1 summary (for night 7):** every night found at least one defect that would have given
-plausible wrong output or stranded the human: night 1 the untested truth instrument and the 92°
-rehearsal pose; night 2 the unpinned model and the sun re-anchor's 1.35° to 11.21° error; night 3
-summit dots claiming step-14 taps; night 4 a stale tap bending the fit to 61.8° to 69.6°; night 5
-the unreachable re-anchor layer; night 6 the field step-2 trap. Reviews are not metered
-separately; estimated at single to low double digits of dollars a night against about $779 for
-all session work. The reviewer recommends continuing nightly until the field test.
-
-**Orchestrator decisions:** 1 accepted as text: a field-guide paragraph to fix the direction at
-step 2 when the labels are far off, and the unclaimed-tap note says the same; no step reorder,
-which keeps clear of the freeze. 2 accepted: "real" restored in both strip lines and guides.
-3 accepted: the sentence corrected. 4 accepted: the TODO now records the failure as expected.
-5 no action.
-
----
-
 ## 2026-10-03, night 5 (reviewed fcaecaa..f2f7a98, 2 commits)
 
 The reviewer ran as a `general-purpose` agent reading `.claude/agents/strategy-adversary.md`, on

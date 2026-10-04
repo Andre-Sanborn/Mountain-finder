@@ -1999,9 +1999,7 @@ about 14 % of an 844 × 390 landscape phone with no message, about 21 % with a t
 A class driven by step state was chosen over moving the panel to the bottom, which already holds
 the re-anchor controls. The e2e taps the real Sun at the centre and halfway up at 10 % and 90 %
 of the width through hit-testing; reverting the layout makes each tap land on the panel. The
-bottom strip's text boxes still hide the lower picture. Most pass taps through, but `.live__why`,
-`.live__settings` and `.live__offline` take taps across their full width, so a summit tapped low
-on the skyline can land on them.
+bottom strip's text boxes still hide the lower picture, though taps pass through them.
 
 The field panel also holds "Use this measurement" under the gross warning and clears its taps on
 a re-anchor; without the clearing, the re-anchor would clear the warning and release a fit built

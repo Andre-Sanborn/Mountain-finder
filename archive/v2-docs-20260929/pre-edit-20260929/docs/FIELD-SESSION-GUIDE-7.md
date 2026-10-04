@@ -217,7 +217,8 @@ of the far ridges.
 > tap the middle of the real one. Then turn until it is near the right edge and tap it again.
 
 During this step the panel shrinks to a strip along the top edge, so the picture is clear
-for your finger. The strip shortens the instruction to "Tap the real sun or a labelled summit near the LEFT edge, then the RIGHT." and puts its buttons at its right-hand end.
+for your finger. The strip shortens the instruction to "Tap the sun or a labelled summit near
+the LEFT edge, then near the RIGHT." and puts its buttons at its right-hand end.
 
 Your finger means "the real thing is here" during this step only. A counter in the strip
 reads "1 tap so far", then "2 taps so far". After the second tap the strip reports what it
@@ -233,10 +234,6 @@ If the strip says "Fix the direction first" where that button would be, the comp
 out. Fix the direction now, with the **Fix direction** buttons near the bottom of the screen,
 as step 3 describes. That clears the two taps, and a line in the strip says so. Make them
 again, then tap **Use this measurement**.
-
-If the labels sit far from the real summits, or every tap says it was not near anything the
-app has drawn, the compass is far out too. Do not wait for step 3: fix the direction now in
-the same way, then make the two taps.
 
 ### Step 3 — Check which way the labels point
 

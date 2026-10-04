@@ -171,7 +171,7 @@ export const FIELD_SESSION_STEPS: readonly FieldStep[] = [
     title: 'Check the camera width',
     instruction:
       'Point the camera so the sun, or a summit the app has labelled, is near the left edge and tap the middle of the real one. Then turn until it is near the right edge and tap it again.',
-    stripInstruction: 'Tap the sun or a labelled summit near the LEFT edge, then near the RIGHT.',
+    stripInstruction: 'Tap the real sun or a labelled summit near the LEFT edge, then the RIGHT.',
     kind: 'tap',
   },
   {

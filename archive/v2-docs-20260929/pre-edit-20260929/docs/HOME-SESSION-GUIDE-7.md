@@ -178,7 +178,8 @@ These are the fourteen, in order, with the words the screen uses:
     it again. (up to 1 minute)
 
     During this step the panel shrinks to a strip along the top edge, so the picture is clear
-    for your finger. The strip says "Tap the real sun halfway up near the LEFT edge, then near the RIGHT.", with the tap count and the seconds left on the line above. Its buttons sit at its
+    for your finger. The strip says "Tap the sun halfway up near the LEFT edge, then near the
+    RIGHT.", with the tap count and the seconds left on the line above. Its buttons sit at its
     right-hand end.
 
 Notes on the awkward ones:

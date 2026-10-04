@@ -68,7 +68,7 @@ after its self-check has run and passed here. The checks are in
 - [x] Collapse the session panel to an edge strip during tap steps; it covers where the Sun and dots sit
 - [ ] Decide whether the bottom strip's text boxes should shrink during tap steps
 - [x] Re-run rehearsal.spec.ts under hit-tested taps
-- [x] Rehearsal F4.envelope fail is expected: the still frame starts the anchor at u ≈ 0.39, beyond the 0.2 registered
+- [ ] Keep the rehearsal's left pan under the registered 45.401° turn (it pans 48.9°; F4.envelope fails)
 - [x] Hold the field panel's "Use this measurement" under the gross warning too, and clear its taps on a re-anchor
 - [x] Refuse the re-anchor when the pitch trim exceeds the ±20° clamp (night-3 review)
 - [ ] Run the home session with the human (steps: docs/HOME-SESSION-GUIDE.md)
