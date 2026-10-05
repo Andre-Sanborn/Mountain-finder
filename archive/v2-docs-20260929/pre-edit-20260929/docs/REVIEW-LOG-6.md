@@ -14,26 +14,6 @@ not the record of the code.
 
 ---
 
-## 2026-10-05, night 7 (reviewed e6c1503..d882a3b, 1 commit)
-
-The reviewer ran as a `general-purpose` agent reading `.claude/agents/strategy-adversary.md`, on
-`claude-opus-5-5`. One text-only commit answered night 6 as decided; the freeze held. The new
-field step-2 paragraph is reachable: the field tap layer steps aside while a re-anchor is armed,
-the Fix direction buttons sit in the bottom chrome above it, and an existing e2e covers the path.
-
-**Findings:** (1, low) the extended unclaimed-tap note, about 230 characters, wraps to three
-lines in the compact strip and covers more of the upper picture; (2, cosmetic) two guide lines
-are unwrapped.
-
-**Orchestrator decisions:** 1 accepted: the note shortened to "That tap was not near anything
-the app has drawn. If the labels are far off, fix the direction first." 2 no action.
-
-**Weekly continue-question** put to the human on 2026-10-05, with the week-1 summary recorded in
-night 6's entry. The reviewer recommends continuing nightly until the field test, switching to
-review-on-commit if nights keep seeing text-only commits while the home session stays blocked.
-
----
-
 ## 2026-10-04, night 6 (reviewed f2f7a98..e6c1503, 3 commits)
 
 The reviewer ran as a `general-purpose` agent reading `.claude/agents/strategy-adversary.md`, on

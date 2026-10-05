@@ -441,9 +441,8 @@ export function FieldSessionPanel(props: FieldSessionPanelProps): JSX.Element {
         setTapNote(
           references.length === 0
             ? 'Nothing is drawn on screen to compare against yet. Point the camera at the view.'
-            : 'That tap was not near anything the app has drawn. Tap the real thing, close to the ' +
-              'mark the app drew for it. If the labels are far from the real summits, fix the ' +
-              'direction first with the Fix direction buttons.',
+            : 'That tap was not near anything the app has drawn. If the labels are far off, fix ' +
+              'the direction first.',
         );
         return;
       }
