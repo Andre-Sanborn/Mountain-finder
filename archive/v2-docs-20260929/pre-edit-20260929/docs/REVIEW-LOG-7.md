@@ -14,22 +14,6 @@ not the record of the code.
 
 ---
 
-## 2026-10-06, night 8 (reviewed d882a3b..8242703, 1 commit)
-
-The reviewer ran as a `general-purpose` agent reading `.claude/agents/strategy-adversary.md`, on
-`claude-opus-5-5`. The shortened unclaimed-tap note loses nothing field step 2 needs: the strip
-and the guide still say to tap the real Sun or a labelled summit, and the 160 px claim radius
-means a miss in practice is far-off labels, which the note covers. The e2e at
-`field-session.spec.ts:999` matches the kept text and passed before the commit. The freeze held.
-
-**Finding:** (low) HANDOFF.md still said no weekly continue-question had been asked, contradicting
-the line above it. **Decision:** fixed; the two lines now agree.
-
-Second text-only night in a row while the home session waits on GitHub Pages; whether to switch to
-review-on-commit is in the weekly question asked 2026-10-05, still unanswered.
-
----
-
 ## 2026-10-05, night 7 (reviewed e6c1503..d882a3b, 1 commit)
 
 The reviewer ran as a `general-purpose` agent reading `.claude/agents/strategy-adversary.md`, on
