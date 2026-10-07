@@ -14,10 +14,6 @@ not the record of the code.
 
 ---
 
-## 2026-10-07, night 9: no decisions (8242703..28f48bf holds only night 8's log and HANDOFF bookkeeping).
-
----
-
 ## 2026-10-06, night 8 (reviewed d882a3b..8242703, 1 commit)
 
 The reviewer ran as a `general-purpose` agent reading `.claude/agents/strategy-adversary.md`, on
