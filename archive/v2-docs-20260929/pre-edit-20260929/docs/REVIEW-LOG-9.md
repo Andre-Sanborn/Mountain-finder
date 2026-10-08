@@ -14,10 +14,6 @@ not the record of the code.
 
 ---
 
-## 2026-10-08, night 10: no decisions (28f48bf..373584e holds only night 9's log line).
-
----
-
 ## 2026-10-07, night 9: no decisions (8242703..28f48bf holds only night 8's log and HANDOFF bookkeeping).
 
 ---
