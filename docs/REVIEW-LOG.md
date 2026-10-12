@@ -14,6 +14,14 @@ not the record of the code.
 
 ---
 
+## 2026-10-12, night 14: no decisions (41c5e14..fa94c13 holds only night 13's log line).
+
+Week 2 (nights 8 to 14): one low finding (night 8, a HANDOFF contradiction, fixed); nights 9 to 14
+had no commits beyond the log. The weekly continue-question was put to the human again; the first,
+asked 2026-10-05, is unanswered.
+
+---
+
 ## 2026-10-11, night 13: no decisions (1bb216e..41c5e14 holds only night 12's log line).
 
 ---
