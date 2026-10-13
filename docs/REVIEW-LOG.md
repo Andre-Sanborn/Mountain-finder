@@ -14,6 +14,10 @@ not the record of the code.
 
 ---
 
+## 2026-10-13, night 15: no decisions (fa94c13..411a41b holds only night 14's log).
+
+---
+
 ## 2026-10-12, night 14: no decisions (41c5e14..fa94c13 holds only night 13's log line).
 
 Week 2 (nights 8 to 14): one low finding (night 8, a HANDOFF contradiction, fixed); nights 9 to 14
