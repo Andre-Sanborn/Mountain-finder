@@ -14,6 +14,10 @@ not the record of the code.
 
 ---
 
+## 2026-10-14, night 16: no decisions (411a41b..ce37732 holds only night 15's log line).
+
+---
+
 ## 2026-10-13, night 15: no decisions (fa94c13..411a41b holds only night 14's log).
 
 ---
