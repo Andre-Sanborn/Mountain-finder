@@ -14,6 +14,8 @@ not the record of the code.
 
 ---
 
+## 2026-10-22, night 22: no decisions (ae42a62..a819166 holds only night 21's log line).
+
 ## 2026-10-21, night 21: no decisions (a7d25b1..ae42a62 holds only night 20's log line).
 
 ## 2026-10-20, night 20: no decisions (c70d5ca..a7d25b1 holds only night 19's log line). The review was paused on 2026-10-18 and 2026-10-19 at the human's request.
