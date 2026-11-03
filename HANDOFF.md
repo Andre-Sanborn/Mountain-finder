@@ -141,7 +141,7 @@ full tiles, and stop with instructions when one is missing.
   into the orchestrator session. Brief and verbatim prompt:
   [`.claude/reviews/nightly.md`](.claude/reviews/nightly.md).
 - Entries are appended to [docs/REVIEW-LOG.md](docs/REVIEW-LOG.md), newest first.
-- Last reviewed commit: `e9a1635` (night 33, 2026-11-02, no decisions).
+- Last reviewed commit: `155bd56` (night 34, 2026-11-03, no decisions).
 - Nightly reviews started: 2026-09-29. Weekly continue-question: asked 2026-10-05,
-  2026-10-12, 2026-10-20 and 2026-10-27, not yet answered; next due 2026-11-03.
+  2026-10-12, 2026-10-20, 2026-10-27 and 2026-11-03, not yet answered; next due 2026-11-10.
 - At session start, check the Routine exists (`list_triggers`) and recreate it if not.
