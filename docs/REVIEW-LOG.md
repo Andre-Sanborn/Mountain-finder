@@ -14,6 +14,8 @@ not the record of the code.
 
 ---
 
+## 2026-11-08, night 39: no decisions (5511896..03000d9 holds only night 38's log line).
+
 ## 2026-11-07, night 38: no decisions (098b44b..5511896 holds only night 37's log line).
 
 ## 2026-11-06, night 37: no decisions (405106a..098b44b holds only night 36's log line).
